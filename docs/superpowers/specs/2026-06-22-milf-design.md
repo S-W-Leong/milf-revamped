@@ -29,10 +29,10 @@ Agent on the OpenAI Agents SDK) is reference only; its code is not in this repo.
 | Backend | Own cloud service running MobileRun's `MobileAgent` (Manager + Executor) brain | MobileRun = [droidrun](https://docs.mobilerun.ai) rebranded. We use it as a library, not its hosted devices. |
 | Bridge | Custom **`WebSocketDriver(DeviceDriver)`** — agent actions ↔ app | MobileRun's layered design (`DeviceDriver` → `StateProvider` → `ActionContext` → platform-agnostic Agent) makes the driver pluggable. Confirmed: every `DeviceDriver` method raises `NotImplementedError` by default; concrete drivers override what they support and declare a `supported` set. |
 | Brain LLM | **OpenAI** | User chose continuity with the original prototype, overriding a Claude recommendation. MobileRun supports per-agent models if cost-tuning later. |
-| STT | SEA-tuned model via API — **ILMU** (YTL, Malaysia-first) primary | MY-first chosen. Fallbacks: **VALSEA** (commercial SEA ASR) or **mesolitica** Malaysian-Whisper. MERaLiON (A*STAR, best for Singlish/Hokkien/Cantonese) considered but deprioritized given MY-first. Native Android STT rejected — inadequate for SEA dialects. |
+| STT | SEA-tuned models via API behind a `RouterSTT`: **ILMU** (en/Manglish) + **MERaLiON** (Cantonese) | ILMU has no native Cantonese ASR, so Cantonese routes to MERaLiON (A*STAR, explicit Cantonese/Hokkien support). Language is a one-time per-user setting (`en`/`manglish`/`yue`); no live detection. VALSEA / mesolitica remain drop-in fallbacks. Native Android STT rejected — inadequate for SEA dialects. |
 | TTS | **On-device Android TextToSpeech** for v1 | Output quality matters far less than input recognition. SEA-tuned TTS (ElevenLabs multilingual, etc.) is a later upgrade. |
 | Safety | **Confirmation gate** — speak before any irreversible action (call / send / pay) | The trust/safety pitch beat; not optional. |
-| Demo language | **English + Bahasa Melayu / Manglish** | Lock 1–2 languages for a reliable hero flow; the rest is config-driven scale path. |
+| Demo language | **English + Manglish + Cantonese** | EN/Manglish via ILMU, Cantonese via MERaLiON. The rest is config-driven scale path. |
 
 **Explicitly out of scope for v1:** we do NOT fine-tune any speech model (consume an
 already-tuned SEA model via API; fine-tuning is a post-challenge moat). We do NOT use
@@ -132,7 +132,7 @@ Each unit has one purpose, a defined interface, and is independently testable.
 
 | Risk | Mitigation |
 |---|---|
-| ILMU STT API access not obtainable in 3 days | Verify Day 1. STT adapter interface keeps VALSEA / mesolitica-Whisper as drop-in fallbacks. |
+| ILMU **and** MERaLiON STT API access/schema not obtainable in 3 days | Verify BOTH Day 1. The `RouterSTT` + adapter interface keeps VALSEA / mesolitica-Whisper as drop-in fallbacks, and `MockSTT` keeps the whole pipeline runnable offline for the demo. |
 | AccessibilityService onboarding UX (hard for seniors; also our trust story) | Scripted one-time setup; a pre-enabled device for the stage demo. |
 | 3-day scope creep | Single-flow discipline; everything non-hero stubbed/seeded; clean recorded backup. |
 | WhatsApp UI variance breaks navigation | Accessibility-tree element lookup + WhatsApp app-instruction card. |
