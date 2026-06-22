@@ -37,7 +37,24 @@ Agent on the OpenAI Agents SDK) is reference only; its code is not in this repo.
 **Explicitly out of scope for v1:** we do NOT fine-tune any speech model (consume an
 already-tuned SEA model via API; fine-tuning is a post-challenge moat). We do NOT use
 MobileRun ADB drivers or cloud phones. We do NOT build general intent NLP — contact
-resolution is a seeded map for the demo.
+resolution is a seeded map for the demo. We do NOT use a speech-to-speech model (e.g.
+OpenAI Realtime / Gemini Live): a native audio model would lose SEA-dialect accuracy —
+the moat. We keep the STT→OpenAI→TTS pipeline and make it *feel* live (below).
+
+## 2.1 Live-feel (streaming polish)
+
+The pipeline is turn-based but engineered to feel responsive. Considered and rejected a
+speech-to-speech model (Gemini-Live-style) because native audio understanding is weak on
+Cantonese/Manglish senior speech. Instead:
+
+- **No dead air:** the moment intent is transcribed, MILF speaks an immediate
+  acknowledgment ("Okay, let me call Wei…") before the agent begins planning. (Backend.)
+- **Incremental narration:** each agent step is spoken as its event arrives, not batched
+  at the end. (Backend — event streaming.)
+- **VAD auto-capture, responsive TTS, barge-in:** no "press to stop"; the senior can
+  interrupt narration. (Android app — Plan 2.)
+- Full streaming STT is a stretch goal; the voice-layer boundary is kept clean so a
+  realtime backend could be swapped in later without touching the agent.
 
 ## 3. Architecture
 

@@ -827,12 +827,13 @@ Seeded "my son"/"cucu" → contact map and the WhatsApp navigation knowledge inj
   - `resolve_contact(phrase: str) -> str | None` — case-insensitive lookup over `contacts.json` (keys are relation phrases EN+MS, value is the WhatsApp display name).
   - `WHATSAPP_APP_CARD: str` — guidance text appended to the goal.
   - `build_goal(intent: str) -> str` — combines the intent, any resolved contact, the app card, and the mandatory-confirmation instruction into the agent goal string.
+  - `acknowledgment(intent: str) -> str` — a short immediate spoken line ("no dead air" / live-feel) said right after transcription, before the agent plans. Names the resolved contact when known.
 
 - [ ] **Step 1: Write the failing test**
 
 `backend/tests/test_context.py`:
 ```python
-from milf.context import resolve_contact, build_goal, WHATSAPP_APP_CARD
+from milf.context import resolve_contact, build_goal, acknowledgment, WHATSAPP_APP_CARD
 
 def test_resolve_known_relation_en_and_ms():
     assert resolve_contact("I want to call my grandson") == "Wei"
@@ -846,6 +847,13 @@ def test_build_goal_includes_contact_card_and_confirmation():
     assert "Wei" in goal
     assert "confirm_action" in goal
     assert WHATSAPP_APP_CARD.strip()[:10] in goal
+
+def test_acknowledgment_names_contact_when_known():
+    assert "Wei" in acknowledgment("I want to see my grandson")
+
+def test_acknowledgment_is_generic_when_unknown():
+    line = acknowledgment("open the weather")
+    assert line and "Wei" not in line
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -896,12 +904,19 @@ def build_goal(intent: str) -> str:
         "SAFETY: Before placing the call (or any send/payment), you MUST call the "
         "confirm_action tool with a short summary and only proceed if it confirms."
     )
+
+def acknowledgment(intent: str) -> str:
+    """Immediate 'no dead air' line spoken before the agent starts planning."""
+    contact = resolve_contact(intent)
+    if contact:
+        return f"Okay, let me help you reach {contact}."
+    return "Okay, let me help you with that."
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd backend && pytest tests/test_context.py -v`
-Expected: 3 passed
+Expected: 5 passed
 
 - [ ] **Step 5: Commit**
 
@@ -921,7 +936,7 @@ Composes STT → goal → MobileAgent(driver, tools, OpenAI) → narrated events
 - Test: `backend/tests/test_agent_runner.py`
 
 **Interfaces:**
-- Consumes: `make_stt`/`STTAdapter` (5), `WebSocketDriver` (4), `build_confirmation_tool` (6), `narrate_events` (7), `build_goal` (8), `AppConnection` (3).
+- Consumes: `make_stt`/`STTAdapter` (5), `WebSocketDriver` (4), `build_confirmation_tool` (6), `narrate_events` (7), `build_goal` + `acknowledgment` (8), `AppConnection` (3).
 - Produces:
   - `build_agent(goal, driver, custom_tools) -> Any` — constructs the real `MobileAgent` (the only MobileRun-touching function; mocked in tests).
   - `async run_task(connection, audio, lang, stt, agent_factory=build_agent) -> Any` — full pipeline; returns the agent result.
@@ -947,7 +962,7 @@ class FakeConn:
     def __init__(self): self.narrations = []
     async def send_narration(self, text, lang): self.narrations.append(text)
 
-async def test_run_task_transcribes_builds_and_runs():
+async def test_run_task_acks_then_builds_and_runs():
     captured = {}
     def fake_factory(goal, driver, custom_tools):
         captured["goal"] = goal
@@ -961,6 +976,8 @@ async def test_run_task_transcribes_builds_and_runs():
     assert result.success is True
     assert "Wei" in captured["goal"]
     assert "confirm_action" in captured["tools"]
+    # live-feel: an immediate acknowledgment is spoken before the agent runs
+    assert conn.narrations and "Wei" in conn.narrations[0]
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -977,7 +994,7 @@ import os
 from typing import Any, Callable
 from milf.connection import AppConnection
 from milf.confirmation import build_confirmation_tool
-from milf.context import build_goal
+from milf.context import build_goal, acknowledgment
 from milf.narration import narrate_events
 from milf.stt import STTAdapter
 from milf.ws_driver import WebSocketDriver
@@ -1009,6 +1026,8 @@ async def run_task(
     agent_factory: Callable[..., Any] = build_agent,
 ) -> Any:
     intent = await stt.transcribe(audio, lang)
+    # live-feel: speak immediately so there is no dead air while the agent plans
+    await connection.send_narration(acknowledgment(intent), lang)
     goal = build_goal(intent)
     driver = WebSocketDriver(connection)
     tools = build_confirmation_tool(connection, lang)
@@ -1288,7 +1307,8 @@ git commit -m "feat: reliability harness"
 - OpenAI brain → Task 9 (`llms`). ✓
 - STT ILMU (en/manglish) + MERaLiON (yue/Cantonese) behind a router, vendor-isolated → Task 5. ✓
 - Confirmation gate (speak before irreversible) → Task 6, enforced in goal Task 8. ✓
-- Spoken narration from events → Task 7. ✓
+- Spoken narration from events (incremental, live-feel) → Task 7. ✓
+- Live-feel "no dead air" immediate acknowledgment → Tasks 8 (`acknowledgment`) + 9 (spoken before agent runs). VAD capture / barge-in / responsive TTS are Plan 2 (Android). ✓
 - WhatsApp app card + contact resolution → Task 8. ✓
 - Reliability harness (90% target) → Task 11. ✓
 - Websocket protocol/transport → Tasks 2, 3, 10. ✓
