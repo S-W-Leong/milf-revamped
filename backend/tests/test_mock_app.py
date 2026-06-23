@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -24,6 +25,7 @@ async def _assert_recv_close(ws, code: int):
         await asyncio.wait_for(ws.recv(), timeout=1)
     assert exc.value.rcvd is not None
     assert exc.value.rcvd.code == code
+    return exc.value.rcvd
 
 
 async def test_driver_action_against_mock_app_returns_result():
@@ -119,6 +121,29 @@ async def test_server_closes_malformed_first_frame_with_protocol_error(monkeypat
         async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
             await ws.send("{")
             await _assert_recv_close(ws, PROTOCOL_ERROR)
+
+
+async def test_server_closes_non_utf8_binary_first_frame_with_protocol_error(monkeypatch):
+    _configure_local_server_env(monkeypatch)
+    async with websockets.serve(_handler, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+            await ws.send(b"\xff")
+            close = await _assert_recv_close(ws, PROTOCOL_ERROR)
+            assert len(close.reason.encode("utf-8")) <= 100
+
+
+async def test_server_bounds_protocol_error_close_reason(monkeypatch):
+    _configure_local_server_env(monkeypatch)
+    raw = json.dumps({"type": "A" * 1000, "data": {}})
+
+    async with websockets.serve(_handler, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+            await ws.send(raw)
+            close = await _assert_recv_close(ws, PROTOCOL_ERROR)
+            assert len(close.reason.encode("utf-8")) <= 100
+            assert "A" * 100 not in close.reason
 
 
 async def test_server_closes_invalid_base64_with_protocol_error(monkeypatch):

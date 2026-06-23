@@ -15,12 +15,14 @@ from milf.stt import make_stt
 PROTOCOL_ERROR = 1002
 POLICY_VIOLATION = 1008
 MESSAGE_TOO_BIG = 1009
+MAX_CLOSE_REASON_BYTES = 100
+PROTOCOL_CLOSE_REASON = "protocol error"
 
 
 async def _handler(ws, settings: Settings | None = None):
     settings = settings or Settings.from_env()
     if not _is_authorized(ws, settings):
-        await ws.close(code=POLICY_VIOLATION, reason="unauthorized")
+        await _close(ws, POLICY_VIOLATION, "unauthorized")
         return
 
     async def send(raw: str) -> None:
@@ -33,21 +35,21 @@ async def _handler(ws, settings: Settings | None = None):
         first = decode(await ws.recv())
     except websockets.exceptions.ConnectionClosed:
         return
-    except ProtocolDecodeError as exc:
-        await ws.close(code=PROTOCOL_ERROR, reason=str(exc))
+    except ProtocolDecodeError:
+        await _close(ws, PROTOCOL_ERROR, PROTOCOL_CLOSE_REASON)
         return
 
     if not isinstance(first, Audio):
-        await ws.close(code=PROTOCOL_ERROR, reason="first frame must be Audio")
+        await _close(ws, PROTOCOL_ERROR, "first frame must be Audio")
         return
 
     try:
         audio = base64.b64decode(first.goal_audio_b64, validate=True)
     except (binascii.Error, ValueError):
-        await ws.close(code=PROTOCOL_ERROR, reason="invalid audio encoding")
+        await _close(ws, PROTOCOL_ERROR, "invalid audio encoding")
         return
     if len(audio) > settings.max_audio_bytes:
-        await ws.close(code=MESSAGE_TOO_BIG, reason="audio too large")
+        await _close(ws, MESSAGE_TOO_BIG, "audio too large")
         return
 
     async def pump() -> None:
@@ -55,8 +57,8 @@ async def _handler(ws, settings: Settings | None = None):
             async for raw in ws:
                 try:
                     conn.on_message(raw)
-                except ProtocolDecodeError as exc:
-                    await ws.close(code=PROTOCOL_ERROR, reason=str(exc))
+                except ProtocolDecodeError:
+                    await _close(ws, PROTOCOL_ERROR, PROTOCOL_CLOSE_REASON)
                     break
         except websockets.exceptions.ConnectionClosed:
             pass
@@ -70,6 +72,17 @@ async def _handler(ws, settings: Settings | None = None):
             await pump_task
         except asyncio.CancelledError:
             pass
+
+
+async def _close(ws, code: int, reason: str) -> None:
+    await ws.close(code=code, reason=_bounded_close_reason(reason))
+
+
+def _bounded_close_reason(reason: str) -> str:
+    encoded = reason.encode("utf-8")
+    if len(encoded) <= MAX_CLOSE_REASON_BYTES:
+        return reason
+    return encoded[:MAX_CLOSE_REASON_BYTES].decode("utf-8", errors="ignore")
 
 
 def _is_authorized(ws, settings: Settings) -> bool:

@@ -26,6 +26,11 @@ def test_decode_malformed_json_raises_protocol_decode_error():
         decode("{")
 
 
+def test_decode_non_utf8_bytes_raises_protocol_decode_error():
+    with pytest.raises(ProtocolDecodeError, match="Malformed JSON"):
+        decode(b"\xff")
+
+
 def test_decode_schema_error_raises_protocol_decode_error():
     with pytest.raises(ProtocolDecodeError, match="Invalid Audio message"):
         decode('{"type": "Audio", "data": {"lang": "en"}}')

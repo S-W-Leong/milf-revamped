@@ -59,10 +59,10 @@ def encode(msg: BaseModel) -> str:
     return json.dumps({"type": msg.__class__.__name__, "data": msg.model_dump()})
 
 
-def decode(raw: str) -> BaseModel:
+def decode(raw: str | bytes | bytearray) -> BaseModel:
     try:
         envelope = json.loads(raw)
-    except (json.JSONDecodeError, TypeError) as exc:
+    except (json.JSONDecodeError, TypeError, UnicodeDecodeError) as exc:
         raise ProtocolDecodeError("Malformed JSON") from exc
 
     if not isinstance(envelope, dict):
