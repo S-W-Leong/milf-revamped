@@ -1,4 +1,5 @@
 import asyncio
+import base64
 
 import pytest
 
@@ -63,3 +64,14 @@ async def test_failed_action_raises_runtime_error():
     conn.on_message(encode(ActionResult(id=action.id, ok=False, error="no ui")))
     with pytest.raises(RuntimeError, match="no ui"):
         await task
+
+
+async def test_screenshot_decodes_base64_payload_to_bytes():
+    sent, conn = _wire()
+    driver = WebSocketDriver(conn)
+    task = asyncio.create_task(driver.screenshot())
+    await asyncio.sleep(0)
+    action = decode(sent[0])
+    payload = base64.b64encode(b"png-bytes").decode("ascii")
+    conn.on_message(encode(ActionResult(id=action.id, ok=True, result=payload)))
+    assert await task == b"png-bytes"

@@ -1,3 +1,4 @@
+import base64
 from typing import Any, Optional
 
 from mobilerun.tools import DeviceDriver
@@ -76,7 +77,12 @@ class WebSocketDriver(DeviceDriver):
         )
 
     async def screenshot(self, hide_overlay: bool = True) -> bytes:
-        return await self._send_supported("screenshot", {"hide_overlay": hide_overlay})
+        payload = await self._send_supported("screenshot", {"hide_overlay": hide_overlay})
+        if isinstance(payload, str):
+            return base64.b64decode(payload)
+        if isinstance(payload, bytes):
+            return payload
+        raise TypeError("screenshot action returned non-bytes payload")
 
     async def get_ui_tree(self) -> dict[str, Any]:
         return await self._send_supported("get_ui_tree", {})
