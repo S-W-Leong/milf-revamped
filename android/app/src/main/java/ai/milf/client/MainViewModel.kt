@@ -3,6 +3,7 @@ package ai.milf.client
 import ai.milf.client.accessibility.ActionDispatcher
 import ai.milf.client.accessibility.MilfAccessibilityService
 import ai.milf.client.audio.AudioRecorder
+import ai.milf.client.audio.ConfirmationVoiceParser
 import ai.milf.client.audio.TtsNarrator
 import ai.milf.client.protocol.Action
 import ai.milf.client.protocol.ActionResult
@@ -120,6 +121,14 @@ class MainViewModel(
 
     fun denyConfirmation() {
         respondToConfirmation(approved = false)
+    }
+
+    fun onConfirmationSpeech(text: String) {
+        when (ConfirmationVoiceParser.parse(text)) {
+            true -> approveConfirmation()
+            false -> denyConfirmation()
+            null -> _uiState.update { it.copy(status = "Please say yes or no") }
+        }
     }
 
     private fun respondToConfirmation(approved: Boolean) {

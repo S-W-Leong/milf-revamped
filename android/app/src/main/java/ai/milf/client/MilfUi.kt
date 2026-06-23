@@ -36,6 +36,7 @@ fun MilfUi(
     onMicPressed: () -> Unit,
     onApprove: () -> Unit,
     onDeny: () -> Unit,
+    onSpeakDecision: () -> Unit,
     onOpenAccessibility: () -> Unit
 ) {
     MaterialTheme {
@@ -112,7 +113,8 @@ fun MilfUi(
                     ConfirmationOverlay(
                         pending = pending,
                         onApprove = onApprove,
-                        onDeny = onDeny
+                        onDeny = onDeny,
+                        onSpeakDecision = onSpeakDecision
                     )
                 }
             }
@@ -157,7 +159,8 @@ private fun LanguageRow(
 private fun ConfirmationOverlay(
     pending: PendingConfirmation,
     onApprove: () -> Unit,
-    onDeny: () -> Unit
+    onDeny: () -> Unit,
+    onSpeakDecision: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -182,6 +185,15 @@ private fun ConfirmationOverlay(
                 color = Color(0xFF111827)
             )
             Spacer(Modifier.height(28.dp))
+            OutlinedButton(
+                onClick = onSpeakDecision,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+            ) {
+                Text("Speak yes/no", fontSize = 22.sp)
+            }
+            Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
