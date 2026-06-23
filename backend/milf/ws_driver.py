@@ -4,6 +4,7 @@ from typing import Any, Optional
 from mobilerun.tools import DeviceDriver
 
 from milf.connection import AppConnection
+from milf.policy import ConfirmationPolicy
 
 
 class WebSocketDriver(DeviceDriver):
@@ -18,8 +19,9 @@ class WebSocketDriver(DeviceDriver):
     }
     supported_buttons = {"back", "home", "enter"}
 
-    def __init__(self, connection: AppConnection):
+    def __init__(self, connection: AppConnection, policy: ConfirmationPolicy):
         self._connection = connection
+        self._policy = policy
 
     async def connect(self) -> None:
         return None
@@ -119,6 +121,7 @@ class WebSocketDriver(DeviceDriver):
         raise NotImplementedError
 
     async def _send_supported(self, name: str, args: dict[str, Any]) -> Any:
+        self._policy.require_allowed(name, args)
         result = await self._connection.send_action(name, args)
         if not result.ok:
             message = result.error or f"Action failed: {name}"

@@ -28,7 +28,7 @@ async def _handler(ws, settings: Settings | None = None):
     async def send(raw: str) -> None:
         await ws.send(raw)
 
-    conn = AppConnection(send)
+    conn = AppConnection(send, timeout_seconds=settings.action_timeout_seconds)
     stt = make_stt(settings)
 
     try:
@@ -62,6 +62,8 @@ async def _handler(ws, settings: Settings | None = None):
                     break
         except websockets.exceptions.ConnectionClosed:
             pass
+        finally:
+            conn.fail_pending(ConnectionError("websocket disconnected"))
 
     pump_task = asyncio.create_task(pump())
     try:

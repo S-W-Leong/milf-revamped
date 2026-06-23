@@ -6,6 +6,7 @@ from milf.confirmation import build_confirmation_tool
 from milf.connection import AppConnection
 from milf.context import acknowledgment, build_goal
 from milf.narration import narrate_events
+from milf.policy import ConfirmationPolicy
 from milf.settings import Settings
 from milf.stt import STTAdapter
 from milf.ws_driver import WebSocketDriver
@@ -52,8 +53,9 @@ async def run_task(
     await connection.send_narration(acknowledgment(intent), lang)
 
     goal = build_goal(intent)
-    driver = WebSocketDriver(connection)
-    custom_tools = build_confirmation_tool(connection, lang)
+    policy = ConfirmationPolicy()
+    driver = WebSocketDriver(connection, policy)
+    custom_tools = build_confirmation_tool(connection, lang, policy)
     agent = agent_factory(goal, driver, custom_tools)
     handler = agent.run()
 
