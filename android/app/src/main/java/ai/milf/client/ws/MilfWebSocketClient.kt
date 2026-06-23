@@ -8,6 +8,7 @@ import ai.milf.client.protocol.ConfirmResponse
 import ai.milf.client.protocol.MilfMessage
 import ai.milf.client.protocol.MilfProtocol
 import ai.milf.client.protocol.Narration
+import ai.milf.client.security.ClientSecurity
 import android.util.Base64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,7 @@ class MilfWebSocketClient(
     private val url: String,
     private val socketFactory: SocketFactory = OkHttpSocketFactory(),
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    private val clientSecurity: ClientSecurity = ClientSecurity(),
     private val audioEncoder: (ByteArray) -> String = {
         Base64.encodeToString(it, Base64.NO_WRAP)
     }
@@ -58,6 +60,11 @@ class MilfWebSocketClient(
     private var pendingMessages: MutableList<String> = mutableListOf()
 
     fun start(goalAudio: ByteArray, lang: String, callbacks: Callbacks) {
+        val securedUrl = runCatching { clientSecurity.secureWebSocketUrl(url) }
+            .getOrElse { error ->
+                callbacks.onFailed(error.failureMessage())
+                return
+            }
         val newSessionId: Long
         val oldSocket = synchronized(lock) {
             sessionId += 1
@@ -70,7 +77,7 @@ class MilfWebSocketClient(
         }
         oldSocket?.close()
 
-        val openedSocket = socketFactory.open(url, object : TextListener {
+        val openedSocket = socketFactory.open(securedUrl, object : TextListener {
             override fun onOpen() {
                 val encodedAudio = audioEncoder(goalAudio)
                 send(newSessionId, Audio(goalAudioB64 = encodedAudio, lang = lang))

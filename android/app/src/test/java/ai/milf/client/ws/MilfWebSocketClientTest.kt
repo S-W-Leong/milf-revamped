@@ -6,6 +6,7 @@ import ai.milf.client.protocol.Audio
 import ai.milf.client.protocol.ConfirmRequest
 import ai.milf.client.protocol.MilfProtocol
 import ai.milf.client.protocol.Narration
+import ai.milf.client.security.ClientSecurity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -15,6 +16,29 @@ import org.junit.Test
 import java.util.Base64
 
 class MilfWebSocketClientTest {
+    @Test
+    fun opensSocketWithSecuredUrl() {
+        val factory = FakeSocketFactory()
+        val client = MilfWebSocketClient(
+            url = "wss://backend.example/ws?lang=en#session",
+            socketFactory = factory,
+            clientSecurity = ClientSecurity(
+                isDebugBuild = false,
+                defaultBackendUrl = "wss://backend.example/ws",
+                deviceToken = "device-token"
+            ),
+            audioEncoder = testAudioEncoder
+        )
+
+        client.start(
+            goalAudio = byteArrayOf(1),
+            lang = "en",
+            callbacks = noOpCallbacks()
+        )
+
+        assertEquals(listOf("wss://backend.example/ws?lang=en&token=device-token#session"), factory.openedUrls)
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun handlesActionAndSendsResult() = runTest {
@@ -231,11 +255,13 @@ private class FakeSocketFactory(
     private val openImmediately: Boolean = false
 ) : MilfWebSocketClient.SocketFactory {
     val sockets = mutableListOf<FakeSocket>()
+    val openedUrls = mutableListOf<String>()
 
     override fun open(
         url: String,
         listener: MilfWebSocketClient.TextListener
     ): MilfWebSocketClient.Socket {
+        openedUrls += url
         return FakeSocket(listener).also {
             sockets += it
             if (openImmediately) {

@@ -6,6 +6,16 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val milfDefaultBackendUrl = providers.gradleProperty("MILF_DEFAULT_BACKEND_URL")
+    .orElse(providers.environmentVariable("MILF_DEFAULT_BACKEND_URL"))
+    .orElse("ws://10.0.2.2:8765")
+val milfDeviceToken = providers.gradleProperty("MILF_DEVICE_TOKEN")
+    .orElse(providers.environmentVariable("MILF_DEVICE_TOKEN"))
+    .orElse("")
+
+fun buildConfigString(value: String): String =
+    "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
 android {
     namespace = "ai.milf.client"
     compileSdk = 35
@@ -17,10 +27,13 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "MILF_DEFAULT_BACKEND_URL", buildConfigString(milfDefaultBackendUrl.get()))
+        buildConfigField("String", "MILF_DEVICE_TOKEN", buildConfigString(milfDeviceToken.get()))
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {

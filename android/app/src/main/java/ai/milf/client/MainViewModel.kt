@@ -8,6 +8,7 @@ import ai.milf.client.audio.TtsNarrator
 import ai.milf.client.protocol.Action
 import ai.milf.client.protocol.ActionResult
 import ai.milf.client.protocol.ConfirmResponse
+import ai.milf.client.security.ClientSecurity
 import ai.milf.client.ws.MilfWebSocketClient
 import android.app.Application
 import androidx.lifecycle.ViewModel
@@ -18,7 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 data class MainUiState(
-    val backendUrl: String = "ws://10.0.2.2:8765",
+    val backendUrl: String = BuildConfig.MILF_DEFAULT_BACKEND_URL,
     val lang: String = "en",
     val isRecording: Boolean = false,
     val isRunning: Boolean = false,
@@ -71,7 +72,18 @@ class MainViewModel(
     fun stopAndRun() {
         val state = _uiState.value
         val bytes = dependencies.recorder.stop()
-        val client = dependencies.clientFactory(state.backendUrl)
+        val securedUrl = runCatching { dependencies.clientSecurity.secureWebSocketUrl(state.backendUrl) }
+            .getOrElse { error ->
+                _uiState.update {
+                    it.copy(
+                        isRecording = false,
+                        isRunning = false,
+                        status = error.message ?: "Connection preflight failed"
+                    )
+                }
+                return
+            }
+        val client = dependencies.clientFactory(securedUrl)
         dependencies.activeClient = client
         _uiState.update {
             it.copy(
@@ -158,7 +170,8 @@ class MainViewModel(
         val recorder: AudioRecorderLike,
         val narrator: NarratorLike,
         val clientFactory: (String) -> MilfWebSocketClient,
-        val sendConfirm: ((Boolean) -> Unit)? = null
+        val sendConfirm: ((Boolean) -> Unit)? = null,
+        val clientSecurity: ClientSecurity = ClientSecurity()
     ) {
         var activeClient: MilfWebSocketClient? = null
 
