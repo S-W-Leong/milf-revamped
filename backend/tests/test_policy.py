@@ -40,3 +40,14 @@ def test_sensitive_action_blocked_after_freshness_window_expires():
 
     with pytest.raises(PermissionError, match="tap"):
         policy.require_allowed("tap", {"x": 1, "y": 2})
+
+
+def test_denial_clears_previous_approval():
+    policy = ConfirmationPolicy()
+    policy.record_approval("Call Wei now?", "en")
+    policy.require_allowed("tap", {"x": 1, "y": 2})
+
+    policy.record_denial("Send payment?", "en")
+
+    with pytest.raises(PermissionError, match="tap"):
+        policy.require_allowed("tap", {"x": 1, "y": 2})

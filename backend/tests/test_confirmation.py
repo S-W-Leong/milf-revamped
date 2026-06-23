@@ -4,9 +4,13 @@ from milf.confirmation import build_confirmation_tool
 class FakePolicy:
     def __init__(self):
         self.approvals = []
+        self.denials = []
 
     def record_approval(self, summary, lang):
         self.approvals.append((summary, lang))
+
+    def record_denial(self, summary, lang):
+        self.denials.append((summary, lang))
 
 
 class FakeConn:
@@ -37,3 +41,4 @@ async def test_tool_stops_when_denied():
     out = await fn(summary="Bayar bil?", ctx=None)
     assert "stop" in out.lower() or "do not" in out.lower()
     assert policy.approvals == []
+    assert policy.denials == [("Bayar bil?", "ms")]

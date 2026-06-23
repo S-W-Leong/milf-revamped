@@ -14,6 +14,7 @@ def build_confirmation_tool(
         if approved:
             policy.record_approval(summary, lang)
             return "User confirmed. Proceed with the action."
+        policy.record_denial(summary, lang)
         return "User declined. Do not perform the action; stop and end the task."
 
     return {

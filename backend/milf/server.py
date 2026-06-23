@@ -66,14 +66,34 @@ async def _handler(ws, settings: Settings | None = None):
             conn.fail_pending(ConnectionError("websocket disconnected"))
 
     pump_task = asyncio.create_task(pump())
+    run_task_task = asyncio.create_task(run_task(conn, audio, first.lang, stt))
     try:
-        await run_task(conn, audio, first.lang, stt)
+        done, _pending = await asyncio.wait(
+            {pump_task, run_task_task},
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if run_task_task in done:
+            if pump_task in done:
+                pump_task.result()
+            await run_task_task
+            return
+        if pump_task in done:
+            pump_task.result()
+            await _cancel_task(run_task_task)
+            return
     finally:
-        pump_task.cancel()
-        try:
-            await pump_task
-        except asyncio.CancelledError:
-            pass
+        await _cancel_task(pump_task)
+        await _cancel_task(run_task_task)
+
+
+async def _cancel_task(task: asyncio.Task) -> None:
+    if task.done():
+        return
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 
 async def _close(ws, code: int, reason: str) -> None:

@@ -197,3 +197,59 @@ async def test_server_routes_outbound_and_inbound_frames(monkeypatch):
             assert request.summary == "Call Wei now?"
             await ws.send(encode(ConfirmResponse(id=request.id, approved=True)))
             await asyncio.sleep(0)
+
+
+async def test_server_cancels_run_task_when_client_disconnects(monkeypatch):
+    _configure_local_server_env(monkeypatch)
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+    blocker = asyncio.Event()
+
+    async def fake_run_task(conn, audio, lang, stt):
+        started.set()
+        try:
+            await blocker.wait()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+
+    monkeypatch.setattr("milf.server.run_task", fake_run_task)
+    ws = _DisconnectingWebSocket(
+        encode(
+            Audio(
+                goal_audio_b64=base64.b64encode(b"voice").decode("ascii"),
+                lang="en",
+            )
+        )
+    )
+
+    handler_task = asyncio.create_task(_handler(ws))
+    try:
+        await asyncio.wait_for(started.wait(), timeout=1)
+        await asyncio.wait_for(cancelled.wait(), timeout=1)
+        await asyncio.wait_for(handler_task, timeout=1)
+    finally:
+        if not handler_task.done():
+            handler_task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await handler_task
+
+
+class _DisconnectingWebSocket:
+    def __init__(self, first_frame: str):
+        self._first_frame = first_frame
+
+    async def recv(self):
+        return self._first_frame
+
+    async def send(self, raw: str) -> None:
+        return None
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        raise StopAsyncIteration
+
+    async def close(self, code: int, reason: str) -> None:
+        return None

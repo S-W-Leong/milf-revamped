@@ -46,6 +46,9 @@ class ConfirmationPolicy:
             approved_at=self._clock(),
         )
 
+    def record_denial(self, summary: str, lang: str) -> None:
+        self._approval = None
+
     def require_allowed(self, action_name: str, args: dict[str, Any]) -> None:
         if action_name in READ_ONLY_ACTIONS:
             return
