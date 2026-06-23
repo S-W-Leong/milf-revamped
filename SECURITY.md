@@ -6,7 +6,7 @@ The `UPGRADES` branch is the active hardening branch. No production release is s
 
 ## Reporting Security Issues
 
-Report suspected vulnerabilities privately to `security@example.invalid`. Replace this placeholder with a monitored private contact path before any public release. Do not open public issues for unauthenticated phone-control access, token leakage, privacy exposure, or confirmation bypass findings.
+Report suspected vulnerabilities through the repo's GitHub private advisory path: https://github.com/S-W-Leong/milf-revamped/security/advisories/new. GitHub private vulnerability reporting/security advisories must be enabled before public release. If the private advisory page is unavailable, release remains blocked until a monitored private contact is configured. Do not open public issues for unauthenticated phone-control access, token leakage, privacy exposure, or confirmation bypass findings.
 
 ## Threat Model Summary
 
