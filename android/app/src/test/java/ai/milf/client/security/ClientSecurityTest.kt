@@ -116,6 +116,23 @@ class ClientSecurityTest {
     }
 
     @Test
+    fun malformedUrlWithTokenQueryIsRejectedWithSanitizedMessage() {
+        val security = ClientSecurity(
+            isDebugBuild = false,
+            defaultBackendUrl = "wss://backend.example/ws",
+            deviceToken = "real-token"
+        )
+
+        val error = assertThrows(ClientSecurity.SecurityException::class.java) {
+            security.secureWebSocketUrl("wss://backend.example/ws?token=secret%")
+        }
+
+        assertEquals("Websocket URL is invalid", error.message)
+        assertFalse(error.message.orEmpty().contains("secret", ignoreCase = true))
+        assertFalse(error.message.orEmpty().contains("token=", ignoreCase = true))
+    }
+
+    @Test
     fun invalidSchemeIsRejected() {
         val security = ClientSecurity(
             isDebugBuild = true,

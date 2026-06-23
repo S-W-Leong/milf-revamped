@@ -2,6 +2,7 @@ package ai.milf.client.security
 
 import ai.milf.client.BuildConfig
 import java.net.URI
+import java.net.URISyntaxException
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -42,6 +43,8 @@ class ClientSecurity(
     private fun parse(rawUrl: String): URI =
         try {
             URI(rawUrl)
+        } catch (_: URISyntaxException) {
+            throw SecurityException("Websocket URL is invalid")
         } catch (_: IllegalArgumentException) {
             throw SecurityException("Websocket URL is invalid")
         }
