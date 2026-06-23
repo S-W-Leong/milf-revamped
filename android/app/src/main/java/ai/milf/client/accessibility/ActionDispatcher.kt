@@ -2,6 +2,7 @@ package ai.milf.client.accessibility
 
 import ai.milf.client.protocol.Action
 import ai.milf.client.protocol.ActionResult
+import ai.milf.client.security.ActionPolicy
 
 interface DeviceActions {
     suspend fun tap(x: Int, y: Int)
@@ -14,9 +15,21 @@ interface DeviceActions {
 }
 
 class ActionDispatcher(
-    private val device: DeviceActions?
+    private val device: DeviceActions?,
+    private val policy: ActionPolicy = ActionPolicy()
 ) {
     suspend fun dispatch(action: Action): ActionResult {
+        when (val decision = policy.authorize(action.name)) {
+            ActionPolicy.Decision.Allowed -> Unit
+            is ActionPolicy.Decision.Rejected -> {
+                return ActionResult(
+                    id = action.id,
+                    ok = false,
+                    error = decision.error
+                )
+            }
+        }
+
         val activeDevice = device
             ?: return ActionResult(
                 id = action.id,

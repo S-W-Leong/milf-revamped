@@ -2,6 +2,7 @@ package ai.milf.client
 
 import ai.milf.client.protocol.Action
 import ai.milf.client.protocol.ActionResult
+import ai.milf.client.security.ActionPolicy
 import ai.milf.client.security.ClientSecurity
 import ai.milf.client.ws.MilfWebSocketClient
 import kotlinx.coroutines.test.runTest
@@ -100,9 +101,11 @@ class MainViewModelTest {
     @Test
     fun approveConfirmationClearsPendingRequest() = runTest {
         val sent = mutableListOf<Boolean>()
+        val actionPolicy = ActionPolicy(clock = { 1_000L })
         val viewModel = MainViewModel(
             dependencies = MainViewModel.Dependencies.fake(
-                sendConfirm = { approved -> sent += approved }
+                sendConfirm = { approved -> sent += approved },
+                actionPolicy = actionPolicy
             )
         )
 
@@ -111,6 +114,30 @@ class MainViewModelTest {
 
         assertEquals(listOf(true), sent)
         assertEquals(null, viewModel.uiState.value.confirmation)
+        assertEquals(ActionPolicy.Decision.Allowed, actionPolicy.authorize("tap"))
+    }
+
+    @Test
+    fun denyConfirmationClearsLocalActionPolicyApproval() = runTest {
+        val sent = mutableListOf<Boolean>()
+        val actionPolicy = ActionPolicy(clock = { 1_000L }).also { it.recordApproval() }
+        val viewModel = MainViewModel(
+            dependencies = MainViewModel.Dependencies.fake(
+                sendConfirm = { approved -> sent += approved },
+                actionPolicy = actionPolicy
+            )
+        )
+
+        viewModel.showConfirmationForTest("c1", "Call Wei now?", "en")
+        viewModel.denyConfirmation()
+
+        val decision = actionPolicy.authorize("tap")
+        assertEquals(listOf(false), sent)
+        assertEquals(null, viewModel.uiState.value.confirmation)
+        assertEquals(
+            ActionPolicy.Decision.Rejected("Local confirmation is required before this action"),
+            decision
+        )
     }
 
     @Test

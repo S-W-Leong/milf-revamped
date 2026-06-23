@@ -8,6 +8,7 @@ import ai.milf.client.audio.TtsNarrator
 import ai.milf.client.protocol.Action
 import ai.milf.client.protocol.ActionResult
 import ai.milf.client.protocol.ConfirmResponse
+import ai.milf.client.security.ActionPolicy
 import ai.milf.client.security.ClientSecurity
 import ai.milf.client.ws.MilfWebSocketClient
 import android.app.Application
@@ -96,7 +97,8 @@ class MainViewModel(
         }
         client.start(bytes, state.lang, object : MilfWebSocketClient.Callbacks {
             override suspend fun onAction(action: Action): ActionResult =
-                ActionDispatcher(MilfAccessibilityService.instance).dispatch(action)
+                ActionDispatcher(MilfAccessibilityService.instance, dependencies.actionPolicy)
+                    .dispatch(action)
 
             override suspend fun onNarration(text: String, lang: String) {
                 dependencies.narrator.speak(text, lang)
@@ -147,6 +149,11 @@ class MainViewModel(
 
     private fun respondToConfirmation(approved: Boolean) {
         val pending = _uiState.value.confirmation ?: return
+        if (approved) {
+            dependencies.actionPolicy.recordApproval()
+        } else {
+            dependencies.actionPolicy.recordDenial()
+        }
         dependencies.sendConfirm?.invoke(approved)
         dependencies.activeClient?.send(ConfirmResponse(pending.id, approved))
         _uiState.update {
@@ -178,7 +185,8 @@ class MainViewModel(
         val narrator: NarratorLike,
         val clientFactory: (String) -> MilfWebSocketClient,
         val sendConfirm: ((Boolean) -> Unit)? = null,
-        val clientSecurity: ClientSecurity = ClientSecurity()
+        val clientSecurity: ClientSecurity = ClientSecurity(),
+        val actionPolicy: ActionPolicy = ActionPolicy()
     ) {
         var activeClient: MilfWebSocketClient? = null
 
@@ -190,7 +198,10 @@ class MainViewModel(
                     clientFactory = { MilfWebSocketClient(it) }
                 )
 
-            fun fake(sendConfirm: (Boolean) -> Unit): Dependencies =
+            fun fake(
+                sendConfirm: (Boolean) -> Unit,
+                actionPolicy: ActionPolicy = ActionPolicy()
+            ): Dependencies =
                 Dependencies(
                     recorder = object : AudioRecorderLike {
                         override fun start() = Unit
@@ -203,7 +214,8 @@ class MainViewModel(
                         override fun shutdown() = Unit
                     },
                     clientFactory = { error("not used") },
-                    sendConfirm = sendConfirm
+                    sendConfirm = sendConfirm,
+                    actionPolicy = actionPolicy
                 )
         }
     }
