@@ -118,12 +118,14 @@ class MainViewModel(
             }
 
             override fun onClosed(reason: String?) {
+                dependencies.actionPolicy.recordDenial()
                 _uiState.update {
                     it.copy(isRunning = false, status = reason ?: "Done")
                 }
             }
 
             override fun onFailed(message: String) {
+                dependencies.actionPolicy.recordDenial()
                 _uiState.update {
                     it.copy(isRunning = false, status = message)
                 }
@@ -149,22 +151,31 @@ class MainViewModel(
 
     private fun respondToConfirmation(approved: Boolean) {
         val pending = _uiState.value.confirmation ?: return
-        if (approved) {
+        dependencies.sendConfirm?.invoke(approved)
+        val sent = runCatching {
+            dependencies.activeClient?.send(ConfirmResponse(pending.id, approved)) == true
+        }.getOrDefault(false)
+        if (approved && sent) {
             dependencies.actionPolicy.recordApproval()
         } else {
             dependencies.actionPolicy.recordDenial()
         }
-        dependencies.sendConfirm?.invoke(approved)
-        dependencies.activeClient?.send(ConfirmResponse(pending.id, approved))
         _uiState.update {
             it.copy(
                 confirmation = null,
-                status = if (approved) "Continuing" else "Stopped"
+                status = if (!sent) {
+                    "Could not send confirmation"
+                } else if (approved) {
+                    "Continuing"
+                } else {
+                    "Stopped"
+                }
             )
         }
     }
 
     private fun clearActiveClient() {
+        dependencies.actionPolicy.recordDenial()
         dependencies.activeClient?.close()
         dependencies.activeClient = null
     }

@@ -1,24 +1,36 @@
 package ai.milf.client.accessibility
 
+import ai.milf.client.security.AccessibilityPackagePolicy
 import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 
 object UiTreeSerializer {
-    fun serialize(root: AccessibilityNodeInfo?): Map<String, Any?> {
+    fun serialize(
+        root: AccessibilityNodeInfo?,
+        packagePolicy: AccessibilityPackagePolicy = AccessibilityPackagePolicy()
+    ): Map<String, Any?> {
         if (root == null) {
+            return mapOf("nodes" to emptyList<Map<String, Any?>>())
+        }
+        if (!packagePolicy.isAllowed(root.packageName)) {
             return mapOf("nodes" to emptyList<Map<String, Any?>>())
         }
 
         val nodes = mutableListOf<Map<String, Any?>>()
-        visit(root, id = "0", nodes = nodes)
+        visit(root, id = "0", nodes = nodes, packagePolicy = packagePolicy)
         return mapOf("nodes" to nodes)
     }
 
     private fun visit(
         node: AccessibilityNodeInfo,
         id: String,
-        nodes: MutableList<Map<String, Any?>>
+        nodes: MutableList<Map<String, Any?>>,
+        packagePolicy: AccessibilityPackagePolicy
     ) {
+        if (!packagePolicy.isAllowed(node.packageName)) {
+            return
+        }
+
         val bounds = Rect()
         node.getBoundsInScreen(bounds)
         val text = node.text?.toString()
@@ -63,7 +75,12 @@ object UiTreeSerializer {
         for (index in 0 until node.childCount) {
             node.getChild(index)?.let { child ->
                 try {
-                    visit(child, id = "$id.$index", nodes = nodes)
+                    visit(
+                        child,
+                        id = "$id.$index",
+                        nodes = nodes,
+                        packagePolicy = packagePolicy
+                    )
                 } finally {
                     child.recycle()
                 }

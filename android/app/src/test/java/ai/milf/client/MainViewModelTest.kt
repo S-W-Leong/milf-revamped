@@ -102,12 +102,12 @@ class MainViewModelTest {
     fun approveConfirmationClearsPendingRequest() = runTest {
         val sent = mutableListOf<Boolean>()
         val actionPolicy = ActionPolicy(clock = { 1_000L })
-        val viewModel = MainViewModel(
-            dependencies = MainViewModel.Dependencies.fake(
-                sendConfirm = { approved -> sent += approved },
-                actionPolicy = actionPolicy
-            )
+        val dependencies = MainViewModel.Dependencies.fake(
+            sendConfirm = { approved -> sent += approved },
+            actionPolicy = actionPolicy
         )
+        dependencies.activeClient = clientWithSendResult(true)
+        val viewModel = MainViewModel(dependencies)
 
         viewModel.showConfirmationForTest("c1", "Call Wei now?", "en")
         viewModel.approveConfirmation()
@@ -115,6 +115,27 @@ class MainViewModelTest {
         assertEquals(listOf(true), sent)
         assertEquals(null, viewModel.uiState.value.confirmation)
         assertEquals(ActionPolicy.Decision.Allowed, actionPolicy.authorize("tap"))
+    }
+
+    @Test
+    fun failedConfirmationSendDoesNotRecordLocalApproval() = runTest {
+        val actionPolicy = ActionPolicy(clock = { 1_000L })
+        val dependencies = MainViewModel.Dependencies.fake(
+            sendConfirm = {},
+            actionPolicy = actionPolicy
+        )
+        dependencies.activeClient = clientWithSendResult(false)
+        val viewModel = MainViewModel(dependencies)
+
+        viewModel.showConfirmationForTest("c1", "Call Wei now?", "en")
+        viewModel.approveConfirmation()
+
+        assertEquals(
+            ActionPolicy.Decision.Rejected("Local confirmation is required before this action"),
+            actionPolicy.authorize("tap")
+        )
+        assertEquals(null, viewModel.uiState.value.confirmation)
+        assertEquals("Could not send confirmation", viewModel.uiState.value.status)
     }
 
     @Test
@@ -176,25 +197,47 @@ private fun testDependencies(
         clientSecurity = security
     )
 
-private class CloseTrackingSocketFactory : MilfWebSocketClient.SocketFactory {
+private class CloseTrackingSocketFactory(
+    private val sendResult: Boolean = true
+) : MilfWebSocketClient.SocketFactory {
     var socket: CloseTrackingSocket? = null
 
     override fun open(
         url: String,
         listener: MilfWebSocketClient.TextListener
     ): MilfWebSocketClient.Socket =
-        CloseTrackingSocket().also { socket = it }
+        CloseTrackingSocket(sendResult).also { socket = it }
 }
 
-private class CloseTrackingSocket : MilfWebSocketClient.Socket {
+private class CloseTrackingSocket(
+    private val sendResult: Boolean = true
+) : MilfWebSocketClient.Socket {
     var closed = false
 
-    override fun send(text: String): Boolean = true
+    override fun send(text: String): Boolean = sendResult
 
     override fun close() {
         closed = true
     }
 }
+
+private fun clientWithSendResult(sendResult: Boolean): MilfWebSocketClient =
+    MilfWebSocketClient(
+        url = "ws://localhost:8765",
+        socketFactory = CloseTrackingSocketFactory(sendResult),
+        clientSecurity = ClientSecurity(
+            isDebugBuild = true,
+            defaultBackendUrl = "ws://localhost:8765",
+            deviceToken = "test-token"
+        ),
+        audioEncoder = { "audio" }
+    ).also {
+        it.start(
+            goalAudio = byteArrayOf(1),
+            lang = "en",
+            callbacks = noOpCallbacks()
+        )
+    }
 
 private fun noOpCallbacks(): MilfWebSocketClient.Callbacks =
     object : MilfWebSocketClient.Callbacks {
