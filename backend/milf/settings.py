@@ -19,6 +19,7 @@ class Settings:
     max_audio_bytes: int
     stt_backend: str
     mock_transcript: str
+    openai_api_key: str | None
     openai_model: str
     ilmu_api_url: str | None
     ilmu_api_key: str | None
@@ -30,8 +31,11 @@ class Settings:
         env = os.environ.get("MILF_ENV", "development").lower()
         max_audio_bytes = _int_env("MILF_MAX_AUDIO_BYTES", 5_242_880)
         ws_max_size_bytes = _int_env("MILF_WS_MAX_SIZE_BYTES", 8_388_608)
-        if ws_max_size_bytes < max_audio_bytes:
-            raise SettingsError("MILF_WS_MAX_SIZE_BYTES must be >= MILF_MAX_AUDIO_BYTES")
+        minimum_ws_max_size_bytes = _minimum_ws_max_size_bytes(max_audio_bytes)
+        if ws_max_size_bytes < minimum_ws_max_size_bytes:
+            raise SettingsError(
+                "MILF_WS_MAX_SIZE_BYTES must allow base64 audio overhead"
+            )
 
         settings = cls(
             env=env,
@@ -43,6 +47,7 @@ class Settings:
             max_audio_bytes=max_audio_bytes,
             stt_backend=os.environ.get("MILF_STT_BACKEND", "mock").lower(),
             mock_transcript=os.environ.get("MILF_MOCK_TRANSCRIPT", "I want to see my grandson"),
+            openai_api_key=_optional("OPENAI_API_KEY"),
             openai_model=os.environ.get("OPENAI_MODEL", "gpt-4o"),
             ilmu_api_url=_optional("ILMU_API_URL"),
             ilmu_api_key=_optional("ILMU_API_KEY"),
@@ -59,8 +64,13 @@ class Settings:
             raise SettingsError("MILF_MAX_AUDIO_BYTES must be positive")
         if self.stt_backend not in {"mock", "router"}:
             raise SettingsError(f"Unknown MILF_STT_BACKEND: {self.stt_backend}")
-        if self.env == "production" and not self.device_token:
-            raise SettingsError("MILF_DEVICE_TOKEN is required in production")
+        if self.env == "production":
+            if not self.device_token:
+                raise SettingsError("MILF_DEVICE_TOKEN is required in production")
+            if not self.openai_api_key:
+                raise SettingsError("OPENAI_API_KEY is required in production")
+            if self.stt_backend != "router":
+                raise SettingsError("MILF_STT_BACKEND must be router in production")
         if self.stt_backend == "router":
             missing = [
                 name
@@ -74,6 +84,10 @@ class Settings:
             ]
             if missing:
                 raise SettingsError(f"Missing required router setting: {missing[0]}")
+
+
+def _minimum_ws_max_size_bytes(max_audio_bytes: int) -> int:
+    return ((max_audio_bytes * 4 + 2) // 3) + 1024
 
 
 def _optional(name: str) -> str | None:
