@@ -2,6 +2,11 @@
 __pycache__/
 *.pyc
 .env
+.env.*
+!.env.example
 .DS_Store
+.idea/
+android/.idea/
+android/local.properties
 android/.gradle/
 android/**/build/
