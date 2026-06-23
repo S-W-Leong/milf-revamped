@@ -1,16 +1,20 @@
 package ai.milf.client
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -48,9 +52,10 @@ fun MilfUi(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
+                    verticalArrangement = Arrangement.spacedBy(32.dp)
                 ) {
                     Column(Modifier.fillMaxWidth()) {
                         Text(
@@ -71,7 +76,10 @@ fun MilfUi(
                         )
                     }
 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
                             text = state.lastNarration ?: state.status,
                             fontSize = 26.sp,
@@ -101,7 +109,7 @@ fun MilfUi(
                                 onClick = onOpenAccessibility,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(64.dp)
+                                    .heightIn(min = 64.dp)
                             ) {
                                 Text("Enable phone control", fontSize = 20.sp)
                             }
@@ -135,7 +143,7 @@ private fun LanguageRow(
             .forEach { (code, label) ->
                 val modifier = Modifier
                     .weight(1f)
-                    .height(52.dp)
+                    .heightIn(min = 52.dp)
                 if (selected == code) {
                     Button(
                         onClick = { onLangChange(code) },
@@ -162,7 +170,7 @@ private fun ConfirmationOverlay(
     onDeny: () -> Unit,
     onSpeakDecision: () -> Unit
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xCC111827))
@@ -172,7 +180,9 @@ private fun ConfirmationOverlay(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(max = maxHeight)
                 .background(Color.White, RoundedCornerShape(8.dp))
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -189,7 +199,7 @@ private fun ConfirmationOverlay(
                 onClick = onSpeakDecision,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
+                    .heightIn(min = 64.dp)
             ) {
                 Text("Speak yes/no", fontSize = 22.sp)
             }
@@ -202,7 +212,7 @@ private fun ConfirmationOverlay(
                     onClick = onDeny,
                     modifier = Modifier
                         .weight(1f)
-                        .height(72.dp)
+                        .heightIn(min = 72.dp)
                 ) {
                     Text("No", fontSize = 24.sp)
                 }
@@ -210,7 +220,7 @@ private fun ConfirmationOverlay(
                     onClick = onApprove,
                     modifier = Modifier
                         .weight(1f)
-                        .height(72.dp)
+                        .heightIn(min = 72.dp)
                 ) {
                     Text("Yes", fontSize = 24.sp)
                 }

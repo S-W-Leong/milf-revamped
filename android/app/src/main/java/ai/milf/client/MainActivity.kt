@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
                 ConfirmationVoiceRecognizer(
                     context = this,
                     onText = viewModel::onConfirmationSpeech,
-                    onError = { }
+                    onError = viewModel::onConfirmationSpeechError
                 )
             }
             DisposableEffect(Unit) {
@@ -40,6 +40,8 @@ class MainActivity : ComponentActivity() {
             ) { granted ->
                 if (granted) {
                     viewModel.startRecording()
+                } else {
+                    viewModel.onMicrophonePermissionDenied()
                 }
             }
 

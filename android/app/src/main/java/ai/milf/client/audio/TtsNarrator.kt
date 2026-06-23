@@ -8,29 +8,65 @@ class TtsNarrator(
     context: Context
 ) : TextToSpeech.OnInitListener {
     private val tts = TextToSpeech(context.applicationContext, this)
+    private var initialized = false
     private var ready = false
+    private var onFailure: (String) -> Unit = {}
+
+    fun setFailureCallback(onFailure: (String) -> Unit) {
+        this.onFailure = onFailure
+    }
 
     override fun onInit(status: Int) {
+        initialized = true
         ready = status == TextToSpeech.SUCCESS
         if (ready) {
-            tts.language = Locale.ENGLISH
+            runCatching { tts.language = Locale.ENGLISH }
+                .onFailure {
+                    ready = false
+                    onFailure("Audio playback unavailable")
+                }
+        } else {
+            onFailure("Audio playback unavailable")
         }
     }
 
     fun speak(text: String, lang: String) {
-        if (!ready || text.isBlank()) return
+        if (text.isBlank()) return
+        if (!ready) {
+            if (initialized) {
+                onFailure("Audio playback unavailable")
+                error("Audio playback unavailable")
+            }
+            return
+        }
 
-        tts.language = localeFor(lang)
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "milf-${System.nanoTime()}")
+        runCatching {
+            tts.language = localeFor(lang)
+            val result = tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "milf-${System.nanoTime()}")
+            check(result != TextToSpeech.ERROR) { "Could not play audio" }
+        }.getOrElse { error ->
+            onFailure("Could not play audio")
+            throw error
+        }
     }
 
     fun stop() {
-        tts.stop()
+        runCatching {
+            check(tts.stop() != TextToSpeech.ERROR) { "Could not stop audio" }
+        }.getOrElse { error ->
+            onFailure("Could not stop audio")
+            throw error
+        }
     }
 
     fun shutdown() {
-        tts.stop()
-        tts.shutdown()
+        runCatching {
+            tts.stop()
+            tts.shutdown()
+        }.getOrElse { error ->
+            onFailure("Could not stop audio")
+            throw error
+        }
     }
 
     private fun localeFor(lang: String): Locale =
