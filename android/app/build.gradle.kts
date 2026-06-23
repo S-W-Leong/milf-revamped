@@ -8,7 +8,6 @@ plugins {
 
 val milfDefaultBackendUrl = providers.gradleProperty("MILF_DEFAULT_BACKEND_URL")
     .orElse(providers.environmentVariable("MILF_DEFAULT_BACKEND_URL"))
-    .orElse("ws://10.0.2.2:8765")
 val milfDeviceToken = providers.gradleProperty("MILF_DEVICE_TOKEN")
     .orElse(providers.environmentVariable("MILF_DEVICE_TOKEN"))
     .orElse("")
@@ -27,13 +26,30 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "MILF_DEFAULT_BACKEND_URL", buildConfigString(milfDefaultBackendUrl.get()))
-        buildConfigField("String", "MILF_DEVICE_TOKEN", buildConfigString(milfDeviceToken.get()))
     }
 
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField(
+                "String",
+                "MILF_DEFAULT_BACKEND_URL",
+                buildConfigString(milfDefaultBackendUrl.orElse("ws://10.0.2.2:8765").get())
+            )
+            buildConfigField("String", "MILF_DEVICE_TOKEN", buildConfigString(milfDeviceToken.get()))
+        }
+        release {
+            buildConfigField(
+                "String",
+                "MILF_DEFAULT_BACKEND_URL",
+                buildConfigString(milfDefaultBackendUrl.orElse("").get())
+            )
+            buildConfigField("String", "MILF_DEVICE_TOKEN", buildConfigString(milfDeviceToken.get()))
+        }
     }
 
     compileOptions {

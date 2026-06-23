@@ -2,6 +2,7 @@ package ai.milf.client.security
 
 import ai.milf.client.BuildConfig
 import java.net.URI
+import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
@@ -24,7 +25,7 @@ class ClientSecurity(
             throw SecurityException("Websocket URL must start with ws:// or wss://")
         }
 
-        val host = uri.host?.lowercase(Locale.US)
+        val host = normalizeHost(uri.host)
             ?: throw SecurityException("Websocket URL must include a host")
         if (scheme == "ws" && !allowsCleartextHost(host)) {
             throw SecurityException("Cleartext websocket URLs are only allowed for local debug builds")
@@ -48,6 +49,12 @@ class ClientSecurity(
     private fun allowsCleartextHost(host: String): Boolean =
         isDebugBuild && host in localDebugHosts
 
+    private fun normalizeHost(host: String?): String? =
+        host
+            ?.removePrefix("[")
+            ?.removeSuffix("]")
+            ?.lowercase(Locale.US)
+
     private fun appendToken(rawUrl: String, token: String): String {
         val fragmentStart = rawUrl.indexOf('#')
         val beforeFragment = if (fragmentStart == -1) rawUrl else rawUrl.substring(0, fragmentStart)
@@ -57,9 +64,17 @@ class ClientSecurity(
         val query = if (queryStart == -1) "" else beforeFragment.substring(queryStart + 1)
         val preservedQuery = query
             .split('&')
-            .filter { it.isNotBlank() && it.substringBefore('=').lowercase(Locale.US) != "token" }
+            .filter { it.isNotBlank() && !isTokenQueryParameter(it) }
         val securedQuery = preservedQuery + "token=${encodeQueryValue(token)}"
         return "$base?${securedQuery.joinToString("&")}$fragment"
+    }
+
+    private fun isTokenQueryParameter(parameter: String): Boolean {
+        val key = parameter.substringBefore('=')
+        val decodedKey = runCatching {
+            URLDecoder.decode(key, StandardCharsets.UTF_8.name())
+        }.getOrDefault(key)
+        return decodedKey.lowercase(Locale.US) == "token"
     }
 
     private fun encodeQueryValue(value: String): String =

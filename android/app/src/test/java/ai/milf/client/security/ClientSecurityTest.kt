@@ -33,6 +33,19 @@ class ClientSecurityTest {
     }
 
     @Test
+    fun debugAllowsIpv6LoopbackCleartextWebsocket() {
+        val security = ClientSecurity(
+            isDebugBuild = true,
+            defaultBackendUrl = "ws://[::1]:8765",
+            deviceToken = "dev-token"
+        )
+
+        val securedUrl = security.secureWebSocketUrl("ws://[::1]:8765")
+
+        assertEquals("ws://[::1]:8765?token=dev-token", securedUrl)
+    }
+
+    @Test
     fun releaseRejectsCleartextWebsocketBeforeConnection() {
         val security = ClientSecurity(
             isDebugBuild = false,
@@ -71,6 +84,19 @@ class ClientSecurityTest {
         val securedUrl = security.secureWebSocketUrl("wss://backend.example/ws?lang=en#session")
 
         assertEquals("wss://backend.example/ws?lang=en&token=token%20with%20spaces#session", securedUrl)
+    }
+
+    @Test
+    fun replacesEncodedTokenQueryKey() {
+        val security = ClientSecurity(
+            isDebugBuild = false,
+            defaultBackendUrl = "wss://backend.example/ws",
+            deviceToken = "real-token"
+        )
+
+        val securedUrl = security.secureWebSocketUrl("wss://backend.example/ws?to%6ben=bad&lang=en")
+
+        assertEquals("wss://backend.example/ws?lang=en&token=real-token", securedUrl)
     }
 
     @Test

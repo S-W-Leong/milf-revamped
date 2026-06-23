@@ -48,6 +48,7 @@ class MilfWebSocketClientTest {
             url = "ws://localhost:8765",
             socketFactory = factory,
             scope = this,
+            clientSecurity = testClientSecurity,
             audioEncoder = testAudioEncoder
         )
         client.start(
@@ -84,6 +85,7 @@ class MilfWebSocketClientTest {
             url = "ws://localhost:8765",
             socketFactory = factory,
             scope = this,
+            clientSecurity = testClientSecurity,
             audioEncoder = testAudioEncoder
         )
 
@@ -110,6 +112,7 @@ class MilfWebSocketClientTest {
             url = "ws://localhost:8765",
             socketFactory = factory,
             scope = this,
+            clientSecurity = testClientSecurity,
             audioEncoder = testAudioEncoder
         )
 
@@ -134,6 +137,7 @@ class MilfWebSocketClientTest {
             url = "ws://localhost:8765",
             socketFactory = factory,
             scope = this,
+            clientSecurity = testClientSecurity,
             audioEncoder = testAudioEncoder
         )
         client.start(
@@ -166,6 +170,7 @@ class MilfWebSocketClientTest {
             url = "ws://localhost:8765",
             socketFactory = factory,
             scope = this,
+            clientSecurity = testClientSecurity,
             audioEncoder = testAudioEncoder
         )
 
@@ -210,6 +215,7 @@ class MilfWebSocketClientTest {
         val client = MilfWebSocketClient(
             url = "ws://localhost:8765",
             socketFactory = FakeSocketFactory(),
+            clientSecurity = testClientSecurity,
             audioEncoder = testAudioEncoder
         )
         client.start(
@@ -231,6 +237,7 @@ class MilfWebSocketClientTest {
             url = "ws://localhost:8765",
             socketFactory = FakeSocketFactory(),
             scope = this,
+            clientSecurity = testClientSecurity,
             audioEncoder = testAudioEncoder
         )
         client.start(
@@ -314,3 +321,9 @@ private fun noOpCallbacks(
 private val testAudioEncoder: (ByteArray) -> String = {
     Base64.getEncoder().encodeToString(it)
 }
+
+private val testClientSecurity = ClientSecurity(
+    isDebugBuild = true,
+    defaultBackendUrl = "ws://localhost:8765",
+    deviceToken = "test-token"
+)

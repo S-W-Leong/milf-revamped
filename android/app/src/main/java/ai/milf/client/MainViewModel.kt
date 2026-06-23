@@ -74,6 +74,7 @@ class MainViewModel(
         val bytes = dependencies.recorder.stop()
         val securedUrl = runCatching { dependencies.clientSecurity.secureWebSocketUrl(state.backendUrl) }
             .getOrElse { error ->
+                clearActiveClient()
                 _uiState.update {
                     it.copy(
                         isRecording = false,
@@ -83,6 +84,7 @@ class MainViewModel(
                 }
                 return
             }
+        clearActiveClient()
         val client = dependencies.clientFactory(securedUrl)
         dependencies.activeClient = client
         _uiState.update {
@@ -153,6 +155,11 @@ class MainViewModel(
                 status = if (approved) "Continuing" else "Stopped"
             )
         }
+    }
+
+    private fun clearActiveClient() {
+        dependencies.activeClient?.close()
+        dependencies.activeClient = null
     }
 
     fun showConfirmationForTest(id: String, summary: String, lang: String) {
