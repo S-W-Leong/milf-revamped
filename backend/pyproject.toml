@@ -1,0 +1,29 @@
+[project]
+name = "milf-backend"
+version = "0.1.0"
+description = "MILF backend websocket bridge and MobileRun agent runner"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "httpx>=0.28,<0.29",
+  "llama-index-llms-openai>=0.3,<0.4",
+  "mobilerun>=0.6.7,<0.7",
+  "pydantic>=2.10,<3",
+  "websockets>=15,<17",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=9,<10",
+  "pytest-asyncio>=1.4,<2",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["milf*"]

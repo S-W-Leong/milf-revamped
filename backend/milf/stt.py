@@ -1,7 +1,8 @@
-import os
 from abc import ABC, abstractmethod
 
 import httpx
+
+from milf.settings import Settings
 
 
 class STTAdapter(ABC):
@@ -82,21 +83,21 @@ class RouterSTT(STTAdapter):
         return await adapter.transcribe(audio, lang)
 
 
-def make_stt() -> STTAdapter:
-    backend = os.environ.get("MILF_STT_BACKEND", "mock").lower()
+def make_stt(settings: Settings | None = None) -> STTAdapter:
+    settings = settings or Settings.from_env()
+    backend = settings.stt_backend
     if backend == "mock":
-        canned = os.environ.get("MILF_MOCK_TRANSCRIPT", "I want to see my grandson")
-        return MockSTT(canned)
+        return MockSTT(settings.mock_transcript)
     if backend != "router":
         raise ValueError(f"Unknown MILF_STT_BACKEND: {backend}")
 
     ilmu = IlmuSTT(
-        api_url=os.environ["ILMU_API_URL"],
-        api_key=os.environ["ILMU_API_KEY"],
+        api_url=settings.ilmu_api_url or "",
+        api_key=settings.ilmu_api_key or "",
     )
     meralion = MERaLiONSTT(
-        api_url=os.environ["MERALION_API_URL"],
-        api_key=os.environ["MERALION_API_KEY"],
+        api_url=settings.meralion_api_url or "",
+        api_key=settings.meralion_api_key or "",
     )
     return RouterSTT(
         routes={"en": ilmu, "manglish": ilmu, "yue": meralion},
