@@ -74,7 +74,7 @@ def decode(raw: str | bytes | bytearray) -> BaseModel:
 
     model = _MESSAGE_TYPES.get(msg_type)
     if model is None:
-        raise ProtocolDecodeError(f"Unknown message type: {msg_type}")
+        raise ProtocolDecodeError("Unknown message type")
 
     try:
         return model.model_validate(envelope.get("data", {}))

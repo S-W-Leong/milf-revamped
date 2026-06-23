@@ -17,8 +17,19 @@ def test_confirm_response_roundtrip():
 
 
 def test_decode_unknown_type_raises():
-    with pytest.raises(ProtocolDecodeError, match="Unknown message type: Nope"):
+    with pytest.raises(ProtocolDecodeError, match="^Unknown message type$"):
         decode('{"type": "Nope", "data": {}}')
+
+
+def test_decode_long_unknown_type_uses_safe_error_message():
+    unknown_type = "A" * 1000
+    with pytest.raises(ProtocolDecodeError) as exc:
+        decode(f'{{"type": "{unknown_type}", "data": {{}}}}')
+
+    message = str(exc.value)
+    assert message == "Unknown message type"
+    assert unknown_type not in message
+    assert len(message) < 100
 
 
 def test_decode_malformed_json_raises_protocol_decode_error():
