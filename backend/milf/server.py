@@ -44,3 +44,11 @@ async def serve(host=None, port=None):
     port = port or int(os.environ.get("MILF_WS_PORT", "8765"))
     async with websockets.serve(_handler, host, port):
         await asyncio.Future()
+
+
+def main() -> None:
+    asyncio.run(serve())
+
+
+if __name__ == "__main__":
+    main()
