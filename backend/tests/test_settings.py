@@ -3,10 +3,32 @@ import pytest
 from milf.settings import Settings, SettingsError
 
 
-def test_defaults_are_local_and_bounded(monkeypatch):
-    monkeypatch.delenv("MILF_WS_HOST", raising=False)
-    monkeypatch.delenv("MILF_WS_PORT", raising=False)
-    monkeypatch.delenv("MILF_ACTION_TIMEOUT_SECONDS", raising=False)
+SETTINGS_ENV_VARS = (
+    "MILF_ENV",
+    "MILF_WS_HOST",
+    "MILF_WS_PORT",
+    "MILF_WS_MAX_SIZE_BYTES",
+    "MILF_DEVICE_TOKEN",
+    "MILF_ACTION_TIMEOUT_SECONDS",
+    "MILF_MAX_AUDIO_BYTES",
+    "MILF_STT_BACKEND",
+    "MILF_MOCK_TRANSCRIPT",
+    "OPENAI_API_KEY",
+    "OPENAI_MODEL",
+    "ILMU_API_URL",
+    "ILMU_API_KEY",
+    "MERALION_API_URL",
+    "MERALION_API_KEY",
+)
+
+
+@pytest.fixture(autouse=True)
+def clear_settings_env(monkeypatch):
+    for name in SETTINGS_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_defaults_are_local_and_bounded():
     settings = Settings.from_env()
     assert settings.ws_host == "127.0.0.1"
     assert settings.ws_port == 8765
@@ -26,6 +48,18 @@ def test_production_requires_device_token(monkeypatch):
     monkeypatch.setenv("MILF_ENV", "production")
     monkeypatch.delenv("MILF_DEVICE_TOKEN", raising=False)
     with pytest.raises(SettingsError, match="MILF_DEVICE_TOKEN"):
+        Settings.from_env()
+
+
+def test_production_env_is_stripped_and_case_normalized(monkeypatch):
+    monkeypatch.setenv("MILF_ENV", "Production ")
+    with pytest.raises(SettingsError, match="MILF_DEVICE_TOKEN"):
+        Settings.from_env()
+
+
+def test_invalid_env_raises_settings_error(monkeypatch):
+    monkeypatch.setenv("MILF_ENV", "staging")
+    with pytest.raises(SettingsError, match="MILF_ENV"):
         Settings.from_env()
 
 

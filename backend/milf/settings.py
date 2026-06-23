@@ -28,7 +28,7 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        env = os.environ.get("MILF_ENV", "development").lower()
+        env = os.environ.get("MILF_ENV", "development").strip().lower()
         max_audio_bytes = _int_env("MILF_MAX_AUDIO_BYTES", 5_242_880)
         ws_max_size_bytes = _int_env("MILF_WS_MAX_SIZE_BYTES", 8_388_608)
         minimum_ws_max_size_bytes = _minimum_ws_max_size_bytes(max_audio_bytes)
@@ -58,6 +58,8 @@ class Settings:
         return settings
 
     def validate(self) -> None:
+        if self.env not in {"development", "test", "production"}:
+            raise SettingsError("MILF_ENV must be development, test, or production")
         if self.action_timeout_seconds <= 0:
             raise SettingsError("MILF_ACTION_TIMEOUT_SECONDS must be positive")
         if self.max_audio_bytes <= 0:
