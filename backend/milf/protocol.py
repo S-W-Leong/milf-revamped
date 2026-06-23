@@ -1,7 +1,11 @@
 import json
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+
+
+class ProtocolDecodeError(ValueError):
+    pass
 
 
 class Action(BaseModel):
@@ -56,9 +60,23 @@ def encode(msg: BaseModel) -> str:
 
 
 def decode(raw: str) -> BaseModel:
-    envelope = json.loads(raw)
+    try:
+        envelope = json.loads(raw)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise ProtocolDecodeError("Malformed JSON") from exc
+
+    if not isinstance(envelope, dict):
+        raise ProtocolDecodeError("Message envelope must be an object")
+
     msg_type = envelope.get("type")
+    if not isinstance(msg_type, str):
+        raise ProtocolDecodeError("Message type is required")
+
     model = _MESSAGE_TYPES.get(msg_type)
     if model is None:
-        raise ValueError(f"Unknown message type: {msg_type}")
-    return model.model_validate(envelope.get("data", {}))
+        raise ProtocolDecodeError(f"Unknown message type: {msg_type}")
+
+    try:
+        return model.model_validate(envelope.get("data", {}))
+    except ValidationError as exc:
+        raise ProtocolDecodeError(f"Invalid {msg_type} message") from exc

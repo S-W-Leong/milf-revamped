@@ -8,7 +8,22 @@ import websockets
 from milf.connection import AppConnection
 from milf.mock_app import MockApp
 from milf.protocol import Action, Audio, ConfirmResponse, Narration, decode, encode
-from milf.server import PROTOCOL_ERROR, _handler
+from milf.server import MESSAGE_TOO_BIG, POLICY_VIOLATION, PROTOCOL_ERROR, _handler
+
+
+def _configure_local_server_env(monkeypatch):
+    monkeypatch.setenv("MILF_ENV", "test")
+    monkeypatch.setenv("MILF_STT_BACKEND", "mock")
+    monkeypatch.setenv("MILF_MAX_AUDIO_BYTES", "5242880")
+    monkeypatch.setenv("MILF_WS_MAX_SIZE_BYTES", "8388608")
+    monkeypatch.delenv("MILF_DEVICE_TOKEN", raising=False)
+
+
+async def _assert_recv_close(ws, code: int):
+    with pytest.raises(websockets.exceptions.ConnectionClosedError) as exc:
+        await asyncio.wait_for(ws.recv(), timeout=1)
+    assert exc.value.rcvd is not None
+    assert exc.value.rcvd.code == code
 
 
 async def test_driver_action_against_mock_app_returns_result():
@@ -46,14 +61,92 @@ async def test_unscripted_action_returns_error():
     assert "missing" in result.error
 
 
-async def test_server_rejects_non_audio_first_frame():
+async def test_server_rejects_non_audio_first_frame(monkeypatch):
+    _configure_local_server_env(monkeypatch)
     async with websockets.serve(_handler, "127.0.0.1", 0) as server:
         port = server.sockets[0].getsockname()[1]
         async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
             await ws.send(encode(Narration(text="hello", lang="en")))
-            with pytest.raises(websockets.exceptions.ConnectionClosedError) as exc:
-                await ws.recv()
-            assert exc.value.rcvd.code == PROTOCOL_ERROR
+            await _assert_recv_close(ws, PROTOCOL_ERROR)
+
+
+async def test_server_rejects_missing_token_when_configured(monkeypatch):
+    _configure_local_server_env(monkeypatch)
+    monkeypatch.setenv("MILF_DEVICE_TOKEN", "secret-token")
+
+    async with websockets.serve(_handler, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+            await _assert_recv_close(ws, POLICY_VIOLATION)
+
+
+async def test_server_accepts_token_query_parameter(monkeypatch):
+    _configure_local_server_env(monkeypatch)
+    monkeypatch.setenv("MILF_DEVICE_TOKEN", "secret-token")
+    completed = asyncio.Event()
+    observed = {}
+
+    async def fake_run_task(conn, audio, lang, stt):
+        observed["audio"] = audio
+        observed["lang"] = lang
+        completed.set()
+        return SimpleNamespace(success=True)
+
+    monkeypatch.setattr("milf.server.run_task", fake_run_task)
+
+    async with websockets.serve(_handler, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+        async with websockets.connect(
+            f"ws://127.0.0.1:{port}?token=secret-token"
+        ) as ws:
+            await ws.send(
+                encode(
+                    Audio(
+                        goal_audio_b64=base64.b64encode(b"voice").decode("ascii"),
+                        lang="en",
+                    )
+                )
+            )
+            await asyncio.wait_for(completed.wait(), timeout=1)
+
+    assert observed == {"audio": b"voice", "lang": "en"}
+
+
+async def test_server_closes_malformed_first_frame_with_protocol_error(monkeypatch):
+    _configure_local_server_env(monkeypatch)
+    async with websockets.serve(_handler, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+            await ws.send("{")
+            await _assert_recv_close(ws, PROTOCOL_ERROR)
+
+
+async def test_server_closes_invalid_base64_with_protocol_error(monkeypatch):
+    _configure_local_server_env(monkeypatch)
+    async with websockets.serve(_handler, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+            await ws.send(encode(Audio(goal_audio_b64="not-base64###", lang="en")))
+            await _assert_recv_close(ws, PROTOCOL_ERROR)
+
+
+async def test_server_closes_oversized_audio_with_message_too_big(monkeypatch):
+    _configure_local_server_env(monkeypatch)
+    monkeypatch.setenv("MILF_MAX_AUDIO_BYTES", "4")
+    monkeypatch.setenv("MILF_WS_MAX_SIZE_BYTES", "2048")
+
+    async with websockets.serve(_handler, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+            await ws.send(
+                encode(
+                    Audio(
+                        goal_audio_b64=base64.b64encode(b"voice").decode("ascii"),
+                        lang="en",
+                    )
+                )
+            )
+            await _assert_recv_close(ws, MESSAGE_TOO_BIG)
 
 
 async def test_server_routes_outbound_and_inbound_frames(monkeypatch):
@@ -62,7 +155,7 @@ async def test_server_routes_outbound_and_inbound_frames(monkeypatch):
         return SimpleNamespace(success=result, audio=audio, lang=lang)
 
     monkeypatch.setattr("milf.server.run_task", fake_run_task)
-    monkeypatch.setenv("MILF_STT_BACKEND", "mock")
+    _configure_local_server_env(monkeypatch)
 
     async with websockets.serve(_handler, "127.0.0.1", 0) as server:
         port = server.sockets[0].getsockname()[1]
