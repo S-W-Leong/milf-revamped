@@ -17,7 +17,7 @@
 - Driver: never use ADB or MobileRun cloud devices. The only driver is our `WebSocketDriver`.
 - STT: behind the `STTAdapter` interface. ILMU is primary; the interface MUST allow swapping to VALSEA/mesolitica without touching agent code.
 - Async everywhere: all I/O (driver actions, STT, websocket, confirmation) is `async`.
-- Demo language scope: **English + Manglish (→ ILMU) + Cantonese (→ MERaLiON)**. Language is a one-time per-user setting sent as `lang` (`en`, `manglish`, `yue`); pass it through, never hardcode English, no live language detection.
+- Demo language scope: **English + Chinese (→ ILMU) + Cantonese (→ MERaLiON)**. Language is a one-time per-user setting sent as `lang` (`en`, `zh`, `yue`); pass it through, never hardcode English, no live language detection.
 - Env vars (exact names): `OPENAI_API_KEY`, `ILMU_API_KEY`, `ILMU_API_URL`, `MERALION_API_KEY`, `MERALION_API_URL`, `MILF_STT_BACKEND` (`router`|`mock`), `MILF_WS_HOST`, `MILF_WS_PORT`.
 - Every task ends with a green test run and a commit.
 
@@ -473,7 +473,7 @@ git commit -m "feat: WebSocketDriver custom DeviceDriver"
 ### Task 5: STT adapters + language router (ILMU + MERaLiON + mock)
 
 Speech-to-intent behind a swappable interface, with a router that dispatches by the
-per-user `lang` setting. Demo languages: English + Manglish → ILMU; Cantonese → MERaLiON.
+per-user `lang` setting. Demo languages: English + Chinese → ILMU; Cantonese → MERaLiON.
 Mock used by all tests/harness. Providers never touch the agent.
 
 **Files:**
@@ -484,10 +484,10 @@ Mock used by all tests/harness. Providers never touch the agent.
 - Produces:
   - `STTAdapter` (ABC): `async transcribe(self, audio: bytes, lang: str) -> str`
   - `MockSTT(STTAdapter)`: `__init__(self, canned: str)`; returns `canned`.
-  - `IlmuSTT(STTAdapter)`: `__init__(self, api_url: str, api_key: str, http: httpx.AsyncClient | None = None)`; POSTs audio, returns transcript string. Handles `en`, `manglish`.
+  - `IlmuSTT(STTAdapter)`: `__init__(self, api_url: str, api_key: str, http: httpx.AsyncClient | None = None)`; POSTs audio, returns transcript string. Handles `en`, `zh`.
   - `MERaLiONSTT(STTAdapter)`: `__init__(self, api_url: str, api_key: str, http: httpx.AsyncClient | None = None)`; POSTs audio, returns transcript string. Handles `yue` (Cantonese).
   - `RouterSTT(STTAdapter)`: `__init__(self, routes: dict[str, STTAdapter], default: STTAdapter)`; `transcribe` dispatches by `lang`, falling back to `default`.
-  - `make_stt() -> STTAdapter`: factory from env. In `mock` mode returns `MockSTT`; otherwise builds a `RouterSTT` with `{"en": ilmu, "manglish": ilmu, "yue": meralion}` and `default=ilmu`.
+  - `make_stt() -> STTAdapter`: factory from env. In `mock` mode returns `MockSTT`; otherwise builds a `RouterSTT` with `{"en": ilmu, "zh": ilmu, "yue": meralion}` and `default=ilmu`.
 
 > NOTE: Neither ILMU's nor MERaLiON's exact request/response schema is visible without
 > credentials (the Day-1 external risk — verify BOTH). Both clients are written against a
@@ -506,7 +506,7 @@ from milf.stt import MockSTT, IlmuSTT, MERaLiONSTT, RouterSTT
 
 async def test_mock_returns_canned():
     stt = MockSTT("nak tengok cucu")
-    assert await stt.transcribe(b"audio", "manglish") == "nak tengok cucu"
+    assert await stt.transcribe(b"audio", "zh") == "nak tengok cucu"
 
 async def test_ilmu_posts_and_parses_text():
     captured = {}
@@ -516,7 +516,7 @@ async def test_ilmu_posts_and_parses_text():
     transport = httpx.MockTransport(handler)
     async with httpx.AsyncClient(transport=transport) as client:
         stt = IlmuSTT(api_url="https://ilmu.test/asr", api_key="k", http=client)
-        out = await stt.transcribe(b"bytes", "manglish")
+        out = await stt.transcribe(b"bytes", "zh")
     assert out == "call my son"
     assert captured["url"] == "https://ilmu.test/asr"
 
@@ -532,9 +532,9 @@ async def test_meralion_posts_and_parses_text():
 async def test_router_dispatches_by_lang_and_falls_back():
     ilmu = MockSTT("from-ilmu")
     meralion = MockSTT("from-meralion")
-    router = RouterSTT(routes={"manglish": ilmu, "yue": meralion}, default=ilmu)
+    router = RouterSTT(routes={"en": ilmu, "zh": ilmu, "yue": meralion}, default=ilmu)
     assert await router.transcribe(b"x", "yue") == "from-meralion"
-    assert await router.transcribe(b"x", "manglish") == "from-ilmu"
+    assert await router.transcribe(b"x", "zh") == "from-ilmu"
     assert await router.transcribe(b"x", "unknown") == "from-ilmu"  # default
 ```
 
@@ -590,7 +590,7 @@ class _HttpSTT(STTAdapter):
         return payload["text"]
 
 class IlmuSTT(_HttpSTT):
-    """English + Manglish (YTL ILMU). Confirm schema against ILMU docs on Day 1."""
+    """English + Chinese (YTL ILMU). Confirm schema against ILMU docs on Day 1."""
 
 class MERaLiONSTT(_HttpSTT):
     """Cantonese (A*STAR MERaLiON). Confirm schema against MERaLiON API docs on Day 1."""
@@ -608,7 +608,7 @@ def make_stt() -> STTAdapter:
         return MockSTT(os.getenv("MILF_MOCK_TRANSCRIPT", "I want to see my grandson"))
     ilmu = IlmuSTT(api_url=os.environ["ILMU_API_URL"], api_key=os.environ["ILMU_API_KEY"])
     meralion = MERaLiONSTT(api_url=os.environ["MERALION_API_URL"], api_key=os.environ["MERALION_API_KEY"])
-    return RouterSTT(routes={"en": ilmu, "manglish": ilmu, "yue": meralion}, default=ilmu)
+    return RouterSTT(routes={"en": ilmu, "zh": ilmu, "yue": meralion}, default=ilmu)
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -659,7 +659,7 @@ async def test_tool_proceeds_when_approved():
 
 async def test_tool_stops_when_denied():
     conn = FakeConn(False)
-    fn = build_confirmation_tool(conn, "ms")["confirm_action"]["function"]
+    fn = build_confirmation_tool(conn, "zh")["confirm_action"]["function"]
     out = await fn(summary="Bayar bil?", ctx=None)
     assert "stop" in out.lower() or "do not" in out.lower()
 ```
@@ -1305,7 +1305,7 @@ git commit -m "feat: reliability harness"
 - Own backend running MobileRun MobileAgent → Tasks 1, 9. ✓
 - Custom `WebSocketDriver(DeviceDriver)` → Task 4. ✓
 - OpenAI brain → Task 9 (`llms`). ✓
-- STT ILMU (en/manglish) + MERaLiON (yue/Cantonese) behind a router, vendor-isolated → Task 5. ✓
+- STT ILMU (en/zh) + MERaLiON (yue/Cantonese) behind a router, vendor-isolated → Task 5. ✓
 - Confirmation gate (speak before irreversible) → Task 6, enforced in goal Task 8. ✓
 - Spoken narration from events (incremental, live-feel) → Task 7. ✓
 - Live-feel "no dead air" immediate acknowledgment → Tasks 8 (`acknowledgment`) + 9 (spoken before agent runs). VAD capture / barge-in / responsive TTS are Plan 2 (Android). ✓

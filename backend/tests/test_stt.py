@@ -6,7 +6,7 @@ from milf.stt import IlmuSTT, MERaLiONSTT, MockSTT, RouterSTT, make_stt
 
 async def test_mock_returns_canned():
     stt = MockSTT("nak tengok cucu")
-    assert await stt.transcribe(b"audio", "manglish") == "nak tengok cucu"
+    assert await stt.transcribe(b"audio", "zh") == "nak tengok cucu"
 
 
 async def test_ilmu_posts_and_parses_text():
@@ -22,13 +22,13 @@ async def test_ilmu_posts_and_parses_text():
     transport = httpx.MockTransport(handler)
     async with httpx.AsyncClient(transport=transport) as client:
         stt = IlmuSTT(api_url="https://ilmu.test/asr", api_key="k", http=client)
-        out = await stt.transcribe(b"bytes", "manglish")
+        out = await stt.transcribe(b"bytes", "zh")
     assert out == "call my son"
     assert captured["url"] == "https://ilmu.test/asr"
     assert captured["auth"] == "Bearer k"
     assert "multipart/form-data" in captured["content_type"]
     assert b'name="lang"' in captured["body"]
-    assert b"manglish" in captured["body"]
+    assert b"zh" in captured["body"]
     assert b'name="audio"' in captured["body"]
     assert b"bytes" in captured["body"]
 
@@ -51,9 +51,9 @@ async def test_meralion_posts_and_parses_text():
 async def test_router_dispatches_by_lang_and_falls_back():
     ilmu = MockSTT("from-ilmu")
     meralion = MockSTT("from-meralion")
-    router = RouterSTT(routes={"manglish": ilmu, "yue": meralion}, default=ilmu)
+    router = RouterSTT(routes={"en": ilmu, "zh": ilmu, "yue": meralion}, default=ilmu)
     assert await router.transcribe(b"x", "yue") == "from-meralion"
-    assert await router.transcribe(b"x", "manglish") == "from-ilmu"
+    assert await router.transcribe(b"x", "zh") == "from-ilmu"
     assert await router.transcribe(b"x", "unknown") == "from-ilmu"
 
 

@@ -20,7 +20,7 @@ class TtsNarrator(
     fun speak(text: String, lang: String) {
         if (!ready || text.isBlank()) return
 
-        tts.language = localeFor(lang)
+        tts.language = VoiceLocales.ttsLocaleFor(lang)
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "milf-${System.nanoTime()}")
     }
 
@@ -33,10 +33,4 @@ class TtsNarrator(
         tts.shutdown()
     }
 
-    private fun localeFor(lang: String): Locale =
-        when (lang.lowercase(Locale.ROOT)) {
-            "yue" -> Locale.CHINESE
-            "manglish", "ms" -> Locale("ms", "MY")
-            else -> Locale.ENGLISH
-        }
 }

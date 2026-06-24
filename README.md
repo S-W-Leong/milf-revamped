@@ -162,7 +162,7 @@ cd android
    ```
 
 3. On the Android device, enable the accessibility service and open MILF.
-4. Select English or Manglish.
+4. Select English, Chinese, or Cantonese.
 5. Tap Speak.
 6. Say: `I want to see my grandson.`
 7. Tap Stop.

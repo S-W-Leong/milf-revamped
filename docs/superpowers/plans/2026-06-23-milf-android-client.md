@@ -907,8 +907,7 @@ class TtsNarrator(
 
     private fun localeFor(lang: String): Locale = when (lang) {
         "yue" -> Locale.CHINESE
-        "manglish" -> Locale("ms", "MY")
-        "ms" -> Locale("ms", "MY")
+        "zh" -> Locale.CHINESE
         else -> Locale.ENGLISH
     }
 }
@@ -1839,7 +1838,7 @@ private fun LanguageRow(
     onLangChange: (String) -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("en" to "English", "manglish" to "Manglish", "yue" to "Cantonese").forEach { (code, label) ->
+        listOf("en" to "English", "zh" to "Chinese", "yue" to "Cantonese").forEach { (code, label) ->
             if (selected == code) {
                 Button(onClick = { onLangChange(code) }) {
                     Text(label)
@@ -2062,7 +2061,7 @@ class ConfirmationVoiceRecognizer(
     override fun onEvent(eventType: Int, params: Bundle?) = Unit
 
     private fun localeTag(lang: String): String = when (lang) {
-        "manglish" -> Locale("ms", "MY").toLanguageTag()
+        "zh" -> Locale.CHINESE.toLanguageTag()
         "yue" -> Locale.TRADITIONAL_CHINESE.toLanguageTag()
         else -> Locale.ENGLISH.toLanguageTag()
     }
@@ -2308,7 +2307,7 @@ ws://<Mac LAN IP>:8765
 
 ## Live Flow
 
-1. Select English or Manglish.
+1. Select English, Chinese, or Cantonese.
 2. Tap Speak.
 3. Say: I want to see my grandson.
 4. Tap Stop.
@@ -2389,7 +2388,7 @@ git commit -m "chore: harden Android hero demo"
 - Narration via Android TextToSpeech: Tasks 4 and 6.
 - Confirmation screen with large buttons and voice yes/no: Tasks 6, 7, and 8.
 - Confirmation response over websocket: Tasks 3, 6, and 8.
-- English, Manglish, Cantonese language setting: Tasks 6 and 7.
+- English, Chinese, Cantonese language setting: Tasks 6 and 7.
 - No ADB or cloud phone dependency: enforced in Global Constraints and Task 5.
 - Live-feel immediate narration: supported by Task 3 handling `Narration` immediately and Task 4 TTS.
 - Hero-flow reliability: Tasks 9 and 10.

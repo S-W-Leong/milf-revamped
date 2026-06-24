@@ -30,10 +30,10 @@ Agent on the OpenAI Agents SDK) is reference only; its code is not in this repo.
 | Backend       | Own cloud service running MobileRun's `MobileAgent` (Manager + Executor) brain                                     | MobileRun = [droidrun](https://docs.mobilerun.ai) rebranded. We use it as a library, not its hosted devices.                                                                                                                                                                                                 |
 | Bridge        | Custom `**WebSocketDriver(DeviceDriver)`** — agent actions ↔ app                                                   | MobileRun's layered design (`DeviceDriver` → `StateProvider` → `ActionContext` → platform-agnostic Agent) makes the driver pluggable. Confirmed: every `DeviceDriver` method raises `NotImplementedError` by default; concrete drivers override what they support and declare a `supported` set.             |
 | Brain LLM     | **OpenAI**                                                                                                         | User chose continuity with the original prototype, overriding a Claude recommendation. MobileRun supports per-agent models if cost-tuning later.                                                                                                                                                             |
-| STT           | SEA-tuned models via API behind a `RouterSTT`: **ILMU** (en/Manglish) + **MERaLiON** (Cantonese)                   | ILMU has no native Cantonese ASR, so Cantonese routes to MERaLiON (A*STAR, explicit Cantonese/Hokkien support). Language is a one-time per-user setting (`en`/`manglish`/`yue`); no live detection. VALSEA / mesolitica remain drop-in fallbacks. Native Android STT rejected — inadequate for SEA dialects. |
+| STT           | SEA-tuned models via API behind a `RouterSTT`: **ILMU** (English/Chinese) + **MERaLiON** (Cantonese)               | ILMU has no native Cantonese ASR, so Cantonese routes to MERaLiON (A*STAR, explicit Cantonese/Hokkien support). Language is a one-time per-user setting (`en`/`zh`/`yue`); no live detection. VALSEA / mesolitica remain drop-in fallbacks. Native Android STT rejected — inadequate for SEA dialects. |
 | TTS           | **On-device Android TextToSpeech** for v1                                                                          | Output quality matters far less than input recognition. SEA-tuned TTS (ElevenLabs multilingual, etc.) is a later upgrade.                                                                                                                                                                                    |
 | Safety        | **Confirmation gate** — speak before any irreversible action (call / send / pay)                                   | The trust/safety pitch beat; not optional.                                                                                                                                                                                                                                                                   |
-| Demo language | **English + Manglish + Cantonese**                                                                                 | EN/Manglish via ILMU, Cantonese via MERaLiON. The rest is config-driven scale path.                                                                                                                                                                                                                          |
+| Demo language | **English + Chinese + Cantonese**                                                                                  | English/Chinese via ILMU, Cantonese via MERaLiON. The rest is config-driven scale path.                                                                                                                                                                                                                      |
 
 
 **Explicitly out of scope for v1:** we do NOT fine-tune any speech model (consume an
@@ -47,7 +47,7 @@ the moat. We keep the STT→OpenAI→TTS pipeline and make it *feel* live (below
 
 The pipeline is turn-based but engineered to feel responsive. Considered and rejected a
 speech-to-speech model (Gemini-Live-style) because native audio understanding is weak on
-Cantonese/Manglish senior speech. Instead:
+Cantonese/Chinese senior speech. Instead:
 
 - **No dead air:** the moment intent is transcribed, MILF speaks an immediate
 acknowledgment ("Okay, let me call Wei…") before the agent begins planning. (Backend.)
@@ -166,4 +166,3 @@ confirmation-gate blocking behavior; contact resolution.
 - Device/Android-version support matrix for judge questions.
 - Backend hosting target (Render / Railway / Fly / Cloud Run) — implementation detail.
 - Whether to expose the backend agent via MobileRun's MCP server later.
-

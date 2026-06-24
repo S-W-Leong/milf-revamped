@@ -99,6 +99,6 @@ def make_stt() -> STTAdapter:
         api_key=os.environ["MERALION_API_KEY"],
     )
     return RouterSTT(
-        routes={"en": ilmu, "manglish": ilmu, "yue": meralion},
+        routes={"en": ilmu, "zh": ilmu, "yue": meralion},
         default=ilmu,
     )

@@ -37,7 +37,7 @@ async def test_tool_passes_contact_id_to_confirmation_request():
 
 async def test_tool_raises_when_denied():
     conn = FakeConn(False)
-    fn = build_confirmation_tool(conn, "ms")["confirm_action"]["function"]
+    fn = build_confirmation_tool(conn, "zh")["confirm_action"]["function"]
 
     with pytest.raises(ConfirmationDeclined):
         await fn(summary="Bayar bil?", ctx=None)

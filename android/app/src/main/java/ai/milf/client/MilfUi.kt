@@ -5,6 +5,7 @@ import ai.milf.client.session.BackendConnectionStatus
 import ai.milf.client.session.ConfigTab
 import ai.milf.client.session.SeniorUiState
 import ai.milf.client.session.canStartHelper
+import ai.milf.client.session.selectableLanguages
 import ai.milf.client.ui.MilfColors
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -411,8 +412,9 @@ private fun LanguageRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        listOf("en" to "English", "manglish" to "Manglish", "yue" to "Cantonese")
-            .forEach { (code, label) ->
+        selectableLanguages
+            .forEach { option ->
+                val code = option.code
                 val isSelected = selected == code
                 Button(
                     onClick = { onLangChange(code) },
@@ -426,7 +428,7 @@ private fun LanguageRow(
                     ),
                     contentPadding = ButtonDefaults.TextButtonContentPadding
                 ) {
-                    Text(label, fontSize = 12.sp, textAlign = TextAlign.Center)
+                    Text(option.label, fontSize = 12.sp, textAlign = TextAlign.Center)
                 }
             }
     }

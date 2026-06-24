@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import java.util.Locale
 
 class ConfirmationVoiceRecognizer(
     context: Context,
@@ -23,7 +22,7 @@ class ConfirmationVoiceRecognizer(
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
             .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-            .putExtra(RecognizerIntent.EXTRA_LANGUAGE, localeTag(lang))
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE, VoiceLocales.recognizerLocaleTag(lang))
         recognizer.startListening(intent)
     }
 
@@ -54,9 +53,4 @@ class ConfirmationVoiceRecognizer(
     override fun onPartialResults(partialResults: Bundle?) = Unit
     override fun onEvent(eventType: Int, params: Bundle?) = Unit
 
-    private fun localeTag(lang: String): String = when (lang) {
-        "manglish" -> Locale("ms", "MY").toLanguageTag()
-        "yue" -> Locale.TRADITIONAL_CHINESE.toLanguageTag()
-        else -> Locale.ENGLISH.toLanguageTag()
-    }
 }

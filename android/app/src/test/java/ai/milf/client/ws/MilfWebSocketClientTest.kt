@@ -76,7 +76,7 @@ class MilfWebSocketClientTest {
 
         client.start(
             goalAudio = byteArrayOf(1, 2, 3),
-            lang = "ms",
+            lang = "zh",
             callbacks = noOpCallbacks()
         )
 
@@ -86,7 +86,7 @@ class MilfWebSocketClientTest {
 
         val audio = MilfProtocol.decode(socket.sent.single()) as Audio
         assertEquals("AQID", audio.goalAudioB64)
-        assertEquals("ms", audio.lang)
+        assertEquals("zh", audio.lang)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
