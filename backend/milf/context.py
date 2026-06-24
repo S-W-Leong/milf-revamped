@@ -4,6 +4,8 @@ import json
 from functools import cache
 from pathlib import Path
 
+from pydantic import BaseModel
+
 
 CONTACTS_PATH = Path(__file__).with_name("contacts.json")
 
@@ -22,18 +24,39 @@ SAFETY_CONFIRMATION = (
 )
 
 
+class Contact(BaseModel):
+    id: str
+    display_name: str
+    relationship: str
+    aliases: list[str]
+    preferred_app: str
+    preferred_channel: str
+    photo_asset: str
+    escape: bool = False
+    phone: str | None = None
+
+
 @cache
-def _contacts() -> dict[str, str]:
+def _contacts() -> list[Contact]:
     with CONTACTS_PATH.open(encoding="utf-8") as handle:
-        return json.load(handle)
+        payload = json.load(handle)
+    return [Contact.model_validate(item) for item in payload["contacts"]]
 
 
-def resolve_contact(phrase: str) -> str | None:
+def resolve_contact(phrase: str) -> Contact | None:
     phrase_lower = phrase.casefold()
-    for relation, display_name in _contacts().items():
-        if relation.casefold() in phrase_lower:
-            return display_name
+    for contact in _contacts():
+        for alias in contact.aliases:
+            if alias.casefold() in phrase_lower:
+                return contact
     return None
+
+
+def escape_contact() -> Contact:
+    for contact in _contacts():
+        if contact.escape:
+            return contact
+    raise RuntimeError("contacts.json must contain one escape contact")
 
 
 def build_goal(intent: str) -> str:
@@ -41,7 +64,12 @@ def build_goal(intent: str) -> str:
     parts = [f"Spoken intent: {intent!r}."]
 
     if contact is not None:
-        parts.append(f"Intended contact: {contact}.")
+        parts.append(f"Contact id: {contact.id}.")
+        parts.append(f"Intended contact: {contact.display_name}.")
+        parts.append(f"Relationship: {contact.relationship}.")
+        parts.append(
+            f"Preferred channel: {contact.preferred_app} {contact.preferred_channel}."
+        )
 
     parts.append(WHATSAPP_APP_CARD.strip())
     parts.append(SAFETY_CONFIRMATION)
@@ -52,5 +80,5 @@ def build_goal(intent: str) -> str:
 def acknowledgment(intent: str) -> str:
     contact = resolve_contact(intent)
     if contact is not None:
-        return f"Okay, let me help you reach {contact}."
+        return f"Okay, let me help you reach {contact.display_name}."
     return "Okay, let me help you with that."
