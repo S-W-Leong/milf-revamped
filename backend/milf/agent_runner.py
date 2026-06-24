@@ -148,6 +148,16 @@ async def run_intent(
         session.record_mobile_run_result(
             route, status="confirmation_declined", reason="confirmation_declined"
         )
+        logger.info(
+            "MILF MobileRun finished.",
+            extra={
+                "session_id": session.session_id,
+                "mobile_run_status": "confirmation_declined",
+                "reason": "confirmation_declined",
+                "contact_id": contact.id if contact is not None else route.contact_id,
+                "lang": lang,
+            },
+        )
         await connection.send_task_failure(
             SAFE_FAILURE_COPY,
             lang,
@@ -157,6 +167,16 @@ async def run_intent(
     except Exception:
         logger.exception("Agent run failed.")
         session.record_mobile_run_result(route, status="agent_error", reason="agent_error")
+        logger.info(
+            "MILF MobileRun finished.",
+            extra={
+                "session_id": session.session_id,
+                "mobile_run_status": "agent_error",
+                "reason": "agent_error",
+                "contact_id": contact.id if contact is not None else route.contact_id,
+                "lang": lang,
+            },
+        )
         await connection.send_task_failure(
             SAFE_FAILURE_COPY,
             lang,
