@@ -1,4 +1,4 @@
-from milf.protocol import Action, ConfirmResponse, decode, encode
+from milf.protocol import Action, ConfirmResponse, TextGoal, decode, encode
 
 
 def test_action_roundtrip():
@@ -12,6 +12,15 @@ def test_action_roundtrip():
 def test_confirm_response_roundtrip():
     c = ConfirmResponse(id="c1", approved=True)
     assert decode(encode(c)) == c
+
+
+def test_text_goal_round_trips():
+    raw = encode(TextGoal(goal_text="I want to see my grandson", lang="en"))
+
+    assert decode(raw) == TextGoal(
+        goal_text="I want to see my grandson",
+        lang="en",
+    )
 
 
 def test_decode_unknown_type_raises():

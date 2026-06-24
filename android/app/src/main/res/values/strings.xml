@@ -5,4 +5,18 @@
     <string name="overlay_permission_label">Allow display over other apps</string>
     <string name="assist_setup_label">Set MILF as assistant app</string>
     <string name="overlay_running">MILF helper is ready</string>
+    <string name="main_title">MILF</string>
+    <string name="main_tagline">Make Interfaces Less Frustrating</string>
+    <string name="main_headline">Ready to hold the phone\'s mental model.</string>
+    <string name="main_subhead">Start Agent unlocks once permissions, backend, voice, calls, language, and assistant settings are ready.</string>
+    <string name="start_agent">Start Agent</string>
+    <string name="config">Config</string>
+    <string name="config_permissions">Permissions</string>
+    <string name="config_backend">Backend</string>
+    <string name="config_agent">Agent</string>
+    <string name="config_logs">Logs</string>
+    <string name="status_ready">Ready</string>
+    <string name="status_missing">Missing</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_not_connected">Not connected</string>
 </resources>

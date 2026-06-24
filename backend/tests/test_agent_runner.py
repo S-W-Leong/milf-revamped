@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from milf.agent_runner import run_task
+from milf.agent_runner import run_intent, run_task
 from milf.stt import MockSTT
 
 
@@ -64,6 +64,41 @@ async def test_run_task_acks_then_builds_and_runs():
     assert conn.narrations and "Wei" in conn.narrations[0][0]
     assert conn.completions == [("You're connected to Wei.", "en", "wei-grandson")]
     assert conn.failures == []
+
+
+async def test_run_intent_uses_text_without_stt():
+    def fake_factory(goal, driver, custom_tools):
+        return SimpleNamespace(run=lambda: FakeHandler())
+
+    conn = FakeConn()
+
+    await run_intent(
+        conn,
+        intent="I want to see my grandson",
+        lang="en",
+        agent_factory=fake_factory,
+    )
+
+    assert conn.narrations
+    assert conn.completions == [("You're connected to Wei.", "en", "wei-grandson")]
+
+
+async def test_run_task_still_transcribes_audio():
+    def fake_factory(goal, driver, custom_tools):
+        return SimpleNamespace(run=lambda: FakeHandler())
+
+    conn = FakeConn()
+
+    await run_task(
+        conn,
+        audio=b"audio",
+        lang="en",
+        stt=MockSTT("I want to see my grandson"),
+        agent_factory=fake_factory,
+    )
+
+    assert conn.narrations
+    assert conn.completions == [("You're connected to Wei.", "en", "wei-grandson")]
 
 
 class FailingHandler:

@@ -51,6 +51,11 @@ data class Audio(
     val lang: String
 ) : MilfMessage
 
+data class TextGoal(
+    val goalText: String,
+    val lang: String
+) : MilfMessage
+
 object MilfProtocol {
     fun encode(message: MilfMessage): String {
         val data = when (message) {
@@ -91,6 +96,10 @@ object MilfProtocol {
 
             is Audio -> JSONObject()
                 .put("goal_audio_b64", message.goalAudioB64)
+                .put("lang", message.lang)
+
+            is TextGoal -> JSONObject()
+                .put("goal_text", message.goalText)
                 .put("lang", message.lang)
         }
         return JSONObject()
@@ -151,6 +160,11 @@ object MilfProtocol {
                 lang = data.getString("lang")
             )
 
+            "TextGoal" -> TextGoal(
+                goalText = data.getString("goal_text"),
+                lang = data.getString("lang")
+            )
+
             else -> throw IllegalArgumentException("Unknown message type: $type")
         }
     }
@@ -164,6 +178,7 @@ object MilfProtocol {
         is TaskComplete -> "TaskComplete"
         is TaskFailure -> "TaskFailure"
         is Audio -> "Audio"
+        is TextGoal -> "TextGoal"
     }
 }
 

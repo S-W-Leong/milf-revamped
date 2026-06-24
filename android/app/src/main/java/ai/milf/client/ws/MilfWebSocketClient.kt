@@ -10,6 +10,7 @@ import ai.milf.client.protocol.MilfProtocol
 import ai.milf.client.protocol.Narration
 import ai.milf.client.protocol.TaskComplete
 import ai.milf.client.protocol.TaskFailure
+import ai.milf.client.protocol.TextGoal
 import ai.milf.client.session.SessionSocketClient
 import android.util.Base64
 import kotlinx.coroutines.CoroutineScope
@@ -63,6 +64,19 @@ class MilfWebSocketClient(
     private var pendingMessages: MutableList<String> = mutableListOf()
 
     override fun start(goalAudio: ByteArray, lang: String, callbacks: Callbacks) {
+        startSession(callbacks) { sessionId ->
+            val encodedAudio = audioEncoder(goalAudio)
+            send(sessionId, Audio(goalAudioB64 = encodedAudio, lang = lang))
+        }
+    }
+
+    override fun startText(goalText: String, lang: String, callbacks: Callbacks) {
+        startSession(callbacks) { sessionId ->
+            send(sessionId, TextGoal(goalText = goalText, lang = lang))
+        }
+    }
+
+    private fun startSession(callbacks: Callbacks, onOpenSend: (Long) -> Unit) {
         val newSessionId: Long
         val oldSocket = synchronized(lock) {
             sessionId += 1
@@ -77,8 +91,7 @@ class MilfWebSocketClient(
 
         val openedSocket = socketFactory.open(url, object : TextListener {
             override fun onOpen() {
-                val encodedAudio = audioEncoder(goalAudio)
-                send(newSessionId, Audio(goalAudioB64 = encodedAudio, lang = lang))
+                onOpenSend(newSessionId)
             }
 
             override fun onText(text: String) {
@@ -177,7 +190,7 @@ class MilfWebSocketClient(
                 }.onFailure { reportFailure(messageSessionId, it.failureMessage()) }
             }
 
-            is ActionResult, is ConfirmResponse, is Audio -> Unit
+            is ActionResult, is ConfirmResponse, is Audio, is TextGoal -> Unit
         }
     }
 

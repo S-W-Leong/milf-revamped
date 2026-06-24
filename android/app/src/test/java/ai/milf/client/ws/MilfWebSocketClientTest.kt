@@ -8,6 +8,7 @@ import ai.milf.client.protocol.MilfProtocol
 import ai.milf.client.protocol.Narration
 import ai.milf.client.protocol.TaskComplete
 import ai.milf.client.protocol.TaskFailure
+import ai.milf.client.protocol.TextGoal
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -109,6 +110,23 @@ class MilfWebSocketClientTest {
         val audio = MilfProtocol.decode(factory.sockets.single().sent.single()) as Audio
         assertEquals("AQID", audio.goalAudioB64)
         assertEquals("en", audio.lang)
+    }
+
+    @Test
+    fun startTextSendsTextGoalOnOpen() {
+        val factory = FakeSocketFactory()
+        val client = MilfWebSocketClient(
+            url = "ws://localhost:8765",
+            socketFactory = factory
+        )
+
+        client.startText("I want to see my grandson", "en", noOpCallbacks())
+        factory.sockets.single().open()
+
+        assertEquals(
+            TextGoal(goalText = "I want to see my grandson", lang = "en"),
+            MilfProtocol.decode(factory.sockets.single().sent.single())
+        )
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

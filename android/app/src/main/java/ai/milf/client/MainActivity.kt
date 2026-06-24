@@ -26,20 +26,20 @@ class MainActivity : ComponentActivity() {
             val state by viewModel.uiState.collectAsStateWithLifecycle()
             val audioPermissionLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestPermission()
-            ) { }
+            ) { viewModel.refreshSetupStatus() }
             val callPermissionLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestPermission()
-            ) { }
+            ) { viewModel.refreshSetupStatus() }
 
             LaunchedEffect(Unit) {
-                viewModel.refreshAccessibilityStatus()
+                viewModel.refreshSetupStatus()
             }
 
             MilfUi(
                 state = state,
                 onBackendUrlChange = viewModel::setBackendUrl,
+                onCheckBackendConnection = viewModel::checkBackendConnection,
                 onLangChange = viewModel::setLang,
-                onDemoModeChange = viewModel::setDemoMode,
                 onOpenAccessibility = {
                     startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 },
@@ -61,17 +61,25 @@ class MainActivity : ComponentActivity() {
                     callPermissionLauncher.launch(Manifest.permission.CALL_PHONE)
                 },
                 onStartOverlay = {
-                    SeniorOverlayService.start(this, startListening = false)
+                    if (viewModel.canStartHelper()) {
+                        SeniorOverlayService.start(this, startListening = false)
+                        val homeIntent = Intent(Intent.ACTION_MAIN)
+                            .addCategory(Intent.CATEGORY_HOME)
+                            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(homeIntent)
+                    }
                 },
                 onStopOverlay = {
                     SeniorOverlayService.stop(this)
-                }
+                },
+                onSetAppScreen = viewModel::setAppScreen,
+                onConfigTabChange = viewModel::setConfigTab
             )
         }
     }
 
     override fun onResume() {
         super.onResume()
-        viewModel.refreshAccessibilityStatus()
+        viewModel.refreshSetupStatus()
     }
 }

@@ -3,10 +3,13 @@ package ai.milf.client
 import ai.milf.client.protocol.ConfirmResponse
 import ai.milf.client.protocol.MilfMessage
 import ai.milf.client.relationship.RelationshipGraph
+import ai.milf.client.session.AppScreen
+import ai.milf.client.session.ConfigTab
 import ai.milf.client.session.MilfSessionController
 import ai.milf.client.session.SeniorUiState
 import ai.milf.client.session.SessionSocketClient
 import ai.milf.client.session.androidSessionDependencies
+import ai.milf.client.session.canStartHelper
 import ai.milf.client.ws.MilfWebSocketClient
 import android.app.Application
 import androidx.lifecycle.ViewModel
@@ -37,7 +40,16 @@ class MainViewModel(
     fun setLang(lang: String) = controller.setLang(lang)
     fun setWatchMode(enabled: Boolean) = controller.setWatchMode(enabled)
     fun setDemoMode(enabled: Boolean) = controller.setDemoMode(enabled)
+    fun setCommandText(text: String) = controller.setCommandText(text)
+    fun submitTextCommand() = controller.submitTextCommand()
+    fun stopActiveRun() = controller.stopActiveRun()
+    fun clearTransientMessage() = controller.clearTransientMessage()
+    fun setAppScreen(screen: AppScreen) = controller.setAppScreen(screen)
+    fun setConfigTab(tab: ConfigTab) = controller.setConfigTab(tab)
     fun refreshAccessibilityStatus() = controller.refreshAccessibilityStatus()
+    fun refreshSetupStatus() = controller.refreshSetupStatus()
+    fun canStartHelper(): Boolean = controller.refreshSetupStatus().canStartHelper
+    fun checkBackendConnection() = controller.checkBackendConnection()
     fun startRecording() = controller.beginListening()
     fun stopAndRun() = controller.finishListeningAndRun()
     fun approveConfirmation() = controller.approveConfirmation()
@@ -64,6 +76,12 @@ class MainViewModel(
                 val client = object : SessionSocketClient {
                     override fun start(
                         goalAudio: ByteArray,
+                        lang: String,
+                        callbacks: MilfWebSocketClient.Callbacks
+                    ) = Unit
+
+                    override fun startText(
+                        goalText: String,
                         lang: String,
                         callbacks: MilfWebSocketClient.Callbacks
                     ) = Unit

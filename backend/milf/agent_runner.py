@@ -42,14 +42,12 @@ def build_agent(goal: str, driver: WebSocketDriver, custom_tools: dict[str, Any]
     )
 
 
-async def run_task(
+async def run_intent(
     connection: AppConnection,
-    audio: bytes,
+    intent: str,
     lang: str,
-    stt: STTAdapter,
     agent_factory: Callable[[str, WebSocketDriver, dict[str, Any]], Any] = build_agent,
 ) -> Any:
-    intent = await stt.transcribe(audio, lang)
     contact = resolve_contact(intent)
     escape = escape_contact()
     await connection.send_narration(acknowledgment(intent), lang)
@@ -100,3 +98,14 @@ async def run_task(
         )
 
     return result
+
+
+async def run_task(
+    connection: AppConnection,
+    audio: bytes,
+    lang: str,
+    stt: STTAdapter,
+    agent_factory: Callable[[str, WebSocketDriver, dict[str, Any]], Any] = build_agent,
+) -> Any:
+    intent = await stt.transcribe(audio, lang)
+    return await run_intent(connection, intent, lang, agent_factory)

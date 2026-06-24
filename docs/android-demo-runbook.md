@@ -37,12 +37,19 @@ cd /Users/leongshiwei/ShiWei_Local_Mac/1_Projects/milf-revamped/android
 
 ## Live Flow
 
-1. Select English or Manglish.
-2. Tap Speak.
-3. Say: I want to see my grandson.
-4. Tap Stop.
-5. Let MILF narrate.
-6. When the app asks to confirm the call, tap Yes or tap Speak yes/no and say yes.
+1. Open MILF.
+2. Use Config to grant microphone, phone, overlay, accessibility, and assistant-app readiness.
+3. In Config > Backend, enter the websocket URL and tap the connection check.
+4. Return to Main.
+5. Confirm Start Agent is enabled.
+6. Tap Start Agent.
+7. Verify Android home appears and the MILF bottom pill is centered near the bottom.
+8. Tap the mic once. The pill should show a pulsing waveform and `Listening...`.
+9. Say: I want to see my grandson.
+10. Tap the mic again. The pill should show `Thinking...`, then `Acting...`.
+11. Verify MILF shows an electric-cyan target box around each screen element it acts on.
+12. When the confirmation card appears, tap Yes.
+13. Verify the WhatsApp video-call screen opens and the pill returns to `Ask MILF to do something`.
 
 ## Success Criteria
 
@@ -74,25 +81,18 @@ Target: at least 9 of 10 attempts connect after approval, or every failure has o
 - Keep the video available locally on the presentation laptop.
 - Confirm the backup recording includes audio narration, confirmation, and successful call connection.
 
-## UX overlay demo path
+## Floating Control Rail Checks
 
-1. Start the backend:
-   ```bash
-   cd backend
-   python -m milf.server
-   ```
-2. Install the debug APK:
-   ```bash
-   cd android
-   ./gradlew :app:installDebug
-   ```
-3. On the Android device, open MILF buyer setup.
-4. Grant microphone, phone, overlay, and accessibility permissions.
-5. Open default assistant settings and set MILF as the assistant app if the OEM allows it.
-6. Turn on Demo watch mode for judges; leave it off for senior-mode testing.
-7. Tap Start helper. The floating bubble should appear over any app.
-8. Hero flow: tap bubble or invoke assistant, say "I want to see my grandson", tap Stop, wait for WhatsApp navigation, approve "Calling Wei, your grandson?", and verify the video-call screen opens.
-9. Failure flow: stop the backend, repeat the hero request, tap Stop, and verify the failure screen says it is having trouble and offers to call daughter.
+- Expanded bottom pill is a shorter centered rail and does not touch screen edges.
+- Expanded outside tap collapses to the round waveform bubble and does not pass through.
+- Collapsed bubble is draggable.
+- Tapping the collapsed bubble re-expands the bottom pill.
+- Taps outside the collapsed bubble pass through to Android normally.
+- Text fallback shows `Ask MILF to do something`.
+- Typing text turns the mic button into send.
+- During `Thinking...` and `Acting...`, both the black-square run stop and white-cross exit are visible.
+- Black-square run stop interrupts only the current run and keeps the rail available.
+- White-cross exit removes the overlay and leaves the user on the current screen.
 
 ## Device matrix
 

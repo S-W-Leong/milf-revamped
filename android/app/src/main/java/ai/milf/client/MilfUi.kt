@@ -1,7 +1,15 @@
 package ai.milf.client
 
+import ai.milf.client.session.AppScreen
+import ai.milf.client.session.BackendConnectionStatus
+import ai.milf.client.session.ConfigTab
 import ai.milf.client.session.SeniorUiState
+import ai.milf.client.session.canStartHelper
+import ai.milf.client.ui.MilfColors
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,19 +17,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,110 +41,364 @@ import androidx.compose.ui.unit.sp
 fun MilfUi(
     state: SeniorUiState,
     onBackendUrlChange: (String) -> Unit,
+    onCheckBackendConnection: () -> Unit,
     onLangChange: (String) -> Unit,
-    onDemoModeChange: (Boolean) -> Unit,
     onOpenAccessibility: () -> Unit,
     onOpenOverlayPermission: () -> Unit,
     onOpenAssistSettings: () -> Unit,
     onRequestAudioPermission: () -> Unit,
     onRequestCallPermission: () -> Unit,
     onStartOverlay: () -> Unit,
-    onStopOverlay: () -> Unit
+    onStopOverlay: () -> Unit,
+    onSetAppScreen: (AppScreen) -> Unit,
+    onConfigTabChange: (ConfigTab) -> Unit
 ) {
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color(0xFFF8FAFC)
+            color = MilfColors.Obsidian
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                Text(
-                    text = "MILF buyer setup",
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
+            if (state.appScreen == AppScreen.Main) {
+                MainScreen(
+                    state = state,
+                    onStartOverlay = onStartOverlay,
+                    onConfigClick = { onSetAppScreen(AppScreen.Config) }
                 )
-
-                OutlinedTextField(
-                    value = state.backendUrl,
-                    onValueChange = onBackendUrlChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text("Backend websocket") }
+            } else {
+                ConfigScreen(
+                    state = state,
+                    onBackendUrlChange = onBackendUrlChange,
+                    onCheckBackendConnection = onCheckBackendConnection,
+                    onLangChange = onLangChange,
+                    onOpenAccessibility = onOpenAccessibility,
+                    onOpenOverlayPermission = onOpenOverlayPermission,
+                    onOpenAssistSettings = onOpenAssistSettings,
+                    onRequestAudioPermission = onRequestAudioPermission,
+                    onRequestCallPermission = onRequestCallPermission,
+                    onStartOverlay = onStartOverlay,
+                    onStopOverlay = onStopOverlay,
+                    onSetAppScreen = onSetAppScreen,
+                    onConfigTabChange = onConfigTabChange
                 )
-
-                LanguageRow(state.lang, onLangChange)
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Demo watch mode",
-                        fontSize = 18.sp,
-                        color = Color(0xFF111827)
-                    )
-                    Switch(
-                        checked = state.demoMode,
-                        onCheckedChange = onDemoModeChange
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    SetupButton("Microphone permission", onRequestAudioPermission)
-                    SetupButton("Phone call permission", onRequestCallPermission)
-                    SetupButton("Accessibility Service", onOpenAccessibility)
-                    SetupButton("Display over other apps", onOpenOverlayPermission)
-                    SetupButton("Default assistant app", onOpenAssistSettings)
-                }
-
-                Spacer(Modifier.height(4.dp))
-
-                Button(
-                    onClick = onStartOverlay,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp)
-                ) {
-                    Text("Start helper", fontSize = 20.sp)
-                }
-
-                OutlinedButton(
-                    onClick = onStopOverlay,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp)
-                ) {
-                    Text("Stop helper", fontSize = 18.sp)
-                }
             }
         }
     }
 }
 
 @Composable
-private fun SetupButton(
+private fun MainScreen(
+    state: SeniorUiState,
+    onStartOverlay: () -> Unit,
+    onConfigClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("MILF", color = MilfColors.TextPrimary, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "Make Interfaces Less Frustrating",
+                    color = MilfColors.Sage,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            OutlinedButton(
+                onClick = onConfigClick,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, MilfColors.BorderStrong),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MilfColors.TextPrimary)
+            ) {
+                Text("Config")
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            "Ready to hold the phone's mental model.",
+            color = MilfColors.TextPrimary,
+            fontSize = 26.sp,
+            lineHeight = 32.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            "Start Agent unlocks once permissions, backend, voice, calls, language, and assistant settings are ready.",
+            color = MilfColors.TextSecondary,
+            fontSize = 15.sp,
+            lineHeight = 21.sp
+        )
+
+        ReadinessPanel(state)
+
+        Button(
+            onClick = onStartOverlay,
+            enabled = state.canStartHelper,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MilfColors.SageDim,
+                contentColor = MilfColors.Sage,
+                disabledContainerColor = MilfColors.CardSurface,
+                disabledContentColor = MilfColors.TextMuted
+            )
+        ) {
+            Text("Start Agent", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun ConfigScreen(
+    state: SeniorUiState,
+    onBackendUrlChange: (String) -> Unit,
+    onCheckBackendConnection: () -> Unit,
+    onLangChange: (String) -> Unit,
+    onOpenAccessibility: () -> Unit,
+    onOpenOverlayPermission: () -> Unit,
+    onOpenAssistSettings: () -> Unit,
+    onRequestAudioPermission: () -> Unit,
+    onRequestCallPermission: () -> Unit,
+    onStartOverlay: () -> Unit,
+    onStopOverlay: () -> Unit,
+    onSetAppScreen: (AppScreen) -> Unit,
+    onConfigTabChange: (ConfigTab) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Config", color = MilfColors.TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            OutlinedButton(
+                onClick = { onSetAppScreen(AppScreen.Main) },
+                border = BorderStroke(1.dp, MilfColors.BorderStrong),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MilfColors.TextPrimary),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Main")
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ConfigTab.entries.forEach { tab ->
+                val selected = state.selectedConfigTab == tab
+                Button(
+                    onClick = { onConfigTabChange(tab) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (selected) MilfColors.SageDim else MilfColors.DarkSurface,
+                        contentColor = if (selected) MilfColors.Sage else MilfColors.TextSecondary
+                    ),
+                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                ) {
+                    Text(tab.name, fontSize = 12.sp, textAlign = TextAlign.Center)
+                }
+            }
+        }
+
+        when (state.selectedConfigTab) {
+            ConfigTab.Permissions -> PermissionsTab(
+                state = state,
+                onRequestAudioPermission = onRequestAudioPermission,
+                onRequestCallPermission = onRequestCallPermission,
+                onOpenOverlayPermission = onOpenOverlayPermission,
+                onOpenAccessibility = onOpenAccessibility,
+                onOpenAssistSettings = onOpenAssistSettings
+            )
+
+            ConfigTab.Backend -> BackendTab(
+                state = state,
+                onBackendUrlChange = onBackendUrlChange,
+                onCheckBackendConnection = onCheckBackendConnection
+            )
+
+            ConfigTab.Agent -> AgentTab(
+                state = state,
+                onLangChange = onLangChange,
+                onStartOverlay = onStartOverlay,
+                onStopOverlay = onStopOverlay
+            )
+
+            ConfigTab.Logs -> LogsTab(state)
+        }
+    }
+}
+
+@Composable
+private fun ReadinessPanel(state: SeniorUiState) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        state.readinessRows().forEach { row ->
+            ReadinessLine(row)
+        }
+    }
+}
+
+@Composable
+private fun PermissionsTab(
+    state: SeniorUiState,
+    onRequestAudioPermission: () -> Unit,
+    onRequestCallPermission: () -> Unit,
+    onOpenOverlayPermission: () -> Unit,
+    onOpenAccessibility: () -> Unit,
+    onOpenAssistSettings: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        ConfigAction("Microphone", state.microphonePermissionGranted, onRequestAudioPermission)
+        ConfigAction("Phone calls", state.callPhonePermissionGranted, onRequestCallPermission)
+        ConfigAction("Overlay", state.overlayPermissionGranted, onOpenOverlayPermission)
+        ConfigAction("Accessibility", state.accessibilityEnabled, onOpenAccessibility)
+        ConfigAction("Assistant app", state.assistantSelected, onOpenAssistSettings)
+    }
+}
+
+@Composable
+private fun BackendTab(
+    state: SeniorUiState,
+    onBackendUrlChange: (String) -> Unit,
+    onCheckBackendConnection: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(
+            value = state.backendUrl,
+            onValueChange = onBackendUrlChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Backend websocket") },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MilfColors.TextPrimary,
+                unfocusedTextColor = MilfColors.TextPrimary,
+                focusedBorderColor = MilfColors.Sage,
+                unfocusedBorderColor = MilfColors.BorderStrong,
+                focusedLabelColor = MilfColors.Sage,
+                unfocusedLabelColor = MilfColors.TextSecondary,
+                cursorColor = MilfColors.Sage
+            )
+        )
+        Button(
+            onClick = onCheckBackendConnection,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MilfColors.SageDim,
+                contentColor = MilfColors.Sage
+            )
+        ) {
+            Text("Check connection")
+        }
+        ReadinessLine(
+            ReadinessRow(
+                "Backend",
+                state.backendConnectionStatus == BackendConnectionStatus.Connected,
+                readyText = "Connected",
+                missingText = backendStatusText(state.backendConnectionStatus)
+            )
+        )
+    }
+}
+
+@Composable
+private fun AgentTab(
+    state: SeniorUiState,
+    onLangChange: (String) -> Unit,
+    onStartOverlay: () -> Unit,
+    onStopOverlay: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LanguageRow(state.lang, onLangChange)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onStartOverlay,
+                enabled = state.canStartHelper,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MilfColors.SageDim,
+                    contentColor = MilfColors.Sage,
+                    disabledContainerColor = MilfColors.CardSurface,
+                    disabledContentColor = MilfColors.TextMuted
+                )
+            ) {
+                Text("Start")
+            }
+            OutlinedButton(
+                onClick = onStopOverlay,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, MilfColors.BorderStrong),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MilfColors.TextPrimary)
+            ) {
+                Text("Stop")
+            }
+        }
+    }
+}
+
+@Composable
+private fun LogsTab(state: SeniorUiState) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LogLine("Caption", state.captions)
+        LogLine("Narration", state.lastNarration ?: "No narration yet")
+        LogLine("Backend", state.backendConnectionStatus.name)
+    }
+}
+
+@Composable
+private fun ConfigAction(
     label: String,
+    ready: Boolean,
     onClick: () -> Unit
 ) {
     OutlinedButton(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(58.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MilfColors.BorderStrong),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MilfColors.TextPrimary)
     ) {
-        Text(label, fontSize = 18.sp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, fontSize = 15.sp)
+            Text(
+                if (ready) "Ready" else "Missing",
+                color = if (ready) MilfColors.Sage else MilfColors.NoRed,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }
 
@@ -149,24 +413,90 @@ private fun LanguageRow(
     ) {
         listOf("en" to "English", "manglish" to "Manglish", "yue" to "Cantonese")
             .forEach { (code, label) ->
-                val modifier = Modifier
-                    .weight(1f)
-                    .height(60.dp)
-                if (selected == code) {
-                    Button(
-                        onClick = { onLangChange(code) },
-                        modifier = modifier
-                    ) {
-                        Text(label, textAlign = TextAlign.Center)
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = { onLangChange(code) },
-                        modifier = modifier
-                    ) {
-                        Text(label, textAlign = TextAlign.Center)
-                    }
+                val isSelected = selected == code
+                Button(
+                    onClick = { onLangChange(code) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isSelected) MilfColors.SageDim else MilfColors.DarkSurface,
+                        contentColor = if (isSelected) MilfColors.Sage else MilfColors.TextSecondary
+                    ),
+                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                ) {
+                    Text(label, fontSize = 12.sp, textAlign = TextAlign.Center)
                 }
             }
     }
 }
+
+@Composable
+private fun ReadinessLine(row: ReadinessRow) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MilfColors.DarkSurface, RoundedCornerShape(10.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(row.label, color = MilfColors.TextPrimary, fontSize = 14.sp)
+            Spacer(Modifier.width(12.dp))
+            Text(
+                if (row.ready) row.readyText else row.missingText,
+                color = if (row.ready) MilfColors.Sage else MilfColors.NoRed,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun LogLine(label: String, value: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MilfColors.DarkSurface, RoundedCornerShape(10.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Text(label, color = MilfColors.TextSecondary, fontSize = 12.sp)
+        Text(value, color = MilfColors.TextPrimary, fontSize = 14.sp, lineHeight = 19.sp)
+    }
+}
+
+private data class ReadinessRow(
+    val label: String,
+    val ready: Boolean,
+    val readyText: String = "Ready",
+    val missingText: String = "Missing"
+)
+
+private fun SeniorUiState.readinessRows(): List<ReadinessRow> = listOf(
+    ReadinessRow("Microphone", microphonePermissionGranted),
+    ReadinessRow("Phone calls", callPhonePermissionGranted),
+    ReadinessRow("Overlay", overlayPermissionGranted),
+    ReadinessRow("Accessibility", accessibilityEnabled),
+    ReadinessRow("Assistant app", assistantSelected, readyText = "Selected", missingText = "Not selected"),
+    ReadinessRow("Language", lang.isNotBlank(), readyText = lang.ifBlank { "Selected" }),
+    ReadinessRow(
+        "Backend",
+        backendConnectionStatus == BackendConnectionStatus.Connected,
+        readyText = "Connected",
+        missingText = backendStatusText(backendConnectionStatus)
+    )
+)
+
+private fun backendStatusText(status: BackendConnectionStatus): String =
+    when (status) {
+        BackendConnectionStatus.Unknown -> "Not checked"
+        BackendConnectionStatus.Checking -> "Checking"
+        BackendConnectionStatus.Connected -> "Connected"
+        BackendConnectionStatus.Failed -> "Failed"
+    }

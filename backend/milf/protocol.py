@@ -51,6 +51,11 @@ class Audio(BaseModel):
     lang: str
 
 
+class TextGoal(BaseModel):
+    goal_text: str
+    lang: str
+
+
 _MESSAGE_TYPES: dict[str, type[BaseModel]] = {
     cls.__name__: cls
     for cls in (
@@ -62,6 +67,7 @@ _MESSAGE_TYPES: dict[str, type[BaseModel]] = {
         TaskComplete,
         TaskFailure,
         Audio,
+        TextGoal,
     )
 }
 

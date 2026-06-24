@@ -3,16 +3,14 @@ package ai.milf.client.overlay
 import ai.milf.client.MainActivity
 import ai.milf.client.MilfApplication
 import ai.milf.client.R
-import ai.milf.client.audio.ConfirmationVoiceRecognizer
-import ai.milf.client.rescue.BuyerRescue
 import ai.milf.client.session.MilfSessionController
+import ai.milf.client.session.canStartHelper
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -30,7 +28,6 @@ import kotlinx.coroutines.launch
 class SeniorOverlayService : Service() {
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private var window: OverlayWindowController? = null
-    private var confirmationVoice: ConfirmationVoiceRecognizer? = null
     private var foregroundStarted = false
 
     override fun onCreate() {
@@ -40,38 +37,27 @@ class SeniorOverlayService : Service() {
         if (Settings.canDrawOverlays(this) && hasRecordAudioPermission()) {
             startForegroundSafely()
         }
-        confirmationVoice = ConfirmationVoiceRecognizer(
-            context = this,
-            onText = controller::onConfirmationSpeech,
-            onError = { }
-        )
         window = OverlayWindowController(
             context = this,
             callbacks = object : OverlayWindowController.Callbacks {
-                override fun onBubbleTap() {
-                    beginListeningSafely(controller)
-                }
-
-                override fun onStopListening() = controller.finishListeningAndRun()
-                override fun onApprove() = controller.approveConfirmation()
-                override fun onDeny() = controller.denyConfirmation()
-
-                override fun onSpeakDecision() {
-                    controller.uiState.value.confirmation?.let { confirmation ->
-                        listenForConfirmationSafely(confirmation.lang)
+                override fun onMicTap() {
+                    val state = controller.uiState.value
+                    if (state.isRecording) {
+                        controller.finishListeningAndRun()
+                    } else {
+                        beginListeningSafely(controller)
                     }
                 }
 
-                override fun onWatchModeChange(enabled: Boolean) = controller.setWatchMode(enabled)
-                override fun onRetry() {
-                    beginListeningSafely(controller)
-                }
-
-                override fun onCallBuyer() {
-                    val contact = controller.uiState.value.failure?.recoveryContact ?: return
-                    val phone = contact.phone ?: return
-                    launchRescueCallSafely(phone)
-                }
+                override fun onCommandTextChange(text: String) = controller.setCommandText(text)
+                override fun onSubmitText() = controller.submitTextCommand()
+                override fun onRunStop() = controller.stopActiveRun()
+                override fun onExitAgent() = stopSelf()
+                override fun onOutsideExpandedTap() = controller.collapseOverlay()
+                override fun onExpandOverlay() = controller.expandOverlay()
+                override fun onApprove() = controller.approveConfirmation()
+                override fun onDeny() = controller.denyConfirmation()
+                override fun onTransientMessageShown() = controller.clearTransientMessage()
             }
         )
         scope.launch(Dispatchers.Main.immediate) {
@@ -86,12 +72,14 @@ class SeniorOverlayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val controller = (application as MilfApplication).sessionController
-        if (!Settings.canDrawOverlays(this)) {
+        val setupState = controller.refreshSetupStatus()
+        if (!setupState.canStartHelper) {
             openSetupActivity()
             stopSelf()
             return START_NOT_STICKY
         }
         if (intent?.getBooleanExtra(EXTRA_START_LISTENING, false) == true) {
+            controller.expandOverlay()
             if (!beginListeningSafely(controller)) {
                 stopSelf()
                 return START_NOT_STICKY
@@ -105,8 +93,6 @@ class SeniorOverlayService : Service() {
         controller.cancelActiveSession()
         controller.setOverlayEnabled(false)
         scope.cancel()
-        confirmationVoice?.destroy()
-        confirmationVoice = null
         window?.remove()
         window = null
         super.onDestroy()
@@ -127,18 +113,6 @@ class SeniorOverlayService : Service() {
         }
     }
 
-    private fun listenForConfirmationSafely(lang: String): Boolean {
-        if (!ensureMicrophoneForegroundReady()) return false
-        return try {
-            confirmationVoice?.listen(lang)
-            true
-        } catch (exception: SecurityException) {
-            Log.w(TAG, "Microphone permission was unavailable when listening for confirmation", exception)
-            openSetupActivity()
-            false
-        }
-    }
-
     private fun ensureMicrophoneForegroundReady(): Boolean {
         if (!hasRecordAudioPermission()) {
             openSetupActivity()
@@ -153,36 +127,6 @@ class SeniorOverlayService : Service() {
 
     private fun hasRecordAudioPermission(): Boolean =
         checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-
-    private fun hasCallPhonePermission(): Boolean =
-        checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
-
-    private fun launchRescueCallSafely(phone: String) {
-        if (hasCallPhonePermission()) {
-            val callIntent = BuyerRescue.intentFor(phone, hasCallPermission = true)
-            if (startRescueActivity(callIntent, "call")) {
-                return
-            }
-            Log.w(TAG, "Unable to launch rescue call; falling back to dialer")
-        }
-
-        val dialIntent = BuyerRescue.intentFor(phone, hasCallPermission = false)
-        if (!startRescueActivity(dialIntent, "dial")) {
-            Log.w(TAG, "Unable to launch rescue dialer")
-        }
-    }
-
-    private fun startRescueActivity(intent: Intent, label: String): Boolean =
-        try {
-            startActivity(intent)
-            true
-        } catch (exception: SecurityException) {
-            Log.w(TAG, "Unable to launch rescue $label intent", exception)
-            false
-        } catch (exception: ActivityNotFoundException) {
-            Log.w(TAG, "Unable to launch rescue $label intent", exception)
-            false
-        }
 
     private fun openSetupActivity() {
         val intent = Intent(this, MainActivity::class.java)

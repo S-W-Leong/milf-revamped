@@ -27,6 +27,18 @@ class MilfProtocolTest {
     }
 
     @Test
+    fun textGoalRoundTrips() {
+        val raw = MilfProtocol.encode(
+            TextGoal(goalText = "I want to see my grandson", lang = "en")
+        )
+
+        assertEquals(
+            TextGoal(goalText = "I want to see my grandson", lang = "en"),
+            MilfProtocol.decode(raw)
+        )
+    }
+
+    @Test
     fun confirmRequestRoundTripsContactId() {
         val message = ConfirmRequest(
             id = "c1",

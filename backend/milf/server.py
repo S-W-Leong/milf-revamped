@@ -5,13 +5,27 @@ import os
 
 import websockets
 
-from milf.agent_runner import SAFE_FAILURE_COPY, run_task
+from milf.agent_runner import SAFE_FAILURE_COPY, run_intent, run_task
 from milf.connection import AppConnection
-from milf.protocol import Audio, decode
+from milf.protocol import Audio, TextGoal, decode
 from milf.stt import make_stt
 
 PROTOCOL_ERROR = 1002
 logger = logging.getLogger(__name__)
+
+
+async def _dispatch_first_frame(conn: AppConnection, first) -> None:
+    if isinstance(first, Audio):
+        stt = make_stt()
+        audio = base64.b64decode(first.goal_audio_b64, validate=True)
+        await run_task(conn, audio, first.lang, stt)
+        return
+
+    if isinstance(first, TextGoal):
+        await run_intent(conn, first.goal_text, first.lang)
+        return
+
+    raise TypeError("first frame must be Audio or TextGoal")
 
 
 async def _handler(ws):
@@ -20,8 +34,8 @@ async def _handler(ws):
 
     conn = AppConnection(send)
     first = decode(await ws.recv())
-    if not isinstance(first, Audio):
-        await ws.close(code=PROTOCOL_ERROR, reason="first frame must be Audio")
+    if not isinstance(first, Audio | TextGoal):
+        await ws.close(code=PROTOCOL_ERROR, reason="first frame must be Audio or TextGoal")
         return
 
     async def pump() -> None:
@@ -30,15 +44,14 @@ async def _handler(ws):
 
     pump_task = None
     try:
-        stt = make_stt()
-        audio = base64.b64decode(first.goal_audio_b64, validate=True)
         pump_task = asyncio.create_task(pump())
-        await run_task(conn, audio, first.lang, stt)
+        await _dispatch_first_frame(conn, first)
     except Exception:
         logger.exception("Backend task handling failed.")
+        lang = getattr(first, "lang", "en")
         await conn.send_task_failure(
             SAFE_FAILURE_COPY,
-            first.lang,
+            lang,
             recovery_contact_id="buyer-daughter",
         )
     finally:

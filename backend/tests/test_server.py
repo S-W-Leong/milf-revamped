@@ -1,10 +1,12 @@
 import base64
+import json
 
+import pytest
 import websockets
 
 from milf.agent_runner import SAFE_FAILURE_COPY
-from milf.protocol import Audio, TaskFailure, decode, encode
-from milf.server import _handler
+from milf.protocol import Audio, TaskFailure, TextGoal, decode, encode
+from milf.server import _dispatch_first_frame, _handler
 from milf.stt import MockSTT
 
 
@@ -60,3 +62,28 @@ async def test_server_sends_safe_failure_for_invalid_audio_base64(monkeypatch):
     assert failure.message == SAFE_FAILURE_COPY
     assert failure.recovery_contact_id == "buyer-daughter"
     assert called is False
+
+
+class DispatchConnection:
+    pass
+
+
+async def test_dispatch_first_frame_routes_text_goal(monkeypatch):
+    conn = DispatchConnection()
+    called = []
+
+    async def fake_run_intent(connection, intent, lang):
+        called.append((connection, intent, lang))
+
+    monkeypatch.setattr("milf.server.run_intent", fake_run_intent)
+
+    await _dispatch_first_frame(conn, TextGoal(goal_text="call Wei", lang="en"))
+
+    assert called == [(conn, "call Wei", "en")]
+
+
+async def test_dispatch_first_frame_rejects_unknown_message():
+    conn = DispatchConnection()
+
+    with pytest.raises(TypeError, match="first frame must be Audio or TextGoal"):
+        await _dispatch_first_frame(conn, json.loads("{}"))

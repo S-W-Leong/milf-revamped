@@ -1,7 +1,6 @@
 package ai.milf.client.overlay
 
 import ai.milf.client.session.SeniorUiState
-import ai.milf.client.session.SeniorUxScreen
 import ai.milf.client.ui.SeniorOverlayUi
 import android.content.Context
 import android.graphics.PixelFormat
@@ -21,19 +20,33 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kotlin.math.abs
 
+internal object OverlayWindowSizing {
+    fun expandedWidthPx(): Int = WindowManager.LayoutParams.MATCH_PARENT
+    fun expandedHeightPx(): Int = WindowManager.LayoutParams.MATCH_PARENT
+    fun collapsedSizeDp(): Int = 66
+
+    fun railWidthPx(screenWidthPx: Int, density: Float): Int {
+        val marginPx = (24 * density).toInt()
+        val maxWidthPx = (560 * density).toInt()
+        return minOf(screenWidthPx - marginPx * 2, maxWidthPx)
+    }
+}
+
 class OverlayWindowController(
     private val context: Context,
     private val callbacks: Callbacks
 ) {
     interface Callbacks {
-        fun onBubbleTap()
-        fun onStopListening()
+        fun onMicTap()
+        fun onCommandTextChange(text: String)
+        fun onSubmitText()
+        fun onRunStop()
+        fun onExitAgent()
+        fun onOutsideExpandedTap()
+        fun onExpandOverlay()
         fun onApprove()
         fun onDeny()
-        fun onSpeakDecision()
-        fun onWatchModeChange(enabled: Boolean)
-        fun onRetry()
-        fun onCallBuyer()
+        fun onTransientMessageShown()
     }
 
     private val windowManager = context.getSystemService(WindowManager::class.java)
@@ -140,36 +153,34 @@ class OverlayWindowController(
         setContent {
             SeniorOverlayUi(
                 state = state,
-                onBubbleTap = callbacks::onBubbleTap,
-                onStopListening = callbacks::onStopListening,
+                onMicTap = callbacks::onMicTap,
+                onCommandTextChange = callbacks::onCommandTextChange,
+                onSubmitText = callbacks::onSubmitText,
+                onRunStop = callbacks::onRunStop,
+                onExitAgent = callbacks::onExitAgent,
+                onOutsideExpandedTap = callbacks::onOutsideExpandedTap,
+                onExpandOverlay = callbacks::onExpandOverlay,
                 onApprove = callbacks::onApprove,
                 onDeny = callbacks::onDeny,
-                onSpeakDecision = callbacks::onSpeakDecision,
-                onWatchModeChange = callbacks::onWatchModeChange,
-                onRetry = callbacks::onRetry,
-                onCallBuyer = callbacks::onCallBuyer
+                onTransientMessageShown = callbacks::onTransientMessageShown
             )
         }
     }
 
     private fun paramsFor(state: SeniorUiState): WindowManager.LayoutParams {
-        val expanded = isExpanded(state)
+        val expanded = !state.isCollapsed
         return WindowManager.LayoutParams(
-            if (expanded) WindowManager.LayoutParams.MATCH_PARENT else dp(96),
-            if (expanded) WindowManager.LayoutParams.MATCH_PARENT else dp(96),
+            if (expanded) OverlayWindowSizing.expandedWidthPx() else dp(OverlayWindowSizing.collapsedSizeDp()),
+            if (expanded) OverlayWindowSizing.expandedHeightPx() else dp(OverlayWindowSizing.collapsedSizeDp()),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = if (expanded) Gravity.CENTER else Gravity.TOP or Gravity.END
+            gravity = if (expanded) Gravity.TOP or Gravity.START else Gravity.TOP or Gravity.END
             x = if (expanded) 0 else collapsedX
             y = if (expanded) 0 else collapsedY
         }
     }
-
-    private fun isExpanded(state: SeniorUiState): Boolean =
-        state.screen != SeniorUxScreen.Idle &&
-            (state.screen != SeniorUxScreen.Working || state.watchMode || state.demoMode)
 
     private fun dp(value: Int): Int =
         (value * context.resources.displayMetrics.density).toInt()
@@ -184,7 +195,7 @@ class OverlayWindowController(
 
         override fun onTouch(view: View, event: MotionEvent): Boolean {
             val current = params ?: return false
-            if (current.width == WindowManager.LayoutParams.MATCH_PARENT) return false
+            if (!currentState.isCollapsed) return false
 
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
@@ -214,11 +225,7 @@ class OverlayWindowController(
                 MotionEvent.ACTION_UP -> {
                     if (!dragging) {
                         view.performClick()
-                        if (currentState.screen == SeniorUxScreen.Working) {
-                            callbacks.onWatchModeChange(true)
-                        } else {
-                            callbacks.onBubbleTap()
-                        }
+                        callbacks.onExpandOverlay()
                     }
                     dragging = false
                     return true
