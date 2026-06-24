@@ -12,6 +12,8 @@ Checked items below are verified by the 2026-06-24 local audit unless the item e
 - [ ] Android debug build passes in CI with `./gradlew :app:testDebugUnitTest :app:assembleDebug`.
 - [x] Hygiene check proves `.env`, `android/local.properties`, `.idea/`, and `android/.idea/` are not tracked.
 - [x] Lightweight secret check or denylist check finds no obvious committed secrets.
+- [x] Backend setup and tests pass from a fresh local clone with Python 3.12.7.
+- [x] Android unit tests and debug build pass from a fresh local clone with JDK 17 and Android SDK API 35.
 
 ## Security Gates
 
@@ -61,7 +63,7 @@ Android rollback must distribute the last known-good APK or app-store track and 
 ## Known Launch Blockers
 
 - GitHub Actions must be observed green on the pushed branch or release PR.
-- Clean-checkout backend and Android setup evidence must be recorded.
+- Python 3.11 clean-environment backend evidence must be observed through GitHub Actions or a local Python 3.11 runtime.
 - Accessibility onboarding and the 10-run WhatsApp hero rehearsal must be completed on a named device or emulator.
 - Production `wss://` deployment and device-pairing procedure must be verified.
 - Public display-name decision, privacy/security review, and release owner signoff are still pending.

@@ -3,7 +3,7 @@
 **Date:** 2026-06-24  
 **Branch:** `UPGRADES`  
 **Implementation head under audit:** `241de22 fix: close runtime and CI review gaps`  
-**Result:** Not release-ready. Automated local gates pass, but external CI evidence, clean-checkout evidence, device rehearsal, production deployment evidence, and owner signoff remain open.
+**Result:** Not release-ready. Automated local and clean-checkout gates pass, but external CI evidence, device rehearsal, production deployment evidence, and owner signoff remain open.
 
 ## Checks Run
 
@@ -13,10 +13,11 @@
 | Local-only tracked file hygiene | Pass | `git ls-files .env android/local.properties .idea android/.idea` returned no tracked files. |
 | Lightweight secret denylist | Pass | `git grep -nI -E` denylist for private keys, AWS access keys, GitHub tokens, and OpenAI-style `sk-` keys, including hyphenated `sk-*` keys, found no matches outside `.env.example`. |
 | Backend tests | Pass | `cd backend && ..\.venv\Scripts\python -m pytest` returned `76 passed` on Windows with Python 3.12.7. |
+| Clean-checkout backend setup and tests | Pass with local Python 3.12 | From a fresh local clone at `C:\Users\USER\AppData\Local\Temp\mythos-clean-1395f1740a9541439220284fe7bde7d2`, `python -m venv .venv`, `.\.venv\Scripts\python -m pip install -e ".[test]"`, and `.\.venv\Scripts\python -m pytest` returned `76 passed`. This machine does not have Python 3.11 installed, so exact Python 3.11 evidence still depends on GitHub Actions or a local 3.11 runtime. |
 | Android runtime regression tests | Pass | `cd android && .\gradlew.bat --no-daemon --console=plain :app:testDebugUnitTest --tests "ai.milf.client.MainViewModelTest"` passed after adding regression coverage for TTS confirmation failure and stale confirmation cleanup. |
 | Android tests and debug build | Pass | `cd android && .\gradlew.bat --no-daemon --console=plain :app:testDebugUnitTest :app:assembleDebug` returned `BUILD SUCCESSFUL` using JDK 17 and Android SDK API 35. |
+| Clean-checkout Android setup and build | Pass | From the same fresh local clone, with only a generated `android/local.properties` pointing to the local SDK, `.\gradlew.bat --no-daemon --console=plain :app:testDebugUnitTest :app:assembleDebug` returned `BUILD SUCCESSFUL` with `43 actionable tasks: 43 executed`. |
 | GitHub Actions CI | Pending | Workflow exists in `.github/workflows/ci.yml`, but this audit has not observed a GitHub-hosted run on the pushed branch or PR. |
-| Clean checkout setup | Pending | The commands are documented and CI is configured, but this audit used the existing local checkout and local `.venv`. |
 | Device or emulator rehearsal | Pending | No accessibility onboarding evidence or 10-run WhatsApp hero rehearsal log is recorded. |
 
 ## Backend Status
@@ -44,14 +45,12 @@
 
 ## Remaining Launch Blockers
 
-1. Push `UPGRADES` and confirm GitHub Actions is green for the release candidate.
-2. Verify backend setup from a clean checkout with Python 3.11 using `python -m pip install -e .[test]` and `python -m pytest`.
-3. Verify Android setup from a clean checkout with JDK 17 and Android SDK API 35 using `./gradlew :app:testDebugUnitTest :app:assembleDebug`.
-4. Run accessibility-service onboarding on a named supported Android device or emulator.
-5. Rehearse the known-contact WhatsApp video-call hero path 10 times and record at least 9 successes or an owner-approved waiver.
-6. Record production deployment evidence for authenticated `wss://` transport behind TLS.
-7. Complete privacy/security owner review, public display-name decision, and release owner signoff.
+1. Push `UPGRADES` and confirm GitHub Actions is green for the release candidate, including Python 3.11 backend verification.
+2. Run accessibility-service onboarding on a named supported Android device or emulator.
+3. Rehearse the known-contact WhatsApp video-call hero path 10 times and record at least 9 successes or an owner-approved waiver.
+4. Record production deployment evidence for authenticated `wss://` transport behind TLS.
+5. Complete privacy/security owner review, public display-name decision, and release owner signoff.
 
 ## Release Checklist Status
 
-The checklist is partially complete. Automated local gates and several tested security controls are complete; CI-hosted gates, manual device rehearsal, production deployment evidence, and signoff gates remain unchecked.
+The checklist is partially complete. Automated local gates, clean-checkout setup gates, and several tested security controls are complete; CI-hosted gates, manual device rehearsal, production deployment evidence, and signoff gates remain unchecked.
