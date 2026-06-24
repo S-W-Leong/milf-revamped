@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.concurrent.atomic.AtomicLong
 
 class MilfSessionController(
     private val dependencies: Dependencies,
@@ -19,7 +20,7 @@ class MilfSessionController(
 ) {
     private val _uiState = MutableStateFlow(SeniorUiState())
     val uiState: StateFlow<SeniorUiState> = _uiState.asStateFlow()
-    private var sessionId = 0L
+    private val sessionId = AtomicLong(0L)
 
     fun setBackendUrl(url: String) {
         _uiState.update { it.copy(backendUrl = url.trim()) }
@@ -76,7 +77,7 @@ class MilfSessionController(
         val bytes = dependencies.recorder.stop()
         closeActiveClient()
         val client = dependencies.clientFactory(state.backendUrl)
-        val callbackSessionId = sessionId
+        val callbackSessionId = sessionId.get()
         dependencies.activeClient = client
         _uiState.update {
             it.copy(
@@ -213,6 +214,10 @@ class MilfSessionController(
     private fun respondToConfirmation(approved: Boolean) {
         val pending = _uiState.value.confirmation ?: return
         dependencies.activeClient?.send(ConfirmResponse(pending.id, approved))
+        if (!approved) {
+            nextSessionId()
+            closeActiveClient()
+        }
         _uiState.update {
             it.copy(
                 confirmation = null,
@@ -224,12 +229,11 @@ class MilfSessionController(
     }
 
     private fun nextSessionId(): Long {
-        sessionId += 1
-        return sessionId
+        return sessionId.incrementAndGet()
     }
 
     private fun isCurrentSession(callbackSessionId: Long): Boolean =
-        callbackSessionId == sessionId
+        callbackSessionId == sessionId.get()
 
     private fun closeActiveClient() {
         val client = dependencies.activeClient

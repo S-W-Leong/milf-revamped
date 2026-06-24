@@ -59,6 +59,26 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun denyConfirmationInvalidatesAndClosesActiveSession() = runTest {
+        val sent = mutableListOf<ConfirmResponse>()
+        val client = FakeClient(onSendConfirm = { sent += it })
+        val controller = fakeController(client = client)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        controller.showConfirmationForTest("c1", "Calling Wei?", "en", "wei-grandson")
+        controller.denyConfirmation()
+        client.callbacks?.onTaskComplete("Old success.", "en", "wei-grandson")
+
+        val state = controller.uiState.value
+        assertEquals(listOf(ConfirmResponse("c1", false)), sent)
+        assertEquals(true, client.closed)
+        assertEquals(SeniorUxScreen.Idle, state.screen)
+        assertEquals(null, state.success)
+        assertEquals(null, state.failure)
+    }
+
+    @Test
     fun taskFailureShowsRecoveryContact() = runTest {
         val client = FakeClient()
         val controller = fakeController(client = client)
