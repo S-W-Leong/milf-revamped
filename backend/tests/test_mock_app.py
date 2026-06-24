@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -233,6 +234,44 @@ async def test_server_cancels_run_task_when_client_disconnects(monkeypatch):
             handler_task.cancel()
             with pytest.raises(asyncio.CancelledError):
                 await handler_task
+
+
+def test_server_startup_suppresses_websocket_debug_logging(monkeypatch):
+    from milf.server import serve
+
+    captured = {}
+    logger = logging.getLogger("websockets")
+    original_level = logger.level
+    logger.setLevel(logging.DEBUG)
+
+    class FakeServe:
+        def __init__(self, handler, host, port, max_size):
+            captured["host"] = host
+            captured["port"] = port
+            captured["max_size"] = max_size
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    async def never_finishes():
+        raise asyncio.CancelledError
+
+    monkeypatch.setenv("MILF_WS_HOST", "127.0.0.1")
+    monkeypatch.setenv("MILF_WS_PORT", "8765")
+    monkeypatch.setattr("milf.server.websockets.serve", FakeServe)
+    monkeypatch.setattr("milf.server.asyncio.Future", never_finishes)
+
+    try:
+        with pytest.raises(asyncio.CancelledError):
+            asyncio.run(serve())
+
+        assert captured["host"] == "127.0.0.1"
+        assert logging.getLogger("websockets").getEffectiveLevel() >= logging.WARNING
+    finally:
+        logger.setLevel(original_level)
 
 
 class _DisconnectingWebSocket:

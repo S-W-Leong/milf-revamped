@@ -65,9 +65,13 @@ class MainActivity : ComponentActivity() {
                 onSpeakDecision = {
                     state.confirmation?.let { confirmationVoice.listen(it.lang) }
                 },
-                onOpenAccessibility = {
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                }
+                onRequestAccessibility = viewModel::requestAccessibilityDisclosure,
+                onAcceptAccessibility = {
+                    if (viewModel.acceptAccessibilityDisclosure()) {
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    }
+                },
+                onDismissAccessibility = viewModel::dismissAccessibilityDisclosure
             )
         }
     }

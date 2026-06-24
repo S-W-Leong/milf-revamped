@@ -24,7 +24,7 @@ Checked items below are verified by the 2026-06-24 local audit unless the item e
 - [x] `MILF_DEVICE_TOKEN` or a stronger session-pairing token is required before phone-control requests.
 - [x] Backend confirmation bypass tests pass.
 - [x] Android confirmation bypass tests pass.
-- [ ] Server and client logs do not include tokens, audio, transcripts, screenshots, or full UI trees.
+- [x] Server and client logs do not include tokens, audio, transcripts, screenshots, or full UI trees.
 
 ## Privacy Gates
 
@@ -32,7 +32,8 @@ Checked items below are verified by the 2026-06-24 local audit unless the item e
 - [x] `PRIVACY.md` reflects current transcript handling.
 - [x] `PRIVACY.md` reflects current UI tree minimization.
 - [x] `PRIVACY.md` reflects screenshot gating and retention rules.
-- [ ] User-facing consent and accessibility disclosure copy has been reviewed.
+- [x] User-facing consent and accessibility disclosure copy is implemented and covered by local tests.
+- [ ] User-facing consent and accessibility disclosure copy has owner approval.
 - [x] Third-party provider behavior is documented for OpenAI, ILMU, and MERaLiON.
 
 ## Device Rehearsal
@@ -66,4 +67,4 @@ Android rollback must distribute the last known-good APK or app-store track and 
 - Python 3.11 clean-environment backend evidence must be observed through GitHub Actions or a local Python 3.11 runtime.
 - Accessibility onboarding and the 10-run WhatsApp hero rehearsal must be completed on a named device or emulator.
 - Production `wss://` deployment and device-pairing procedure must be verified.
-- Public display-name decision, privacy/security review, and release owner signoff are still pending.
+- Public display-name decision, disclosure-copy owner approval, privacy/security review, and release owner signoff are still pending.

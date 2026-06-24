@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,7 +42,9 @@ fun MilfUi(
     onApprove: () -> Unit,
     onDeny: () -> Unit,
     onSpeakDecision: () -> Unit,
-    onOpenAccessibility: () -> Unit
+    onRequestAccessibility: () -> Unit,
+    onAcceptAccessibility: () -> Unit,
+    onDismissAccessibility: () -> Unit
 ) {
     MaterialTheme {
         Surface(
@@ -101,18 +104,36 @@ fun MilfUi(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.audio_recording_disclosure),
+                            fontSize = 16.sp,
+                            lineHeight = 22.sp,
+                            textAlign = TextAlign.Center,
+                            color = Color(0xFF475569),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
                     Column(Modifier.fillMaxWidth()) {
                         if (!state.accessibilityEnabled) {
                             OutlinedButton(
-                                onClick = onOpenAccessibility,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 64.dp)
+                                onClick = onRequestAccessibility,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 64.dp)
                             ) {
-                                Text("Enable phone control", fontSize = 20.sp)
+                                Text(stringResource(R.string.enable_phone_control), fontSize = 20.sp)
                             }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.accessibility_control_disclosure),
+                                fontSize = 16.sp,
+                                lineHeight = 22.sp,
+                                textAlign = TextAlign.Center,
+                                color = Color(0xFF475569),
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -123,6 +144,13 @@ fun MilfUi(
                         onApprove = onApprove,
                         onDeny = onDeny,
                         onSpeakDecision = onSpeakDecision
+                    )
+                }
+
+                if (state.showAccessibilityDisclosure) {
+                    AccessibilityDisclosureOverlay(
+                        onAccept = onAcceptAccessibility,
+                        onDismiss = onDismissAccessibility
                     )
                 }
             }
@@ -194,6 +222,15 @@ private fun ConfirmationOverlay(
                 textAlign = TextAlign.Center,
                 color = Color(0xFF111827)
             )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.confirmation_disclosure),
+                fontSize = 18.sp,
+                lineHeight = 24.sp,
+                textAlign = TextAlign.Center,
+                color = Color(0xFF475569),
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(Modifier.height(28.dp))
             OutlinedButton(
                 onClick = onSpeakDecision,
@@ -224,6 +261,66 @@ private fun ConfirmationOverlay(
                 ) {
                     Text("Yes", fontSize = 24.sp)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccessibilityDisclosureOverlay(
+    onAccept: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xCC111827))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 560.dp)
+                .background(Color.White, RoundedCornerShape(8.dp))
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.accessibility_consent_title),
+                fontSize = 28.sp,
+                lineHeight = 34.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = Color(0xFF111827)
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.accessibility_consent_disclosure),
+                fontSize = 18.sp,
+                lineHeight = 26.sp,
+                textAlign = TextAlign.Center,
+                color = Color(0xFF334155),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = onAccept,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+            ) {
+                Text(stringResource(R.string.accessibility_consent_accept), fontSize = 22.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+            ) {
+                Text(stringResource(R.string.accessibility_consent_dismiss), fontSize = 22.sp)
             }
         }
     }

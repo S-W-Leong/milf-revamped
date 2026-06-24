@@ -9,6 +9,7 @@ import websockets
 from milf.agent_runner import run_task
 from milf.connection import AppConnection
 from milf.protocol import Audio, ProtocolDecodeError, decode
+from milf.runtime_logging import configure_dependency_logging
 from milf.settings import Settings
 from milf.stt import make_stt
 
@@ -126,6 +127,7 @@ def _query_token(ws) -> str | None:
 
 
 async def serve(host=None, port=None):
+    configure_dependency_logging()
     settings = Settings.from_env()
     host = host or settings.ws_host
     port = port or settings.ws_port

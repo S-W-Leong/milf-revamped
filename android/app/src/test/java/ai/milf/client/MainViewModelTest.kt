@@ -19,6 +19,29 @@ import org.junit.Test
 
 class MainViewModelTest {
     @Test
+    fun accessibilityDisclosureStartsHiddenAndCanBeOpened() = runTest {
+        val viewModel = MainViewModel(dependencies = testDependencies())
+
+        assertFalse(viewModel.uiState.value.showAccessibilityDisclosure)
+
+        viewModel.requestAccessibilityDisclosure()
+
+        assertTrue(viewModel.uiState.value.showAccessibilityDisclosure)
+    }
+
+    @Test
+    fun accessibilityDisclosureRequiresAcceptanceBeforeOpeningSettings() = runTest {
+        val viewModel = MainViewModel(dependencies = testDependencies())
+
+        assertFalse(viewModel.acceptAccessibilityDisclosure())
+
+        viewModel.requestAccessibilityDisclosure()
+        assertTrue(viewModel.acceptAccessibilityDisclosure())
+
+        assertFalse(viewModel.uiState.value.showAccessibilityDisclosure)
+    }
+
+    @Test
     fun microphonePermissionDenialSetsVisibleStatus() = runTest {
         val viewModel = MainViewModel(
             dependencies = testDependencies()
@@ -184,6 +207,7 @@ class MainViewModelTest {
 
         assertNull(viewModel.uiState.value.confirmation)
         assertFalse(viewModel.uiState.value.isRunning)
+        assertEquals("Connection failed", viewModel.uiState.value.status)
     }
 
     @Test
@@ -207,11 +231,11 @@ class MainViewModelTest {
 
         viewModel.stopAndRun()
         viewModel.showConfirmationForTest("c1", "Call Wei now?", "en")
-        socketFactory.listener?.onClosed("server closed")
+        socketFactory.listener?.onClosed("token=secret")
 
         assertNull(viewModel.uiState.value.confirmation)
         assertFalse(viewModel.uiState.value.isRunning)
-        assertEquals("server closed", viewModel.uiState.value.status)
+        assertEquals("Connection closed", viewModel.uiState.value.status)
     }
 
     @Test

@@ -27,7 +27,8 @@ data class MainUiState(
     val status: String = "Ready",
     val lastNarration: String? = null,
     val confirmation: PendingConfirmation? = null,
-    val accessibilityEnabled: Boolean = false
+    val accessibilityEnabled: Boolean = false,
+    val showAccessibilityDisclosure: Boolean = false
 )
 
 data class PendingConfirmation(
@@ -60,6 +61,20 @@ class MainViewModel(
         _uiState.update {
             it.copy(accessibilityEnabled = MilfAccessibilityService.instance != null)
         }
+    }
+
+    fun requestAccessibilityDisclosure() {
+        _uiState.update { it.copy(showAccessibilityDisclosure = true) }
+    }
+
+    fun dismissAccessibilityDisclosure() {
+        _uiState.update { it.copy(showAccessibilityDisclosure = false) }
+    }
+
+    fun acceptAccessibilityDisclosure(): Boolean {
+        if (!_uiState.value.showAccessibilityDisclosure) return false
+        _uiState.update { it.copy(showAccessibilityDisclosure = false) }
+        return true
     }
 
     fun onMicrophonePermissionDenied() {
@@ -179,7 +194,7 @@ class MainViewModel(
                     it.copy(
                         isRunning = false,
                         confirmation = null,
-                        status = reason ?: "Done"
+                        status = "Connection closed"
                     )
                 }
             }
@@ -193,7 +208,7 @@ class MainViewModel(
                     it.copy(
                         isRunning = false,
                         confirmation = null,
-                        status = message
+                        status = "Connection failed"
                     )
                 }
             }

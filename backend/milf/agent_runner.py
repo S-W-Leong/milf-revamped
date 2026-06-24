@@ -7,6 +7,7 @@ from milf.connection import AppConnection
 from milf.context import acknowledgment, build_goal
 from milf.narration import narrate_events
 from milf.policy import ConfirmationPolicy
+from milf.runtime_logging import configure_dependency_logging
 from milf.settings import Settings
 from milf.stt import STTAdapter
 from milf.ws_driver import WebSocketDriver
@@ -21,10 +22,11 @@ def build_agent(
     from llama_index.llms.openai import OpenAI
     from mobilerun import AgentConfig, MobileAgent, MobileConfig
 
+    configure_dependency_logging()
     settings = settings or Settings.from_env()
     model = settings.openai_model
     config = MobileConfig(
-        agent=AgentConfig(max_steps=30, reasoning=True, streaming=True),
+        agent=AgentConfig(max_steps=30, reasoning=True, streaming=False),
     )
 
     return MobileAgent(
