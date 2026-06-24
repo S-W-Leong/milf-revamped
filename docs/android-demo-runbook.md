@@ -103,3 +103,12 @@ Record these results for each target device:
 | Example emulator Pixel API 35 | 15 | yes | partial | yes | example baseline; replace after manual Task 9 test |
 
 During Task 9, add one row per physical device only after the device has been tested. Use measured values such as `yes`, `no`, or `partial`, and include the exact device model in the first column.
+
+## Verification status
+
+Automated checks from this workstation:
+
+- Backend: `.venv/bin/pytest backend -v` passes.
+- Android: `JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.18/libexec/openjdk.jdk/Contents/Home ./gradlew :app:testDebugUnitTest :app:assembleDebug` passes.
+
+Manual UX verification is still pending. `adb devices` returned no attached emulator or phone, so the senior-mode, demo-mode, failure, assist-invocation, and cross-app bubble checks were not run in this environment. Do not mark assist invocation as working until the power/assistant gesture actually opens `AssistEntryActivity` on the target device.
