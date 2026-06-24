@@ -23,6 +23,14 @@ SAFETY_CONFIRMATION = (
     "with a short summary and only proceed if confirmed."
 )
 
+AGENT_OVERLAY_INTERACTION = """
+MILF overlay interaction rule:
+- The phone may show MILF as an expanded bottom bar while you are acting.
+- The first tap outside the bar only collapses MILF into a floating bubble and does not reach the underlying app.
+- If a tap appears to do nothing except collapse MILF, do not treat it as a successful app interaction.
+- Re-read the UI tree or screenshot after the collapse, then perform the intended tap on the underlying app once the bubble is collapsed.
+"""
+
 
 class Contact(BaseModel):
     id: str
@@ -72,6 +80,7 @@ def build_goal(intent: str) -> str:
         )
 
     parts.append(WHATSAPP_APP_CARD.strip())
+    parts.append(AGENT_OVERLAY_INTERACTION.strip())
     parts.append(SAFETY_CONFIRMATION)
 
     return "\n\n".join(parts)
