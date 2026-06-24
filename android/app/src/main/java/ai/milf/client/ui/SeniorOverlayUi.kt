@@ -68,7 +68,10 @@ fun SeniorOverlayUi(
 ) {
     MaterialTheme {
         when (state.screen) {
-            SeniorUxScreen.Idle -> HelperBubble(onClick = onBubbleTap)
+            SeniorUxScreen.Idle -> HelperBubble(
+                contentDescription = "Start helper",
+                onClick = onBubbleTap
+            )
             SeniorUxScreen.Listening -> ListeningOverlay(
                 captions = state.captions,
                 onStopListening = onStopListening
@@ -94,7 +97,7 @@ fun SeniorOverlayUi(
 }
 
 @Composable
-private fun HelperBubble(onClick: () -> Unit) {
+private fun HelperBubble(contentDescription: String, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         modifier = Modifier.size(MilfDimens.BubbleSize),
@@ -103,7 +106,7 @@ private fun HelperBubble(onClick: () -> Unit) {
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_helper),
-            contentDescription = "MILF helper",
+            contentDescription = contentDescription,
             tint = Color.Unspecified,
             modifier = Modifier.size(44.dp)
         )
@@ -146,58 +149,71 @@ private fun ConfirmationGate(
 ) {
     val pending = state.confirmation ?: return
     FullOverlay(scrim = true) {
-        pending.contact?.let { contact ->
-            Image(
-                painter = painterResource(contact.photoResId),
-                contentDescription = contact.displayName,
-                modifier = Modifier
-                    .size(144.dp)
-                    .clip(CircleShape)
-            )
-            Spacer(Modifier.height(18.dp))
-        }
-        Text(
-            text = pending.summary,
-            fontSize = 34.sp,
-            lineHeight = 40.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            color = MilfColors.Ink
-        )
-        Spacer(Modifier.height(24.dp))
-        OutlinedButton(
-            onClick = onSpeakDecision,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(MilfDimens.PrimaryTarget)
+        Surface(
+            shape = RoundedCornerShape(MilfDimens.Corner),
+            color = MilfColors.Paper,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Icon(Icons.Default.Mic, contentDescription = null)
-            Text("Speak yes or no", fontSize = 24.sp)
-        }
-        Spacer(Modifier.height(14.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Button(
-                onClick = onDeny,
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(88.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MilfColors.NoRed)
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(Icons.Default.Close, contentDescription = null)
-                Text("NO", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            }
-            Button(
-                onClick = onApprove,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(88.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MilfColors.YesGreen)
-            ) {
-                Icon(Icons.Default.Check, contentDescription = null)
-                Text("YES", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                pending.contact?.let { contact ->
+                    Image(
+                        painter = painterResource(contact.photoResId),
+                        contentDescription = contact.displayName,
+                        modifier = Modifier
+                            .size(144.dp)
+                            .clip(CircleShape)
+                    )
+                    Spacer(Modifier.height(18.dp))
+                }
+                Text(
+                    text = pending.summary,
+                    fontSize = 34.sp,
+                    lineHeight = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    color = MilfColors.Ink
+                )
+                Spacer(Modifier.height(24.dp))
+                OutlinedButton(
+                    onClick = onSpeakDecision,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(MilfDimens.PrimaryTarget)
+                ) {
+                    Icon(Icons.Default.Mic, contentDescription = null)
+                    Text("Speak yes or no", fontSize = 24.sp)
+                }
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = onDeny,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(88.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MilfColors.NoRed)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = null)
+                        Text("NO", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = onApprove,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(88.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MilfColors.YesGreen)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null)
+                        Text("YES", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
     }
@@ -206,20 +222,14 @@ private fun ConfirmationGate(
 @Composable
 private fun WorkingOverlay(state: SeniorUiState, onWatchModeChange: (Boolean) -> Unit) {
     if (!state.watchMode && !state.demoMode) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            HelperBubble(onClick = { onWatchModeChange(true) })
-            Surface(
-                shape = RoundedCornerShape(MilfDimens.Corner),
-                color = MilfColors.Ink,
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
-                Text(
-                    text = state.captions,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
+        Box(
+            modifier = Modifier.size(MilfDimens.BubbleSize),
+            contentAlignment = Alignment.Center
+        ) {
+            HelperBubble(
+                contentDescription = "Show progress",
+                onClick = { onWatchModeChange(true) }
+            )
         }
         return
     }
