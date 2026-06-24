@@ -247,6 +247,51 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun recorderStartFailureMovesToSafeFailure() = runTest {
+        val recorder = FakeRecorder(failStart = true)
+        val controller = fakeController(recorder = recorder)
+
+        controller.beginListening()
+
+        val state = controller.uiState.value
+        assertEquals(SeniorUxScreen.Failure, state.screen)
+        assertEquals(false, state.isRecording)
+        assertEquals(false, state.isRunning)
+        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+    }
+
+    @Test
+    fun recorderStopFailureMovesToSafeFailure() = runTest {
+        val recorder = FakeRecorder(failStop = true)
+        val controller = fakeController(recorder = recorder)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+
+        val state = controller.uiState.value
+        assertEquals(SeniorUxScreen.Failure, state.screen)
+        assertEquals(false, state.isRecording)
+        assertEquals(false, state.isRunning)
+        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+    }
+
+    @Test
+    fun clientStartFailureMovesToSafeFailureAndClosesClient() = runTest {
+        val client = FakeClient(failStart = true)
+        val controller = fakeController(client)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+
+        val state = controller.uiState.value
+        assertEquals(true, client.closed)
+        assertEquals(SeniorUxScreen.Failure, state.screen)
+        assertEquals(false, state.isRecording)
+        assertEquals(false, state.isRunning)
+        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+    }
+
+    @Test
     fun activeCloseWhileWorkingMovesToFailure() = runTest {
         val client = FakeClient()
         val controller = fakeController(client = client)
@@ -312,9 +357,7 @@ class MilfSessionControllerTest {
         val controller = fakeController(client)
 
         controller.setDemoMode(true)
-        controller.setWatchMode(true)
         controller.setDemoMode(false)
-        controller.setWatchMode(false)
         controller.beginListening()
         controller.finishListeningAndRun()
 
@@ -360,11 +403,13 @@ private class FakeNarrator : NarratorLike {
 }
 
 private class FakeClient(
-    private val onSendConfirm: (ConfirmResponse) -> Unit = {}
+    private val onSendConfirm: (ConfirmResponse) -> Unit = {},
+    private val failStart: Boolean = false
 ) : SessionSocketClient {
     var callbacks: MilfWebSocketClient.Callbacks? = null
 
     override fun start(goalAudio: ByteArray, lang: String, callbacks: MilfWebSocketClient.Callbacks) {
+        check(!failStart) { "client start failed" }
         this.callbacks = callbacks
     }
 
@@ -382,18 +427,23 @@ private class FakeClient(
     }
 }
 
-private class FakeRecorder : AudioRecorderLike {
+private class FakeRecorder(
+    private val failStart: Boolean = false,
+    private val failStop: Boolean = false
+) : AudioRecorderLike {
     var isRecording = false
     var stopCalls = 0
     var cancelled = false
 
     override fun start() {
+        check(!failStart) { "start failed" }
         isRecording = true
         cancelled = false
     }
 
     override fun stop(): ByteArray {
         check(isRecording) { "stop called while not recording" }
+        check(!failStop) { "stop failed" }
         stopCalls += 1
         isRecording = false
         return byteArrayOf(1)

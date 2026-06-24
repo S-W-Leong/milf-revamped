@@ -35,7 +35,7 @@ class MilfSessionController(
     }
 
     fun setDemoMode(enabled: Boolean) {
-        _uiState.update { it.copy(demoMode = enabled, watchMode = enabled || it.watchMode) }
+        _uiState.update { it.copy(demoMode = enabled, watchMode = enabled) }
     }
 
     fun setOverlayEnabled(enabled: Boolean) {
@@ -54,7 +54,12 @@ class MilfSessionController(
         nextSessionId()
         closeActiveClient()
         dependencies.narrator.stop()
-        dependencies.recorder.start()
+        try {
+            dependencies.recorder.start()
+        } catch (exception: RuntimeException) {
+            moveLocalSessionToFailure()
+            return
+        }
         _uiState.update {
             it.copy(
                 screen = SeniorUxScreen.Listening,
@@ -74,9 +79,19 @@ class MilfSessionController(
         val state = _uiState.value
         if (!state.isRecording) return
 
-        val bytes = dependencies.recorder.stop()
+        val bytes = try {
+            dependencies.recorder.stop()
+        } catch (exception: RuntimeException) {
+            moveLocalSessionToFailure()
+            return
+        }
         closeActiveClient()
-        val client = dependencies.clientFactory(state.backendUrl)
+        val client = try {
+            dependencies.clientFactory(state.backendUrl)
+        } catch (exception: RuntimeException) {
+            moveLocalSessionToFailure()
+            return
+        }
         val callbackSessionId = sessionId.get()
         dependencies.activeClient = client
         _uiState.update {
@@ -90,7 +105,11 @@ class MilfSessionController(
                 failure = null
             )
         }
-        client.start(bytes, state.lang, callbacks(callbackSessionId, client))
+        try {
+            client.start(bytes, state.lang, callbacks(callbackSessionId, client))
+        } catch (exception: RuntimeException) {
+            moveLocalSessionToFailure(expectedClient = client)
+        }
     }
 
     fun approveConfirmation() {
@@ -288,7 +307,7 @@ class MilfSessionController(
     ) {
         if (!claimCurrentSession(callbackSessionId)) return
 
-        val safe = "I'm having a little trouble doing that. Want me to call your daughter to help?"
+        val safe = SAFE_FAILURE
         val lang = _uiState.value.lang
         var shouldSpeak = false
         _uiState.update {
@@ -318,6 +337,26 @@ class MilfSessionController(
         if (shouldSpeak) {
             dependencies.narrator.speak(safe, lang)
         }
+    }
+
+    private fun moveLocalSessionToFailure(expectedClient: SessionSocketClient? = null) {
+        nextSessionId()
+        dependencies.recorder.cancel()
+        closeActiveClient(expectedClient)
+        val safe = SAFE_FAILURE
+        val lang = _uiState.value.lang
+        _uiState.update {
+            it.copy(
+                screen = SeniorUxScreen.Failure,
+                isRecording = false,
+                isRunning = false,
+                captions = safe,
+                confirmation = null,
+                success = null,
+                failure = FailureState(safe, lang, graph.escapeContact)
+            )
+        }
+        dependencies.narrator.speak(safe, lang)
     }
 
     class Dependencies(
@@ -351,5 +390,6 @@ class MilfSessionController(
 
     private companion object {
         const val LISTENING_PROMPT = "What would you like to do?"
+        const val SAFE_FAILURE = "I'm having a little trouble doing that. Want me to call your daughter to help?"
     }
 }
