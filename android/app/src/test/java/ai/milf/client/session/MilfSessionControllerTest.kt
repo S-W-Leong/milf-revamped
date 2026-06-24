@@ -291,6 +291,37 @@ class MilfSessionControllerTest {
         assertEquals(null, state.failure)
     }
 
+    @Test
+    fun demoModeForcesWatchModeDuringWorking() = runTest {
+        val client = FakeClient()
+        val controller = fakeController(client)
+
+        controller.setDemoMode(true)
+        controller.beginListening()
+        controller.finishListeningAndRun()
+
+        val state = controller.uiState.value
+        assertEquals(SeniorUxScreen.Working, state.screen)
+        assertEquals(true, state.demoMode)
+        assertEquals(true, state.watchMode)
+    }
+
+    @Test
+    fun seniorModeCanReturnToCalmBubbleDuringWorking() = runTest {
+        val client = FakeClient()
+        val controller = fakeController(client)
+
+        controller.setDemoMode(false)
+        controller.setWatchMode(false)
+        controller.beginListening()
+        controller.finishListeningAndRun()
+
+        val state = controller.uiState.value
+        assertEquals(SeniorUxScreen.Working, state.screen)
+        assertEquals(false, state.demoMode)
+        assertEquals(false, state.watchMode)
+    }
+
     private fun fakeController(
         client: FakeClient = FakeClient(),
         narrator: FakeNarrator = FakeNarrator()

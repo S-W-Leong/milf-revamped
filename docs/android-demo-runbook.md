@@ -73,3 +73,33 @@ Target: at least 9 of 10 attempts connect after approval, or every failure has o
 - Record one clean full run after the first successful rehearsal.
 - Keep the video available locally on the presentation laptop.
 - Confirm the backup recording includes audio narration, confirmation, and successful call connection.
+
+## UX overlay demo path
+
+1. Start the backend:
+   ```bash
+   cd backend
+   python -m milf.server
+   ```
+2. Install the debug APK:
+   ```bash
+   cd android
+   ./gradlew :app:installDebug
+   ```
+3. On the Android device, open MILF buyer setup.
+4. Grant microphone, phone, overlay, and accessibility permissions.
+5. Open default assistant settings and set MILF as the assistant app if the OEM allows it.
+6. Turn on Demo watch mode for judges; leave it off for senior-mode testing.
+7. Tap Start helper. The floating bubble should appear over any app.
+8. Hero flow: tap bubble or invoke assistant, say "I want to see my grandson", wait for WhatsApp navigation, approve "Calling Wei, your grandson?", and verify the video-call screen opens.
+9. Failure flow: stop the backend, repeat the hero request, and verify the failure screen says it is having trouble and offers to call daughter.
+
+## Device matrix
+
+Record these results for each target device:
+
+| Device | Android version | Overlay works | Assist invocation works | Accessibility actions work | Notes |
+|---|---:|---|---|---|---|
+| Emulator Pixel API 35 | 15 | yes | partial | yes | assist gesture depends on emulator settings |
+
+During Task 9, add one row per physical device only after the device has been tested. Use measured values such as `yes`, `no`, or `partial`, and include the exact device model in the first column.
