@@ -97,6 +97,57 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun taskCompleteLocksSuccessAgainstLaterTaskFailure() = runTest {
+        val client = FakeClient()
+        val controller = fakeController(client = client)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        client.callbacks?.onTaskComplete("Connected to Wei.", "en", "wei-grandson")
+        client.callbacks?.onTaskFailure("Old failure.", "en", "buyer-daughter")
+
+        val state = controller.uiState.value
+        assertEquals(true, client.closed)
+        assertEquals(SeniorUxScreen.Success, state.screen)
+        assertEquals("Connected to Wei.", state.success?.summary)
+        assertEquals(null, state.failure)
+    }
+
+    @Test
+    fun closedSessionLocksFailureAgainstLaterTaskComplete() = runTest {
+        val client = FakeClient()
+        val controller = fakeController(client = client)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        client.callbacks?.onClosed("socket closed")
+        client.callbacks?.onTaskComplete("Old success.", "en", "wei-grandson")
+
+        val state = controller.uiState.value
+        assertEquals(true, client.closed)
+        assertEquals(SeniorUxScreen.Failure, state.screen)
+        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+        assertEquals(null, state.success)
+    }
+
+    @Test
+    fun failedSessionLocksFailureAgainstLaterTaskComplete() = runTest {
+        val client = FakeClient()
+        val controller = fakeController(client = client)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        client.callbacks?.onFailed("websocket failed")
+        client.callbacks?.onTaskComplete("Old success.", "en", "wei-grandson")
+
+        val state = controller.uiState.value
+        assertEquals(true, client.closed)
+        assertEquals(SeniorUxScreen.Failure, state.screen)
+        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+        assertEquals(null, state.success)
+    }
+
+    @Test
     fun staleCallbacksFromPreviousRunDoNotOverwriteCurrentRun() = runTest {
         val clientA = FakeClient()
         val clientB = FakeClient()

@@ -169,7 +169,7 @@ class MilfSessionController(
             }
 
             override suspend fun onTaskComplete(summary: String, lang: String, contactId: String?) {
-                if (!isCurrentSession(callbackSessionId)) return
+                if (!claimCurrentSession(callbackSessionId)) return
                 dependencies.narrator.speak(summary, lang)
                 _uiState.update {
                     it.copy(
@@ -182,10 +182,11 @@ class MilfSessionController(
                         failure = null
                     )
                 }
+                closeActiveClient()
             }
 
             override suspend fun onTaskFailure(message: String, lang: String, recoveryContactId: String?) {
-                if (!isCurrentSession(callbackSessionId)) return
+                if (!claimCurrentSession(callbackSessionId)) return
                 dependencies.narrator.speak(message, lang)
                 _uiState.update {
                     it.copy(
@@ -198,16 +199,15 @@ class MilfSessionController(
                         failure = FailureState(message, lang, graph.contact(recoveryContactId))
                     )
                 }
+                closeActiveClient()
             }
 
             override fun onClosed(reason: String?) {
-                if (!isCurrentSession(callbackSessionId)) return
-                moveActiveSessionToFailure()
+                moveActiveSessionToFailure(callbackSessionId)
             }
 
             override fun onFailed(message: String) {
-                if (!isCurrentSession(callbackSessionId)) return
-                moveActiveSessionToFailure()
+                moveActiveSessionToFailure(callbackSessionId)
             }
         }
 
@@ -235,13 +235,18 @@ class MilfSessionController(
     private fun isCurrentSession(callbackSessionId: Long): Boolean =
         callbackSessionId == sessionId.get()
 
+    private fun claimCurrentSession(callbackSessionId: Long): Boolean =
+        sessionId.compareAndSet(callbackSessionId, callbackSessionId + 1)
+
     private fun closeActiveClient() {
         val client = dependencies.activeClient
         dependencies.activeClient = null
         client?.close()
     }
 
-    private fun moveActiveSessionToFailure() {
+    private fun moveActiveSessionToFailure(callbackSessionId: Long) {
+        if (!claimCurrentSession(callbackSessionId)) return
+
         val safe = "I'm having a little trouble doing that. Want me to call your daughter to help?"
         val lang = _uiState.value.lang
         var shouldSpeak = false
@@ -271,6 +276,7 @@ class MilfSessionController(
         if (shouldSpeak) {
             dependencies.narrator.speak(safe, lang)
         }
+        closeActiveClient()
     }
 
     class Dependencies(
