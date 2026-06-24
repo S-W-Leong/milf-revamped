@@ -5,6 +5,7 @@ import ai.milf.client.NarratorLike
 import ai.milf.client.accessibility.ActionDispatcher
 import ai.milf.client.accessibility.MilfAccessibilityService
 import ai.milf.client.audio.AudioRecorder
+import ai.milf.client.audio.GoalSpeechRecognizer
 import ai.milf.client.audio.TtsNarrator
 import ai.milf.client.ws.MilfWebSocketClient
 import android.Manifest
@@ -22,6 +23,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 fun androidSessionDependencies(application: Application): MilfSessionController.Dependencies =
     MilfSessionController.Dependencies(
         recorder = AndroidAudioRecorder(AudioRecorder(application)),
+        speechRecognizer = AndroidNativeSpeechRecognizer(GoalSpeechRecognizer(application)),
+        speechInputMode = SpeechInputMode.Native,
         narrator = AndroidNarrator(TtsNarrator(application)),
         clientFactory = { MilfWebSocketClient(it) },
         initialBackendUrl = application.backendPrefs()
@@ -102,6 +105,17 @@ private class AndroidAudioRecorder(
     override fun start() = recorder.start()
     override fun stop(): ByteArray = recorder.stop()
     override fun cancel() = recorder.cancel()
+}
+
+private class AndroidNativeSpeechRecognizer(
+    private val recognizer: GoalSpeechRecognizer
+) : NativeSpeechRecognizerLike {
+    override fun start(lang: String, onText: (String) -> Unit, onError: (String) -> Unit) =
+        recognizer.start(lang, onText, onError)
+
+    override fun stop() = recognizer.stop()
+    override fun cancel() = recognizer.cancel()
+    override fun shutdown() = recognizer.destroy()
 }
 
 private class AndroidNarrator(

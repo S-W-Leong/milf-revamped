@@ -20,7 +20,7 @@
   - Backend sends: `Action`, `Narration`, `ConfirmRequest`
   - App sends: `ActionResult`, `ConfirmResponse`
 - Use a native Android APK controlling the user's own phone. Do not introduce ADB, MobileRun cloud devices, or a laptop-side driver.
-- Main intent STT stays on the backend. The app only records and uploads audio bytes.
+- Main intent STT uses native Android recognition for no-key device demos and sends recognized text as `TextGoal`. Backend audio upload remains available as a configurable path.
 - On-device Android TextToSpeech is used for narration.
 - Use button confirmation as the reliable path and add voice yes/no as the secondary confirmation input once the button path is green.
 - All irreversible actions must wait for `ConfirmRequest` -> `ConfirmResponse`.
@@ -2384,7 +2384,7 @@ git commit -m "chore: harden Android hero demo"
 - Native Android APK on the user's own phone: Tasks 1, 5, 7, 8.
 - AccessibilityService driver methods: Task 5 implements `get_ui_tree`, `screenshot`, `tap`, `swipe`, `input_text`, `press_button`, `start_app`.
 - WebSocket client and typed envelope: Tasks 2 and 3.
-- Audio capture to backend STT: Tasks 4 and 6.
+- Native speech recognition to `TextGoal`, with backend audio capture kept as a fallback path: Tasks 4 and 6.
 - Narration via Android TextToSpeech: Tasks 4 and 6.
 - Confirmation screen with large buttons and voice yes/no: Tasks 6, 7, and 8.
 - Confirmation response over websocket: Tasks 3, 6, and 8.
@@ -2397,7 +2397,7 @@ git commit -m "chore: harden Android hero demo"
 
 - The backend currently sends and receives JSON only. Android screenshots must be base64 strings. Task 2 adds the backend decode so `WebSocketDriver.screenshot()` still returns bytes to MobileRun.
 - `press_button("enter")` is best-effort through focused-node `ACTION_IME_ENTER`. The hero WhatsApp path should prefer accessibility-tree taps over enter key injection.
-- The app records M4A/AAC bytes. The backend STT adapter must accept this container or convert server-side.
+- The app can record M4A/AAC bytes for backend STT, but the default real-device mic path uses native Android speech recognition and sends text directly.
 
 ### Red-Flag Scan
 

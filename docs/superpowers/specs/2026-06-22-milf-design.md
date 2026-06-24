@@ -30,7 +30,7 @@ Agent on the OpenAI Agents SDK) is reference only; its code is not in this repo.
 | Backend       | Own cloud service running MobileRun's `MobileAgent` (Manager + Executor) brain                                     | MobileRun = [droidrun](https://docs.mobilerun.ai) rebranded. We use it as a library, not its hosted devices.                                                                                                                                                                                                 |
 | Bridge        | Custom `**WebSocketDriver(DeviceDriver)`** — agent actions ↔ app                                                   | MobileRun's layered design (`DeviceDriver` → `StateProvider` → `ActionContext` → platform-agnostic Agent) makes the driver pluggable. Confirmed: every `DeviceDriver` method raises `NotImplementedError` by default; concrete drivers override what they support and declare a `supported` set.             |
 | Brain LLM     | **OpenAI**                                                                                                         | User chose continuity with the original prototype, overriding a Claude recommendation. MobileRun supports per-agent models if cost-tuning later.                                                                                                                                                             |
-| STT           | SEA-tuned models via API behind a `RouterSTT`: **ILMU** (English/Chinese) + **MERaLiON** (Cantonese)               | ILMU has no native Cantonese ASR, so Cantonese routes to MERaLiON (A*STAR, explicit Cantonese/Hokkien support). Language is a one-time per-user setting (`en`/`zh`/`yue`); no live detection. VALSEA / mesolitica remain drop-in fallbacks. Native Android STT rejected — inadequate for SEA dialects. |
+| STT           | Native Android STT for no-key device demos; backend STT behind a `RouterSTT`: **ILMU** (English/Chinese) + **MERaLiON** (Cantonese) | Native STT sends a `TextGoal` and bypasses backend STT when API keys are unavailable. Backend audio STT remains available for ILMU/MERaLiON routing. Language is a one-time per-user setting (`en`/`zh`/`yue`); no live detection. VALSEA / mesolitica remain drop-in fallbacks. |
 | TTS           | **On-device Android TextToSpeech** for v1                                                                          | Output quality matters far less than input recognition. SEA-tuned TTS (ElevenLabs multilingual, etc.) is a later upgrade.                                                                                                                                                                                    |
 | Safety        | **Confirmation gate** — speak before any irreversible action (call / send / pay)                                   | The trust/safety pitch beat; not optional.                                                                                                                                                                                                                                                                   |
 | Demo language | **English + Chinese + Cantonese**                                                                                  | English/Chinese via ILMU, Cantonese via MERaLiON. The rest is config-driven scale path.                                                                                                                                                                                                                      |
@@ -118,7 +118,7 @@ injected into agent context.
 ### 5. Data Flow — Hero Task
 
 1. Senior speaks (e.g. *"nak tengok cucu"* / *"I want to see my grandson"*).
-2. App captures audio → backend STT adapter (ILMU) → intent.
+2. App captures native speech text → backend `TextGoal` → intent. Backend audio STT remains available when routed explicitly.
 3. Backend builds the `MobileAgent` goal; agent plans.
 4. Manager→Executor issue actions through `WebSocketDriver` → app performs them
   (open WhatsApp → find contact → reach video-call control), reading the
@@ -134,8 +134,7 @@ path; add bounded retry then graceful spoken fallback ("I couldn't do that — t
 again?"). The agent recovers, never freezes.
 - **Accessibility-tree-first element lookup** to survive WhatsApp UI variance; the app
 card encodes the known-good path.
-- **STT vendor isolation:** the STT adapter interface lets us swap ILMU → VALSEA →
-mesolitica without touching the agent.
+- **STT vendor isolation:** native device STT can bypass backend STT for no-key demos, while the backend adapter interface still lets us swap ILMU → VALSEA → mesolitica without touching the agent.
 - **Reliability harness:** a repeatable script that runs the hero flow N times and
 reports success rate against the 90% target.
 - **Backup:** record a clean run of the hero flow for the live demo.

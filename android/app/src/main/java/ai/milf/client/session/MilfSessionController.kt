@@ -15,6 +15,18 @@ import kotlinx.coroutines.flow.update
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 
+enum class SpeechInputMode {
+    BackendAudio,
+    Native
+}
+
+interface NativeSpeechRecognizerLike {
+    fun start(lang: String, onText: (String) -> Unit, onError: (String) -> Unit)
+    fun stop()
+    fun cancel()
+    fun shutdown()
+}
+
 class MilfSessionController(
     private val dependencies: Dependencies,
     private val graph: RelationshipGraph = RelationshipGraph.demo()
@@ -110,16 +122,9 @@ class MilfSessionController(
     }
 
     fun beginListening() {
-        nextSessionId()
+        val callbackSessionId = nextSessionId()
         closeActiveClient()
         dependencies.narrator.stop()
-        val started = runCatching {
-            dependencies.recorder.start()
-        }.isSuccess
-        if (!started) {
-            moveLocalSessionToFailure()
-            return
-        }
         _uiState.update {
             it.copy(
                 screen = SeniorUxScreen.Listening,
@@ -135,12 +140,53 @@ class MilfSessionController(
                 isCollapsed = false
             )
         }
+        val started = if (dependencies.speechInputMode == SpeechInputMode.Native) {
+            runCatching {
+                dependencies.speechRecognizer.start(
+                    lang = _uiState.value.lang,
+                    onText = { text -> onNativeSpeechText(callbackSessionId, text) },
+                    onError = { onNativeSpeechError(callbackSessionId) }
+                )
+            }.isSuccess
+        } else {
+            runCatching {
+                dependencies.recorder.start()
+            }.isSuccess
+        }
+        if (!started) {
+            moveLocalSessionToFailure()
+            return
+        }
         dependencies.narrator.speak(LISTENING_PROMPT, _uiState.value.lang)
     }
 
     fun finishListeningAndRun() {
         val state = _uiState.value
         if (!state.isRecording) return
+
+        if (dependencies.speechInputMode == SpeechInputMode.Native) {
+            val stopped = runCatching {
+                dependencies.speechRecognizer.stop()
+            }.isSuccess
+            if (!stopped) {
+                moveLocalSessionToFailure()
+                return
+            }
+            _uiState.update {
+                it.copy(
+                    screen = SeniorUxScreen.Thinking,
+                    isRecording = false,
+                    isRunning = true,
+                    captions = THINKING_PROMPT,
+                    confirmation = null,
+                    success = null,
+                    failure = null,
+                    actionTarget = null,
+                    isCollapsed = false
+                )
+            }
+            return
+        }
 
         val bytes = runCatching {
             dependencies.recorder.stop()
@@ -267,6 +313,7 @@ class MilfSessionController(
     fun cancelActiveSession() {
         nextSessionId()
         dependencies.recorder.cancel()
+        dependencies.speechRecognizer.cancel()
         dependencies.narrator.stop()
         closeActiveClient()
         _uiState.update {
@@ -300,6 +347,7 @@ class MilfSessionController(
     fun shutdown() {
         nextSessionId()
         dependencies.recorder.cancel()
+        dependencies.speechRecognizer.shutdown()
         dependencies.narrator.shutdown()
         closeActiveClient()
     }
@@ -431,6 +479,52 @@ class MilfSessionController(
         }
     }
 
+    private fun onNativeSpeechText(callbackSessionId: Long, text: String) {
+        if (!isCurrentSession(callbackSessionId)) return
+        val goal = text.trim()
+        if (goal.isBlank()) {
+            onNativeSpeechError(callbackSessionId)
+            return
+        }
+        val state = _uiState.value
+        val client = try {
+            dependencies.clientFactory(state.backendUrl)
+        } catch (exception: RuntimeException) {
+            moveLocalSessionToFailure()
+            return
+        }
+        dependencies.activeClient = client
+        _uiState.update {
+            if (!isCurrentSession(callbackSessionId)) {
+                it
+            } else {
+                it.copy(
+                    screen = SeniorUxScreen.Thinking,
+                    isRecording = false,
+                    isRunning = true,
+                    captions = THINKING_PROMPT,
+                    commandText = "",
+                    confirmation = null,
+                    success = null,
+                    failure = null,
+                    actionTarget = null,
+                    isCollapsed = false
+                )
+            }
+        }
+        try {
+            client.startText(goal, state.lang, callbacks(callbackSessionId, client))
+        } catch (exception: RuntimeException) {
+            moveLocalSessionToFailure(expectedClient = client)
+        }
+    }
+
+    private fun onNativeSpeechError(callbackSessionId: Long) {
+        if (isCurrentSession(callbackSessionId)) {
+            moveLocalSessionToFailure()
+        }
+    }
+
     private fun nextSessionId(): Long {
         return sessionId.incrementAndGet()
     }
@@ -491,6 +585,7 @@ class MilfSessionController(
     private fun moveLocalSessionToFailure(expectedClient: SessionSocketClient? = null) {
         nextSessionId()
         dependencies.recorder.cancel()
+        dependencies.speechRecognizer.cancel()
         closeActiveClient(expectedClient)
         val safe = SAFE_FAILURE
         val lang = _uiState.value.lang
@@ -511,6 +606,8 @@ class MilfSessionController(
 
     class Dependencies(
         val recorder: AudioRecorderLike,
+        val speechRecognizer: NativeSpeechRecognizerLike,
+        val speechInputMode: SpeechInputMode = SpeechInputMode.BackendAudio,
         val narrator: NarratorLike,
         val clientFactory: (String) -> SessionSocketClient,
         val initialBackendUrl: String = DEFAULT_BACKEND_URL,
@@ -530,6 +627,17 @@ class MilfSessionController(
                         override fun start() = Unit
                         override fun stop(): ByteArray = byteArrayOf(1)
                         override fun cancel() = Unit
+                    },
+                    speechRecognizer = object : NativeSpeechRecognizerLike {
+                        override fun start(
+                            lang: String,
+                            onText: (String) -> Unit,
+                            onError: (String) -> Unit
+                        ) = Unit
+
+                        override fun stop() = Unit
+                        override fun cancel() = Unit
+                        override fun shutdown() = Unit
                     },
                     narrator = object : NarratorLike {
                         override fun speak(text: String, lang: String) = Unit

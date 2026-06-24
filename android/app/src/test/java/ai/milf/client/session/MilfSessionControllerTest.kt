@@ -381,6 +381,49 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun nativeSpeechResultStartsTextSessionInsteadOfUploadingAudio() = runTest {
+        val client = FakeClient()
+        val recognizer = FakeNativeSpeechRecognizer()
+        val recorder = FakeRecorder()
+        val controller = fakeController(
+            clients = listOf(client),
+            recorder = recorder,
+            speechRecognizer = recognizer,
+            speechInputMode = SpeechInputMode.Native
+        )
+        controller.setLang("zh")
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        recognizer.deliverText("  打电话给 Wei  ")
+
+        assertEquals("zh", recognizer.startedLang)
+        assertEquals(1, recognizer.stopCalls)
+        assertEquals(false, recorder.isRecording)
+        assertEquals(false, client.startedAudio)
+        assertEquals("打电话给 Wei", client.startedText)
+        assertEquals(SeniorUxScreen.Thinking, controller.uiState.value.screen)
+    }
+
+    @Test
+    fun nativeSpeechErrorMovesToSafeFailure() = runTest {
+        val recognizer = FakeNativeSpeechRecognizer()
+        val controller = fakeController(
+            clients = listOf(FakeClient()),
+            speechRecognizer = recognizer,
+            speechInputMode = SpeechInputMode.Native
+        )
+
+        controller.beginListening()
+        recognizer.deliverError("no speech")
+
+        val state = controller.uiState.value
+        assertEquals(SeniorUxScreen.Failure, state.screen)
+        assertEquals(false, state.isRecording)
+        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+    }
+
+    @Test
     fun narrationUpdatesDedicatedReplyWithoutReplacingStatusCaption() = runTest {
         val client = FakeClient()
         val controller = fakeController(client)
@@ -636,10 +679,18 @@ class MilfSessionControllerTest {
     private fun fakeController(
         clients: List<FakeClient>,
         recorder: FakeRecorder = FakeRecorder(),
-        narrator: FakeNarrator = FakeNarrator()
+        narrator: FakeNarrator = FakeNarrator(),
+        speechRecognizer: FakeNativeSpeechRecognizer = FakeNativeSpeechRecognizer(),
+        speechInputMode: SpeechInputMode = SpeechInputMode.BackendAudio
     ): MilfSessionController =
         MilfSessionController(
-            dependencies = testDependencies(clients, recorder, narrator),
+            dependencies = testDependencies(
+                clients,
+                recorder,
+                narrator,
+                speechRecognizer = speechRecognizer,
+                speechInputMode = speechInputMode
+            ),
             graph = RelationshipGraph.demo()
         )
 
@@ -668,9 +719,11 @@ private class FakeClient(
 ) : SessionSocketClient {
     var callbacks: MilfWebSocketClient.Callbacks? = null
     var startedText: String? = null
+    var startedAudio = false
 
     override fun start(goalAudio: ByteArray, lang: String, callbacks: MilfWebSocketClient.Callbacks) {
         check(!failStart) { "client start failed" }
+        startedAudio = true
         this.callbacks = callbacks
     }
 
@@ -726,12 +779,49 @@ private class FakeRecorder(
     }
 }
 
+private class FakeNativeSpeechRecognizer : NativeSpeechRecognizerLike {
+    private var onText: ((String) -> Unit)? = null
+    private var onError: ((String) -> Unit)? = null
+    var startedLang: String? = null
+    var stopCalls = 0
+    var cancelCalls = 0
+    var shutdownCalls = 0
+
+    override fun start(lang: String, onText: (String) -> Unit, onError: (String) -> Unit) {
+        startedLang = lang
+        this.onText = onText
+        this.onError = onError
+    }
+
+    override fun stop() {
+        stopCalls += 1
+    }
+
+    override fun cancel() {
+        cancelCalls += 1
+    }
+
+    override fun shutdown() {
+        shutdownCalls += 1
+    }
+
+    fun deliverText(text: String) {
+        onText?.invoke(text)
+    }
+
+    fun deliverError(message: String) {
+        onError?.invoke(message)
+    }
+}
+
 private fun testDependencies(
     clients: List<FakeClient>,
     recorder: FakeRecorder = FakeRecorder(),
     narrator: FakeNarrator = FakeNarrator(),
     initialBackendUrl: String = "ws://10.0.2.2:8765",
     saveBackendUrl: (String) -> Unit = {},
+    speechRecognizer: FakeNativeSpeechRecognizer = FakeNativeSpeechRecognizer(),
+    speechInputMode: SpeechInputMode = SpeechInputMode.BackendAudio,
     setupStatus: () -> SetupStatus = {
         SetupStatus(
             microphoneGranted = true,
@@ -745,6 +835,8 @@ private fun testDependencies(
     var nextClient = 0
     return MilfSessionController.Dependencies(
         recorder = recorder,
+        speechRecognizer = speechRecognizer,
+        speechInputMode = speechInputMode,
         narrator = narrator,
         clientFactory = {
             clients.getOrElse(nextClient++) { clients.last() }

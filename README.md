@@ -85,7 +85,7 @@ MERALION_API_KEY
 MERALION_API_URL
 ```
 
-`MILF_STT_BACKEND=mock` is enough for local smoke tests. Use `MILF_STT_BACKEND=router` for ILMU/MERaLiON routing, with the corresponding API keys and URLs set.
+The Android app uses native on-device speech recognition for the main mic flow and sends the transcript as a `TextGoal`, so ILMU/MERaLiON keys are not required for device demos. `MILF_STT_BACKEND=mock` is still enough for local smoke tests and legacy audio-upload clients. Use `MILF_STT_BACKEND=router` only when you want backend audio STT through ILMU/MERaLiON, with the corresponding API keys and URLs set.
 
 ## Android Setup
 
