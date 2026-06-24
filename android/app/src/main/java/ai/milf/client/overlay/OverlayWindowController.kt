@@ -18,11 +18,17 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 internal object OverlayWindowSizing {
-    fun expandedWidthPx(): Int = WindowManager.LayoutParams.MATCH_PARENT
-    fun expandedHeightPx(): Int = WindowManager.LayoutParams.MATCH_PARENT
+    fun expandedWidthPx(screenWidthPx: Int, density: Float): Int =
+        railWidthPx(screenWidthPx, density)
+
+    fun expandedHeightPx(density: Float): Int = (62 * density).toInt()
+
+    fun expandedBottomOffsetPx(density: Float): Int = (22 * density).toInt()
+
     fun collapsedSizeDp(): Int = 66
     fun windowFlags(state: SeniorUiState): Int =
-        if (state.isCollapsed) WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE else 0
+        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            (if (state.isCollapsed) WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE else 0)
 
     fun railWidthPx(screenWidthPx: Int, density: Float): Int {
         val marginPx = (24 * density).toInt()
@@ -41,7 +47,7 @@ class OverlayWindowController(
         fun onSubmitText()
         fun onRunStop()
         fun onExitAgent()
-        fun onOutsideExpandedTap()
+        fun onCollapseOverlay()
         fun onExpandOverlay()
         fun onApprove()
         fun onDeny()
@@ -156,7 +162,7 @@ class OverlayWindowController(
                 onSubmitText = callbacks::onSubmitText,
                 onRunStop = callbacks::onRunStop,
                 onExitAgent = callbacks::onExitAgent,
-                onOutsideExpandedTap = callbacks::onOutsideExpandedTap,
+                onCollapseOverlay = callbacks::onCollapseOverlay,
                 onExpandOverlay = callbacks::onExpandOverlay,
                 onBubbleDrag = ::dragCollapsedBubble,
                 onApprove = callbacks::onApprove,
@@ -168,16 +174,26 @@ class OverlayWindowController(
 
     private fun paramsFor(state: SeniorUiState): WindowManager.LayoutParams {
         val expanded = !state.isCollapsed
+        val metrics = context.resources.displayMetrics
+        val density = metrics.density
         return WindowManager.LayoutParams(
-            if (expanded) OverlayWindowSizing.expandedWidthPx() else dp(OverlayWindowSizing.collapsedSizeDp()),
-            if (expanded) OverlayWindowSizing.expandedHeightPx() else dp(OverlayWindowSizing.collapsedSizeDp()),
+            if (expanded) {
+                OverlayWindowSizing.expandedWidthPx(metrics.widthPixels, density)
+            } else {
+                dp(OverlayWindowSizing.collapsedSizeDp())
+            },
+            if (expanded) {
+                OverlayWindowSizing.expandedHeightPx(density)
+            } else {
+                dp(OverlayWindowSizing.collapsedSizeDp())
+            },
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             OverlayWindowSizing.windowFlags(state),
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = if (expanded) Gravity.TOP or Gravity.START else Gravity.TOP or Gravity.END
+            gravity = if (expanded) Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL else Gravity.TOP or Gravity.END
             x = if (expanded) 0 else collapsedX
-            y = if (expanded) 0 else collapsedY
+            y = if (expanded) OverlayWindowSizing.expandedBottomOffsetPx(density) else collapsedY
         }
     }
 

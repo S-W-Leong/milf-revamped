@@ -12,7 +12,8 @@ CONTACTS_PATH = Path(__file__).with_name("contacts.json")
 WHATSAPP_APP_CARD = """
 WhatsApp app card:
 - Use WhatsApp for video calls; Android package is com.whatsapp.
-- Open WhatsApp, then use the Calls tab or open the chat target directly.
+- Launch WhatsApp with start_app(package="com.whatsapp"). Do not use open_app by label for WhatsApp.
+- After WhatsApp opens, use the Calls tab or open the chat target directly.
 - If the contact is not visible, use the search icon to find the target by display name.
 - Start the video call with the video-call icon.
 - Prefer accessibility text/content-description when identifying the Calls tab, search icon, chat target, and video-call icon.
@@ -25,10 +26,10 @@ SAFETY_CONFIRMATION = (
 
 AGENT_OVERLAY_INTERACTION = """
 MILF overlay interaction rule:
-- The phone may show MILF as an expanded bottom bar while you are acting.
-- The first tap outside the bar only collapses MILF into a floating bubble and does not reach the underlying app.
-- If a tap appears to do nothing except collapse MILF, do not treat it as a successful app interaction.
-- Re-read the UI tree or screenshot after the collapse, then perform the intended tap on the underlying app once the bubble is collapsed.
+- The phone may show MILF as an expanded bottom rail while you are acting.
+- Only the Collapse MILF button collapses the bar into a floating bubble.
+- Taps outside the rail go to the underlying app and should be treated as normal app interactions.
+- Do not tap Collapse MILF unless you intentionally need the rail out of the way.
 """
 
 

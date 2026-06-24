@@ -53,7 +53,7 @@ class SeniorOverlayService : Service() {
                 override fun onSubmitText() = controller.submitTextCommand()
                 override fun onRunStop() = controller.stopActiveRun()
                 override fun onExitAgent() = stopSelf()
-                override fun onOutsideExpandedTap() = controller.collapseOverlay()
+                override fun onCollapseOverlay() = controller.collapseOverlay()
                 override fun onExpandOverlay() = controller.expandOverlay()
                 override fun onApprove() = controller.approveConfirmation()
                 override fun onDeny() = controller.denyConfirmation()

@@ -40,12 +40,19 @@ def test_build_goal_includes_contact_card_and_confirmation():
     assert WHATSAPP_APP_CARD.strip()[:10] in goal
 
 
-def test_build_goal_warns_agent_about_overlay_swallowed_taps():
+def test_whatsapp_card_uses_direct_package_launch():
+    assert "start_app" in WHATSAPP_APP_CARD
+    assert "com.whatsapp" in WHATSAPP_APP_CARD
+    assert "Do not use open_app" in WHATSAPP_APP_CARD
+
+
+def test_build_goal_tells_agent_overlay_taps_pass_through_outside_rail():
     goal = build_goal("I want to see my grandson")
 
     assert AGENT_OVERLAY_INTERACTION in goal
-    assert "first tap outside the bar only collapses MILF" in goal
-    assert "does not reach the underlying app" in goal
+    assert "Only the Collapse MILF button collapses the bar" in goal
+    assert "Taps outside the rail go to the underlying app" in goal
+    assert "first tap outside the bar only collapses MILF" not in goal
 
 
 def test_escape_contact_returns_configured_contact():

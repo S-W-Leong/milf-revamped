@@ -38,6 +38,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
@@ -77,7 +78,7 @@ fun SeniorOverlayUi(
     onSubmitText: () -> Unit,
     onRunStop: () -> Unit,
     onExitAgent: () -> Unit,
-    onOutsideExpandedTap: () -> Unit,
+    onCollapseOverlay: () -> Unit,
     onExpandOverlay: () -> Unit,
     onBubbleDrag: (Float, Float) -> Unit,
     onApprove: () -> Unit,
@@ -93,7 +94,7 @@ fun SeniorOverlayUi(
         } else {
             ExpandedOverlayShell(
                 state = state,
-                onOutsideExpandedTap = onOutsideExpandedTap,
+                onCollapseOverlay = onCollapseOverlay,
                 onMicTap = onMicTap,
                 onCommandTextChange = onCommandTextChange,
                 onSubmitText = onSubmitText,
@@ -138,7 +139,7 @@ private fun CollapsedBubble(
 @Composable
 private fun ExpandedOverlayShell(
     state: SeniorUiState,
-    onOutsideExpandedTap: () -> Unit,
+    onCollapseOverlay: () -> Unit,
     onMicTap: () -> Unit,
     onCommandTextChange: (String) -> Unit,
     onSubmitText: () -> Unit,
@@ -152,33 +153,7 @@ private fun ExpandedOverlayShell(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent)
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-                onClick = onOutsideExpandedTap
-            )
     ) {
-        state.actionTarget?.let { target ->
-            ActionTargetBox(target)
-        }
-        if (state.screen == SeniorUxScreen.Confirming) {
-            ConfirmationCard(
-                state = state,
-                onApprove = onApprove,
-                onDeny = onDeny,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 104.dp)
-            )
-        }
-        if (state.shouldShowNarrationReply) {
-            NarrationReplyPill(
-                text = state.lastNarration.orEmpty(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 94.dp)
-            )
-        }
         ControlRail(
             state = state,
             onMicTap = onMicTap,
@@ -186,10 +161,12 @@ private fun ExpandedOverlayShell(
             onSubmitText = onSubmitText,
             onRunStop = onRunStop,
             onExitAgent = onExitAgent,
+            onCollapseOverlay = onCollapseOverlay,
+            onApprove = onApprove,
+            onDeny = onDeny,
             onTransientMessageShown = onTransientMessageShown,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 22.dp)
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
@@ -207,6 +184,9 @@ private fun ControlRail(
     onSubmitText: () -> Unit,
     onRunStop: () -> Unit,
     onExitAgent: () -> Unit,
+    onCollapseOverlay: () -> Unit,
+    onApprove: () -> Unit,
+    onDeny: () -> Unit,
     onTransientMessageShown: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -218,11 +198,7 @@ private fun ControlRail(
     }
 
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .widthIn(max = MilfDimens.RailMaxWidth)
-            .padding(horizontal = MilfDimens.RailHorizontalMargin)
-            .height(MilfDimens.RailHeight),
+        modifier = modifier.fillMaxSize(),
         shape = RoundedCornerShape(MilfDimens.RailCorner),
         color = MilfColors.DarkSurface,
         border = BorderStroke(1.dp, MilfColors.Border),
@@ -233,18 +209,55 @@ private fun ControlRail(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(9.dp)
         ) {
-            RailCenterContent(
-                state = state,
-                onCommandTextChange = onCommandTextChange,
-                modifier = Modifier.weight(1f)
+            if (state.screen == SeniorUxScreen.Confirming) {
+                CompactConfirmationContent(state, Modifier.weight(1f))
+                CompactConfirmationButton("No", onDeny, MilfColors.NoRed, Color.White)
+                CompactConfirmationButton("Yes", onApprove, MilfColors.SageDim, MilfColors.Sage)
+                CollapseOverlayButton(onCollapseOverlay)
+            } else {
+                RailCenterContent(
+                    state = state,
+                    onCommandTextChange = onCommandTextChange,
+                    modifier = Modifier.weight(1f)
+                )
+                RailPrimaryAction(
+                    state = state,
+                    onMicTap = onMicTap,
+                    onSubmitText = onSubmitText,
+                    onRunStop = onRunStop
+                )
+                CollapseOverlayButton(onCollapseOverlay)
+                ExitAgentButton(onExitAgent)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactConfirmationContent(
+    state: SeniorUiState,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxHeight(),
+        shape = RoundedCornerShape(14.dp),
+        color = MilfColors.CardSurface,
+        border = BorderStroke(1.dp, MilfColors.Border)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                state.confirmation?.summary ?: "Confirm action?",
+                color = MilfColors.TextPrimary,
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
-            RailPrimaryAction(
-                state = state,
-                onMicTap = onMicTap,
-                onSubmitText = onSubmitText,
-                onRunStop = onRunStop
-            )
-            ExitAgentButton(onExitAgent)
         }
     }
 }
@@ -359,6 +372,46 @@ private fun RunStopButton(onRunStop: () -> Unit) {
             modifier = Modifier
                 .size(14.dp)
                 .background(Color.Black, RoundedCornerShape(2.dp))
+        )
+    }
+}
+
+@Composable
+private fun CompactConfirmationButton(
+    label: String,
+    onClick: () -> Unit,
+    containerColor: Color,
+    contentColor: Color
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .width(54.dp)
+            .height(42.dp),
+        shape = RoundedCornerShape(13.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        contentPadding = ButtonDefaults.ContentPadding
+    ) {
+        Text(label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun CollapseOverlayButton(onCollapseOverlay: () -> Unit) {
+    IconButton(
+        onClick = onCollapseOverlay,
+        modifier = Modifier
+            .size(42.dp)
+            .background(MilfColors.CardSurface, CircleShape)
+            .border(1.dp, MilfColors.BorderStrong, CircleShape)
+    ) {
+        Icon(
+            Icons.Default.KeyboardArrowDown,
+            contentDescription = "Collapse MILF",
+            tint = MilfColors.TextPrimary
         )
     }
 }

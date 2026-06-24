@@ -8,9 +8,11 @@ import org.junit.Test
 
 class OverlayWindowSizingTest {
     @Test
-    fun expandedWindowCoversScreenForOutsideTapCatcher() {
-        assertEquals(WindowManager.LayoutParams.MATCH_PARENT, OverlayWindowSizing.expandedWidthPx())
-        assertEquals(WindowManager.LayoutParams.MATCH_PARENT, OverlayWindowSizing.expandedHeightPx())
+    fun expandedWindowUsesRailBoundsSoOutsideTapsReachApps() {
+        assertEquals(312, OverlayWindowSizing.expandedWidthPx(screenWidthPx = 360, density = 1f))
+        assertEquals(560, OverlayWindowSizing.expandedWidthPx(screenWidthPx = 900, density = 1f))
+        assertEquals(62, OverlayWindowSizing.expandedHeightPx(density = 1f))
+        assertEquals(22, OverlayWindowSizing.expandedBottomOffsetPx(density = 1f))
     }
 
     @Test
@@ -31,6 +33,18 @@ class OverlayWindowSizingTest {
         )
 
         assertEquals(0, flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+    }
+
+    @Test
+    fun expandedWindowDoesNotTrapTouchesOutsideRailBounds() {
+        val flags = OverlayWindowSizing.windowFlags(
+            SeniorUiState(screen = SeniorUxScreen.Idle, isCollapsed = false)
+        )
+
+        assertEquals(
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            flags and WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+        )
     }
 
     @Test
