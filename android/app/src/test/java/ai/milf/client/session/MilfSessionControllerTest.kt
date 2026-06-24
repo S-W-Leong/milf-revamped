@@ -7,6 +7,7 @@ import ai.milf.client.ws.MilfWebSocketClient
 import ai.milf.client.AudioRecorderLike
 import ai.milf.client.NarratorLike
 import ai.milf.client.protocol.ActionResult
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -148,6 +149,72 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun confirmRequestDoesNotOverwriteSuccessIfSessionBecomesStaleDuringSpeech() = runTest {
+        val client = FakeClient()
+        val narrator = FakeNarrator()
+        val controller = fakeController(client = client, narrator = narrator)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        narrator.onSpeak = { text, _ ->
+            if (text == "Calling Wei?") {
+                runBlocking {
+                    client.callbacks?.onTaskComplete("Connected to Wei.", "en", "wei-grandson")
+                }
+            }
+        }
+        client.callbacks?.onConfirmRequest("c1", "Calling Wei?", "en", "wei-grandson")
+
+        val state = controller.uiState.value
+        assertEquals(SeniorUxScreen.Success, state.screen)
+        assertEquals("Connected to Wei.", state.captions)
+        assertEquals(null, state.confirmation)
+    }
+
+    @Test
+    fun narrationDoesNotOverwriteFailureIfSessionBecomesStaleDuringSpeech() = runTest {
+        val client = FakeClient()
+        val narrator = FakeNarrator()
+        val controller = fakeController(client = client, narrator = narrator)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        narrator.onSpeak = { text, _ ->
+            if (text == "Still working.") {
+                runBlocking {
+                    client.callbacks?.onTaskFailure("Need help.", "en", "buyer-daughter")
+                }
+            }
+        }
+        client.callbacks?.onNarration("Still working.", "en")
+
+        val state = controller.uiState.value
+        assertEquals(SeniorUxScreen.Failure, state.screen)
+        assertEquals("Need help.", state.captions)
+    }
+
+    @Test
+    fun oldTerminalCallbackDoesNotCloseNewActiveClient() = runTest {
+        val clientA = FakeClient()
+        val clientB = FakeClient()
+        val narrator = FakeNarrator()
+        val controller = fakeController(clients = listOf(clientA, clientB), narrator = narrator)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        narrator.onSpeak = { text, _ ->
+            if (text == "Connected to Wei.") {
+                controller.beginListening()
+                controller.finishListeningAndRun()
+            }
+        }
+        clientA.callbacks?.onTaskComplete("Connected to Wei.", "en", "wei-grandson")
+
+        assertEquals(true, clientA.closed)
+        assertEquals(false, clientB.closed)
+    }
+
+    @Test
     fun staleCallbacksFromPreviousRunDoNotOverwriteCurrentRun() = runTest {
         val clientA = FakeClient()
         val clientB = FakeClient()
@@ -194,20 +261,35 @@ class MilfSessionControllerTest {
         assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
     }
 
-    private fun fakeController(client: FakeClient = FakeClient()): MilfSessionController =
-        fakeController(clients = listOf(client))
+    private fun fakeController(
+        client: FakeClient = FakeClient(),
+        narrator: FakeNarrator = FakeNarrator()
+    ): MilfSessionController =
+        fakeController(clients = listOf(client), narrator = narrator)
 
     private fun fakeController(
         clients: List<FakeClient>,
-        recorder: FakeRecorder = FakeRecorder()
+        recorder: FakeRecorder = FakeRecorder(),
+        narrator: FakeNarrator = FakeNarrator()
     ): MilfSessionController =
         MilfSessionController(
-            dependencies = testDependencies(clients, recorder),
+            dependencies = testDependencies(clients, recorder, narrator),
             graph = RelationshipGraph.demo()
         )
 
     private fun fakeController(recorder: FakeRecorder): MilfSessionController =
         fakeController(clients = listOf(FakeClient()), recorder = recorder)
+}
+
+private class FakeNarrator : NarratorLike {
+    var onSpeak: (String, String) -> Unit = { _, _ -> }
+
+    override fun speak(text: String, lang: String) {
+        onSpeak(text, lang)
+    }
+
+    override fun stop() = Unit
+    override fun shutdown() = Unit
 }
 
 private class FakeClient(
@@ -255,16 +337,13 @@ private class FakeRecorder : AudioRecorderLike {
 
 private fun testDependencies(
     clients: List<FakeClient>,
-    recorder: FakeRecorder = FakeRecorder()
+    recorder: FakeRecorder = FakeRecorder(),
+    narrator: FakeNarrator = FakeNarrator()
 ): MilfSessionController.Dependencies {
     var nextClient = 0
     return MilfSessionController.Dependencies(
         recorder = recorder,
-        narrator = object : NarratorLike {
-            override fun speak(text: String, lang: String) = Unit
-            override fun stop() = Unit
-            override fun shutdown() = Unit
-        },
+        narrator = narrator,
         clientFactory = {
             clients.getOrElse(nextClient++) { clients.last() }
         },

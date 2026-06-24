@@ -90,7 +90,7 @@ class MilfSessionController(
                 failure = null
             )
         }
-        client.start(bytes, state.lang, callbacks(callbackSessionId))
+        client.start(bytes, state.lang, callbacks(callbackSessionId, client))
     }
 
     fun approveConfirmation() {
@@ -133,7 +133,10 @@ class MilfSessionController(
         closeActiveClient()
     }
 
-    private fun callbacks(callbackSessionId: Long): MilfWebSocketClient.Callbacks =
+    private fun callbacks(
+        callbackSessionId: Long,
+        client: SessionSocketClient
+    ): MilfWebSocketClient.Callbacks =
         object : MilfWebSocketClient.Callbacks {
             override suspend fun onAction(action: Action): ActionResult {
                 if (!isCurrentSession(callbackSessionId)) {
@@ -143,10 +146,17 @@ class MilfSessionController(
             }
 
             override suspend fun onNarration(text: String, lang: String) {
-                if (!isCurrentSession(callbackSessionId)) return
-                dependencies.narrator.speak(text, lang)
+                var updated = false
                 _uiState.update {
-                    it.copy(lastNarration = text, captions = text)
+                    if (!isCurrentSession(callbackSessionId)) {
+                        it
+                    } else {
+                        updated = true
+                        it.copy(lastNarration = text, captions = text)
+                    }
+                }
+                if (updated) {
+                    dependencies.narrator.speak(text, lang)
                 }
             }
 
@@ -156,21 +166,27 @@ class MilfSessionController(
                 lang: String,
                 contactId: String?
             ) {
-                if (!isCurrentSession(callbackSessionId)) return
-                dependencies.narrator.speak(summary, lang)
+                var updated = false
                 _uiState.update {
-                    it.copy(
-                        screen = SeniorUxScreen.Confirming,
-                        isRunning = true,
-                        captions = summary,
-                        confirmation = PendingConfirmation(id, summary, lang, graph.contact(contactId))
-                    )
+                    if (!isCurrentSession(callbackSessionId)) {
+                        it
+                    } else {
+                        updated = true
+                        it.copy(
+                            screen = SeniorUxScreen.Confirming,
+                            isRunning = true,
+                            captions = summary,
+                            confirmation = PendingConfirmation(id, summary, lang, graph.contact(contactId))
+                        )
+                    }
+                }
+                if (updated) {
+                    dependencies.narrator.speak(summary, lang)
                 }
             }
 
             override suspend fun onTaskComplete(summary: String, lang: String, contactId: String?) {
                 if (!claimCurrentSession(callbackSessionId)) return
-                dependencies.narrator.speak(summary, lang)
                 _uiState.update {
                     it.copy(
                         screen = SeniorUxScreen.Success,
@@ -182,12 +198,12 @@ class MilfSessionController(
                         failure = null
                     )
                 }
-                closeActiveClient()
+                closeActiveClient(client)
+                dependencies.narrator.speak(summary, lang)
             }
 
             override suspend fun onTaskFailure(message: String, lang: String, recoveryContactId: String?) {
                 if (!claimCurrentSession(callbackSessionId)) return
-                dependencies.narrator.speak(message, lang)
                 _uiState.update {
                     it.copy(
                         screen = SeniorUxScreen.Failure,
@@ -199,15 +215,16 @@ class MilfSessionController(
                         failure = FailureState(message, lang, graph.contact(recoveryContactId))
                     )
                 }
-                closeActiveClient()
+                closeActiveClient(client)
+                dependencies.narrator.speak(message, lang)
             }
 
             override fun onClosed(reason: String?) {
-                moveActiveSessionToFailure(callbackSessionId)
+                moveActiveSessionToFailure(callbackSessionId, client)
             }
 
             override fun onFailed(message: String) {
-                moveActiveSessionToFailure(callbackSessionId)
+                moveActiveSessionToFailure(callbackSessionId, client)
             }
         }
 
@@ -238,13 +255,18 @@ class MilfSessionController(
     private fun claimCurrentSession(callbackSessionId: Long): Boolean =
         sessionId.compareAndSet(callbackSessionId, callbackSessionId + 1)
 
-    private fun closeActiveClient() {
+    private fun closeActiveClient(expectedClient: SessionSocketClient? = null) {
         val client = dependencies.activeClient
+        if (expectedClient != null && client !== expectedClient) return
+
         dependencies.activeClient = null
         client?.close()
     }
 
-    private fun moveActiveSessionToFailure(callbackSessionId: Long) {
+    private fun moveActiveSessionToFailure(
+        callbackSessionId: Long,
+        client: SessionSocketClient
+    ) {
         if (!claimCurrentSession(callbackSessionId)) return
 
         val safe = "I'm having a little trouble doing that. Want me to call your daughter to help?"
@@ -273,10 +295,10 @@ class MilfSessionController(
                 SeniorUxScreen.Idle -> it.copy(isRunning = false)
             }
         }
+        closeActiveClient(client)
         if (shouldSpeak) {
             dependencies.narrator.speak(safe, lang)
         }
-        closeActiveClient()
     }
 
     class Dependencies(
