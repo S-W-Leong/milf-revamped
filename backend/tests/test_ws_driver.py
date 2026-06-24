@@ -36,6 +36,17 @@ async def test_get_ui_tree_returns_payload_verbatim():
     assert await task == {"nodes": [1, 2]}
 
 
+async def test_get_date_returns_device_date():
+    sent, conn = _wire()
+    driver = WebSocketDriver(conn)
+    task = asyncio.create_task(driver.get_date())
+    await asyncio.sleep(0)
+    action = decode(sent[0])
+    assert action.name == "get_date" and action.args == {}
+    conn.on_message(encode(ActionResult(id=action.id, ok=True, result="2026-06-24")))
+    assert await task == "2026-06-24"
+
+
 async def test_unsupported_method_raises():
     _, conn = _wire()
     driver = WebSocketDriver(conn)

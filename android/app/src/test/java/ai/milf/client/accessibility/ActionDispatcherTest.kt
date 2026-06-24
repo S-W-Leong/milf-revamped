@@ -50,6 +50,17 @@ class ActionDispatcherTest {
         assertEquals(true, result.ok)
         assertEquals(listOf("tap:10,20"), fake.calls)
     }
+
+    @Test
+    fun getDateReturnsDeviceDate() = runTest {
+        val dispatcher = ActionDispatcher(FakeDeviceActions())
+
+        val result = dispatcher.dispatch(Action("d1", "get_date", emptyMap()))
+
+        assertEquals(true, result.ok)
+        assertEquals("d1", result.id)
+        assertEquals("2026-06-24", result.result)
+    }
 }
 
 private class FakeDeviceActions : DeviceActions {
@@ -72,4 +83,6 @@ private class FakeDeviceActions : DeviceActions {
     override suspend fun screenshot(hideOverlay: Boolean): String = "png"
 
     override suspend fun getUiTree(): Map<String, Any?> = emptyMap()
+
+    override suspend fun getDate(): String = "2026-06-24"
 }

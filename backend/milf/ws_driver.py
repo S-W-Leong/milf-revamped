@@ -15,6 +15,7 @@ class WebSocketDriver(DeviceDriver):
         "start_app",
         "screenshot",
         "get_ui_tree",
+        "get_date",
     }
     supported_buttons = {"back", "home", "enter"}
 
@@ -116,7 +117,7 @@ class WebSocketDriver(DeviceDriver):
         raise NotImplementedError
 
     async def get_date(self) -> str:
-        raise NotImplementedError
+        return await self._send_supported("get_date", {})
 
     async def _send_supported(self, name: str, args: dict[str, Any]) -> Any:
         result = await self._connection.send_action(name, args)

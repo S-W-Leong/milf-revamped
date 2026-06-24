@@ -2,6 +2,7 @@ package ai.milf.client.accessibility
 
 import ai.milf.client.protocol.Action
 import ai.milf.client.protocol.ActionResult
+import java.time.LocalDate
 
 interface DeviceActions {
     suspend fun tap(x: Int, y: Int)
@@ -11,6 +12,7 @@ interface DeviceActions {
     suspend fun startApp(packageName: String, activity: String?): String
     suspend fun screenshot(hideOverlay: Boolean): String
     suspend fun getUiTree(): Map<String, Any?>
+    suspend fun getDate(): String = LocalDate.now().toString()
 }
 
 class ActionDispatcher(
@@ -57,6 +59,8 @@ class ActionDispatcher(
                 "screenshot" -> activeDevice.screenshot(action.boolArg("hide_overlay", true))
 
                 "get_ui_tree" -> activeDevice.getUiTree()
+
+                "get_date" -> activeDevice.getDate()
 
                 else -> throw IllegalArgumentException("Unsupported action: ${action.name}")
             }
