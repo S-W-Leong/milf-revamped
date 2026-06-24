@@ -62,7 +62,7 @@ Android rollback must distribute the last known-good APK or app-store track and 
 
 ## Known Launch Blockers
 
-- GitHub Actions must be observed green on the pushed branch or release PR.
+- GitHub Actions must be observed green on draft PR #1 for the latest `UPGRADES` head.
 - Python 3.11 clean-environment backend evidence must be observed through GitHub Actions or a local Python 3.11 runtime.
 - Accessibility onboarding and the 10-run WhatsApp hero rehearsal must be completed on a named device or emulator.
 - Production `wss://` deployment and device-pairing procedure must be verified.

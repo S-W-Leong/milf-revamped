@@ -3,6 +3,8 @@
 **Date:** 2026-06-24  
 **Branch:** `UPGRADES`  
 **Implementation head under audit:** `241de22 fix: close runtime and CI review gaps`  
+**CI observation head:** `f19d107 docs: record clean checkout verification`
+**Draft PR:** https://github.com/S-W-Leong/milf-revamped/pull/1
 **Result:** Not release-ready. Automated local and clean-checkout gates pass, but external CI evidence, device rehearsal, production deployment evidence, and owner signoff remain open.
 
 ## Checks Run
@@ -17,7 +19,7 @@
 | Android runtime regression tests | Pass | `cd android && .\gradlew.bat --no-daemon --console=plain :app:testDebugUnitTest --tests "ai.milf.client.MainViewModelTest"` passed after adding regression coverage for TTS confirmation failure and stale confirmation cleanup. |
 | Android tests and debug build | Pass | `cd android && .\gradlew.bat --no-daemon --console=plain :app:testDebugUnitTest :app:assembleDebug` returned `BUILD SUCCESSFUL` using JDK 17 and Android SDK API 35. |
 | Clean-checkout Android setup and build | Pass | From the same fresh local clone, with only a generated `android/local.properties` pointing to the local SDK, `.\gradlew.bat --no-daemon --console=plain :app:testDebugUnitTest :app:assembleDebug` returned `BUILD SUCCESSFUL` with `43 actionable tasks: 43 executed`. |
-| GitHub Actions CI | Pending | Workflow exists in `.github/workflows/ci.yml`, but this audit has not observed a GitHub-hosted run on the pushed branch or PR. |
+| GitHub Actions CI | Partial, not release-sufficient | `UPGRADES` was pushed and draft PR #1 was opened. GitHub Actions run `28074399402` started for head `f19d10777e6e2b23aab4bbbee52bcc182e3efceb`; the repository hygiene and backend jobs were observed successful, and Android was still in progress. The GitHub connector token was revoked while polling, and unauthenticated GitHub endpoints returned 404, so final CI status for the PR could not be observed from this session. |
 | Device or emulator rehearsal | Pending | No accessibility onboarding evidence or 10-run WhatsApp hero rehearsal log is recorded. |
 
 ## Backend Status
@@ -41,11 +43,12 @@
 
 - `README.md`, `.env.example`, `SECURITY.md`, `PRIVACY.md`, and `docs/release-checklist.md` exist and describe current setup, security, privacy, and release rules.
 - CI now has backend, Android, hygiene, and lightweight secret-denylist jobs.
-- Release remains blocked until CI is observed green on GitHub and manual release gates are filled with dated evidence.
+- Draft PR #1 exists for the `UPGRADES` branch.
+- Release remains blocked until CI is observed green on GitHub for the latest PR head and manual release gates are filled with dated evidence.
 
 ## Remaining Launch Blockers
 
-1. Push `UPGRADES` and confirm GitHub Actions is green for the release candidate, including Python 3.11 backend verification.
+1. Confirm GitHub Actions is green for draft PR #1's latest head, including Python 3.11 backend verification and Android CI completion.
 2. Run accessibility-service onboarding on a named supported Android device or emulator.
 3. Rehearse the known-contact WhatsApp video-call hero path 10 times and record at least 9 successes or an owner-approved waiver.
 4. Record production deployment evidence for authenticated `wss://` transport behind TLS.
