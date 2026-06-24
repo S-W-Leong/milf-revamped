@@ -2,34 +2,36 @@
 
 No release is acceptable until every required gate is complete or has an owner-approved waiver recorded in the final production-readiness audit.
 
+Checked items below are verified by the 2026-06-24 local audit unless the item explicitly requires CI, device, deployment, or owner evidence.
+
 ## Merge And CI Gates
 
 - [ ] CI is green on the release candidate.
 - [ ] Backend full suite passes in CI from a clean Python 3.11 install with `python -m pip install -e .[test]` and `python -m pytest`.
 - [ ] Android unit tests pass in CI with JDK 17 and Android SDK API 35.
 - [ ] Android debug build passes in CI with `./gradlew :app:testDebugUnitTest :app:assembleDebug`.
-- [ ] Hygiene check proves `.env`, `android/local.properties`, `.idea/`, and `android/.idea/` are not tracked.
-- [ ] Lightweight secret check or denylist check finds no obvious committed secrets.
+- [x] Hygiene check proves `.env`, `android/local.properties`, `.idea/`, and `android/.idea/` are not tracked.
+- [x] Lightweight secret check or denylist check finds no obvious committed secrets.
 
 ## Security Gates
 
 - [ ] Device pairing/auth test passes.
-- [ ] Backend refuses unauthenticated websocket sessions.
-- [ ] Android release rules reject cleartext `ws://` URLs.
+- [x] Backend refuses unauthenticated websocket sessions.
+- [x] Android release rules reject cleartext `ws://` URLs.
 - [ ] Production deployment uses `wss://` behind TLS.
-- [ ] `MILF_DEVICE_TOKEN` or a stronger session-pairing token is required before phone-control requests.
-- [ ] Backend confirmation bypass tests pass.
-- [ ] Android confirmation bypass tests pass.
+- [x] `MILF_DEVICE_TOKEN` or a stronger session-pairing token is required before phone-control requests.
+- [x] Backend confirmation bypass tests pass.
+- [x] Android confirmation bypass tests pass.
 - [ ] Server and client logs do not include tokens, audio, transcripts, screenshots, or full UI trees.
 
 ## Privacy Gates
 
-- [ ] `PRIVACY.md` reflects current audio handling.
-- [ ] `PRIVACY.md` reflects current transcript handling.
-- [ ] `PRIVACY.md` reflects current UI tree minimization.
-- [ ] `PRIVACY.md` reflects screenshot gating and retention rules.
+- [x] `PRIVACY.md` reflects current audio handling.
+- [x] `PRIVACY.md` reflects current transcript handling.
+- [x] `PRIVACY.md` reflects current UI tree minimization.
+- [x] `PRIVACY.md` reflects screenshot gating and retention rules.
 - [ ] User-facing consent and accessibility disclosure copy has been reviewed.
-- [ ] Third-party provider behavior is documented for OpenAI, ILMU, and MERaLiON.
+- [x] Third-party provider behavior is documented for OpenAI, ILMU, and MERaLiON.
 
 ## Device Rehearsal
 
@@ -43,9 +45,23 @@ No release is acceptable until every required gate is complete or has an owner-a
 
 ## Rollback And Signoff
 
-- [ ] Rollback procedure is documented for backend deployment.
-- [ ] Rollback procedure is documented for Android build distribution.
-- [ ] Known limitations and launch blockers are listed.
+- [x] Rollback procedure is documented for backend deployment.
+- [x] Rollback procedure is documented for Android build distribution.
+- [x] Known limitations and launch blockers are listed.
 - [ ] Public display-name decision is documented.
 - [ ] Privacy and security review is complete.
 - [ ] Release owner has signed off.
+
+## Rollback Procedure
+
+Backend rollback must restore the last known-good deployment artifact and environment set, then verify `MILF_DEVICE_TOKEN`, provider credentials, websocket host/port, and TLS termination before accepting device sessions again. If authentication, confirmation policy, or provider failures are suspected, stop the websocket process or remove it from routing before investigation.
+
+Android rollback must distribute the last known-good APK or app-store track and revoke the faulty build from testers or release channels. If a build exposes unauthenticated transport, cleartext production URLs, or confirmation bypass behavior, treat it as a security incident and rotate affected tokens.
+
+## Known Launch Blockers
+
+- GitHub Actions must be observed green on the pushed branch or release PR.
+- Clean-checkout backend and Android setup evidence must be recorded.
+- Accessibility onboarding and the 10-run WhatsApp hero rehearsal must be completed on a named device or emulator.
+- Production `wss://` deployment and device-pairing procedure must be verified.
+- Public display-name decision, privacy/security review, and release owner signoff are still pending.
