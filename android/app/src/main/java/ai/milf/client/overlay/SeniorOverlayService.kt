@@ -160,22 +160,17 @@ class SeniorOverlayService : Service() {
     private fun launchRescueCallSafely(phone: String) {
         if (hasCallPhonePermission()) {
             val callIntent = BuyerRescue.intentFor(phone, hasCallPermission = true)
-            if (canResolve(callIntent) && startRescueActivity(callIntent, "call")) {
+            if (startRescueActivity(callIntent, "call")) {
                 return
             }
             Log.w(TAG, "Unable to launch rescue call; falling back to dialer")
         }
 
         val dialIntent = BuyerRescue.intentFor(phone, hasCallPermission = false)
-        if (!canResolve(dialIntent)) {
-            Log.w(TAG, "No activity can handle rescue dial intent")
-            return
+        if (!startRescueActivity(dialIntent, "dial")) {
+            Log.w(TAG, "Unable to launch rescue dialer")
         }
-        startRescueActivity(dialIntent, "dial")
     }
-
-    private fun canResolve(intent: Intent): Boolean =
-        intent.resolveActivity(packageManager) != null
 
     private fun startRescueActivity(intent: Intent, label: String): Boolean =
         try {
