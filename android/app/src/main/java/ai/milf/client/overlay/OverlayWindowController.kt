@@ -24,7 +24,7 @@ import kotlin.math.abs
 class OverlayWindowController(
     private val context: Context,
     private val callbacks: Callbacks
-) : LifecycleOwner, SavedStateRegistryOwner {
+) {
     interface Callbacks {
         fun onBubbleTap()
         fun onStopListening()
@@ -37,17 +37,13 @@ class OverlayWindowController(
     }
 
     private val windowManager = context.getSystemService(WindowManager::class.java)
-    private val lifecycleRegistry = LifecycleRegistry(this)
-    private val savedStateController = SavedStateRegistryController.create(this)
     private var composeView: ComposeView? = null
     private var params: WindowManager.LayoutParams? = null
+    private var windowOwner: WindowOwner? = null
     private var removed = false
     private var collapsedX = dp(24)
     private var collapsedY = dp(240)
     private var currentState = SeniorUiState()
-
-    override val lifecycle: Lifecycle = lifecycleRegistry
-    override val savedStateRegistry: SavedStateRegistry = savedStateController.savedStateRegistry
 
     fun show(initialState: SeniorUiState) {
         if (composeView != null) {
@@ -57,16 +53,19 @@ class OverlayWindowController(
 
         removed = false
         currentState = initialState
-        savedStateController.performRestore(null)
-        lifecycleRegistry.currentState = Lifecycle.State.STARTED
+        val owner = WindowOwner().also {
+            it.restore()
+            it.start()
+        }
         val view = ComposeView(context).also {
-            it.setViewTreeLifecycleOwner(this)
-            it.setViewTreeSavedStateRegistryOwner(this)
+            it.setViewTreeLifecycleOwner(owner)
+            it.setViewTreeSavedStateRegistryOwner(owner)
             it.setOnTouchListener(DragTouchListener())
         }
         val initialParams = paramsFor(initialState)
         composeView = view
         params = initialParams
+        windowOwner = owner
         view.setOverlayContent(initialState)
         addViewSafely(view, initialParams)
     }
@@ -92,14 +91,10 @@ class OverlayWindowController(
 
     fun remove() {
         val view = composeView ?: return
-        composeView = null
-        params = null
-        removed = true
         if (view.isAttachedToWindow) {
             removeViewSafely(view)
         }
-        view.disposeComposition()
-        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        clearWindowState(view)
     }
 
     private fun addViewSafely(view: ComposeView, layoutParams: WindowManager.LayoutParams) {
@@ -136,6 +131,8 @@ class OverlayWindowController(
         }
         params = null
         removed = true
+        windowOwner?.destroy()
+        windowOwner = null
         view.disposeComposition()
     }
 
@@ -238,5 +235,35 @@ class OverlayWindowController(
 
     private companion object {
         const val TAG = "OverlayWindowController"
+    }
+}
+
+private class WindowOwner : LifecycleOwner, SavedStateRegistryOwner {
+    private val lifecycleRegistry = LifecycleRegistry(this)
+    private val savedStateController = SavedStateRegistryController.create(this)
+    private var destroyed = false
+    private var restored = false
+
+    override val lifecycle: Lifecycle = lifecycleRegistry
+    override val savedStateRegistry: SavedStateRegistry = savedStateController.savedStateRegistry
+
+    fun restore() {
+        if (!restored) {
+            savedStateController.performRestore(null)
+            restored = true
+        }
+    }
+
+    fun start() {
+        if (!destroyed) {
+            lifecycleRegistry.currentState = Lifecycle.State.STARTED
+        }
+    }
+
+    fun destroy() {
+        if (!destroyed) {
+            destroyed = true
+            lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        }
     }
 }

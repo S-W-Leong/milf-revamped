@@ -56,7 +56,7 @@ class SeniorOverlayService : Service() {
 
                 override fun onSpeakDecision() {
                     controller.uiState.value.confirmation?.let { confirmation ->
-                        confirmationVoice?.listen(confirmation.lang)
+                        listenForConfirmationSafely(confirmation.lang)
                     }
                 }
 
@@ -109,14 +109,7 @@ class SeniorOverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun beginListeningSafely(controller: MilfSessionController): Boolean {
-        if (!hasRecordAudioPermission()) {
-            openSetupActivity()
-            return false
-        }
-        if (!foregroundStarted && !startForegroundSafely()) {
-            openSetupActivity()
-            return false
-        }
+        if (!ensureMicrophoneForegroundReady()) return false
         return try {
             controller.beginListening()
             true
@@ -126,6 +119,30 @@ class SeniorOverlayService : Service() {
             openSetupActivity()
             false
         }
+    }
+
+    private fun listenForConfirmationSafely(lang: String): Boolean {
+        if (!ensureMicrophoneForegroundReady()) return false
+        return try {
+            confirmationVoice?.listen(lang)
+            true
+        } catch (exception: SecurityException) {
+            Log.w(TAG, "Microphone permission was unavailable when listening for confirmation", exception)
+            openSetupActivity()
+            false
+        }
+    }
+
+    private fun ensureMicrophoneForegroundReady(): Boolean {
+        if (!hasRecordAudioPermission()) {
+            openSetupActivity()
+            return false
+        }
+        if (!foregroundStarted && !startForegroundSafely()) {
+            openSetupActivity()
+            return false
+        }
+        return true
     }
 
     private fun hasRecordAudioPermission(): Boolean =
