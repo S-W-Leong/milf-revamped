@@ -14,6 +14,8 @@ class MainViewModelTest {
             )
         )
 
+        viewModel.startRecording()
+        viewModel.stopAndRun()
         viewModel.showConfirmationForTest("c1", "Call Wei now?", "en")
         viewModel.approveConfirmation()
 
@@ -30,6 +32,8 @@ class MainViewModelTest {
             )
         )
 
+        viewModel.startRecording()
+        viewModel.stopAndRun()
         viewModel.showConfirmationForTest("c1", "Call Wei now?", "en")
         viewModel.onConfirmationSpeech("tak nak")
 

@@ -4,6 +4,9 @@ import ai.milf.client.protocol.ConfirmResponse
 import ai.milf.client.protocol.MilfMessage
 import ai.milf.client.relationship.RelationshipGraph
 import ai.milf.client.ws.MilfWebSocketClient
+import ai.milf.client.AudioRecorderLike
+import ai.milf.client.NarratorLike
+import ai.milf.client.protocol.ActionResult
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -45,6 +48,8 @@ class MilfSessionControllerTest {
         val client = FakeClient(onSendConfirm = { sent += it })
         val controller = fakeController(client = client)
 
+        controller.beginListening()
+        controller.finishListeningAndRun()
         controller.showConfirmationForTest("c1", "Calling Wei?", "en", "wei-grandson")
         controller.approveConfirmation()
 
@@ -71,11 +76,67 @@ class MilfSessionControllerTest {
         assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
     }
 
+    @Test
+    fun staleCallbacksFromPreviousRunDoNotOverwriteCurrentRun() = runTest {
+        val clientA = FakeClient()
+        val clientB = FakeClient()
+        val controller = fakeController(clients = listOf(clientA, clientB))
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        clientA.callbacks?.onTaskComplete("Old success.", "en", "wei-grandson")
+        clientA.callbacks?.onTaskFailure("Old failure.", "en", "buyer-daughter")
+
+        val state = controller.uiState.value
+        assertEquals(true, clientA.closed)
+        assertEquals(SeniorUxScreen.Working, state.screen)
+        assertEquals("Working on that.", state.captions)
+        assertEquals(null, state.success)
+        assertEquals(null, state.failure)
+    }
+
+    @Test
+    fun finishWhenNotRecordingDoesNotStopRecorder() = runTest {
+        val recorder = FakeRecorder()
+        val controller = fakeController(recorder = recorder)
+
+        controller.finishListeningAndRun()
+
+        assertEquals(0, recorder.stopCalls)
+        assertEquals(SeniorUxScreen.Idle, controller.uiState.value.screen)
+    }
+
+    @Test
+    fun activeCloseWhileWorkingMovesToFailure() = runTest {
+        val client = FakeClient()
+        val controller = fakeController(client = client)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        client.callbacks?.onClosed("socket closed")
+
+        val state = controller.uiState.value
+        assertEquals(SeniorUxScreen.Failure, state.screen)
+        assertEquals(false, state.isRunning)
+        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+    }
+
     private fun fakeController(client: FakeClient = FakeClient()): MilfSessionController =
+        fakeController(clients = listOf(client))
+
+    private fun fakeController(
+        clients: List<FakeClient>,
+        recorder: FakeRecorder = FakeRecorder()
+    ): MilfSessionController =
         MilfSessionController(
-            dependencies = MilfSessionController.Dependencies.fake(client),
+            dependencies = testDependencies(clients, recorder),
             graph = RelationshipGraph.demo()
         )
+
+    private fun fakeController(recorder: FakeRecorder): MilfSessionController =
+        fakeController(clients = listOf(FakeClient()), recorder = recorder)
 }
 
 private class FakeClient(
@@ -94,5 +155,49 @@ private class FakeClient(
         return true
     }
 
-    override fun close() = Unit
+    var closed = false
+
+    override fun close() {
+        closed = true
+    }
+}
+
+private class FakeRecorder : AudioRecorderLike {
+    var isRecording = false
+    var stopCalls = 0
+
+    override fun start() {
+        isRecording = true
+    }
+
+    override fun stop(): ByteArray {
+        check(isRecording) { "stop called while not recording" }
+        stopCalls += 1
+        isRecording = false
+        return byteArrayOf(1)
+    }
+
+    override fun cancel() {
+        isRecording = false
+    }
+}
+
+private fun testDependencies(
+    clients: List<FakeClient>,
+    recorder: FakeRecorder = FakeRecorder()
+): MilfSessionController.Dependencies {
+    var nextClient = 0
+    return MilfSessionController.Dependencies(
+        recorder = recorder,
+        narrator = object : NarratorLike {
+            override fun speak(text: String, lang: String) = Unit
+            override fun stop() = Unit
+            override fun shutdown() = Unit
+        },
+        clientFactory = {
+            clients.getOrElse(nextClient++) { clients.last() }
+        },
+        accessibilityAvailable = { true },
+        dispatch = { action -> ActionResult(action.id, true) }
+    )
 }

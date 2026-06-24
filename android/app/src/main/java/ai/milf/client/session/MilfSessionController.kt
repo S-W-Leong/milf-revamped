@@ -19,6 +19,7 @@ class MilfSessionController(
 ) {
     private val _uiState = MutableStateFlow(SeniorUiState())
     val uiState: StateFlow<SeniorUiState> = _uiState.asStateFlow()
+    private var sessionId = 0L
 
     fun setBackendUrl(url: String) {
         _uiState.update { it.copy(backendUrl = url.trim()) }
@@ -49,6 +50,8 @@ class MilfSessionController(
     }
 
     fun beginListening() {
+        nextSessionId()
+        closeActiveClient()
         dependencies.narrator.stop()
         dependencies.recorder.start()
         _uiState.update {
@@ -68,8 +71,12 @@ class MilfSessionController(
 
     fun finishListeningAndRun() {
         val state = _uiState.value
+        if (!state.isRecording) return
+
         val bytes = dependencies.recorder.stop()
+        closeActiveClient()
         val client = dependencies.clientFactory(state.backendUrl)
+        val callbackSessionId = sessionId
         dependencies.activeClient = client
         _uiState.update {
             it.copy(
@@ -82,7 +89,7 @@ class MilfSessionController(
                 failure = null
             )
         }
-        client.start(bytes, state.lang, callbacks())
+        client.start(bytes, state.lang, callbacks(callbackSessionId))
     }
 
     fun approveConfirmation() {
@@ -119,18 +126,23 @@ class MilfSessionController(
     }
 
     fun shutdown() {
+        nextSessionId()
         dependencies.recorder.cancel()
         dependencies.narrator.shutdown()
-        dependencies.activeClient?.close()
-        dependencies.activeClient = null
+        closeActiveClient()
     }
 
-    private fun callbacks(): MilfWebSocketClient.Callbacks =
+    private fun callbacks(callbackSessionId: Long): MilfWebSocketClient.Callbacks =
         object : MilfWebSocketClient.Callbacks {
-            override suspend fun onAction(action: Action): ActionResult =
-                dependencies.dispatch(action)
+            override suspend fun onAction(action: Action): ActionResult {
+                if (!isCurrentSession(callbackSessionId)) {
+                    return ActionResult(action.id, ok = false, error = "stale session")
+                }
+                return dependencies.dispatch(action)
+            }
 
             override suspend fun onNarration(text: String, lang: String) {
+                if (!isCurrentSession(callbackSessionId)) return
                 dependencies.narrator.speak(text, lang)
                 _uiState.update {
                     it.copy(lastNarration = text, captions = text)
@@ -143,6 +155,7 @@ class MilfSessionController(
                 lang: String,
                 contactId: String?
             ) {
+                if (!isCurrentSession(callbackSessionId)) return
                 dependencies.narrator.speak(summary, lang)
                 _uiState.update {
                     it.copy(
@@ -155,6 +168,7 @@ class MilfSessionController(
             }
 
             override suspend fun onTaskComplete(summary: String, lang: String, contactId: String?) {
+                if (!isCurrentSession(callbackSessionId)) return
                 dependencies.narrator.speak(summary, lang)
                 _uiState.update {
                     it.copy(
@@ -170,6 +184,7 @@ class MilfSessionController(
             }
 
             override suspend fun onTaskFailure(message: String, lang: String, recoveryContactId: String?) {
+                if (!isCurrentSession(callbackSessionId)) return
                 dependencies.narrator.speak(message, lang)
                 _uiState.update {
                     it.copy(
@@ -185,24 +200,13 @@ class MilfSessionController(
             }
 
             override fun onClosed(reason: String?) {
-                _uiState.update { it.copy(isRunning = false) }
+                if (!isCurrentSession(callbackSessionId)) return
+                moveActiveSessionToFailure()
             }
 
             override fun onFailed(message: String) {
-                val safe = "I'm having a little trouble doing that. Want me to call your daughter to help?"
-                val lang = _uiState.value.lang
-                dependencies.narrator.speak(safe, lang)
-                _uiState.update {
-                    it.copy(
-                        screen = SeniorUxScreen.Failure,
-                        isRecording = false,
-                        isRunning = false,
-                        captions = safe,
-                        confirmation = null,
-                        success = null,
-                        failure = FailureState(safe, lang, graph.escapeContact)
-                    )
-                }
+                if (!isCurrentSession(callbackSessionId)) return
+                moveActiveSessionToFailure()
             }
         }
 
@@ -216,6 +220,52 @@ class MilfSessionController(
                 isRunning = approved,
                 captions = if (approved) "Continuing." else "Okay, stopped."
             )
+        }
+    }
+
+    private fun nextSessionId(): Long {
+        sessionId += 1
+        return sessionId
+    }
+
+    private fun isCurrentSession(callbackSessionId: Long): Boolean =
+        callbackSessionId == sessionId
+
+    private fun closeActiveClient() {
+        val client = dependencies.activeClient
+        dependencies.activeClient = null
+        client?.close()
+    }
+
+    private fun moveActiveSessionToFailure() {
+        val safe = "I'm having a little trouble doing that. Want me to call your daughter to help?"
+        val lang = _uiState.value.lang
+        var shouldSpeak = false
+        _uiState.update {
+            when (it.screen) {
+                SeniorUxScreen.Success,
+                SeniorUxScreen.Failure -> it.copy(isRunning = false)
+
+                SeniorUxScreen.Working,
+                SeniorUxScreen.Confirming,
+                SeniorUxScreen.Listening -> {
+                    shouldSpeak = true
+                    it.copy(
+                        screen = SeniorUxScreen.Failure,
+                        isRecording = false,
+                        isRunning = false,
+                        captions = safe,
+                        confirmation = null,
+                        success = null,
+                        failure = FailureState(safe, lang, graph.escapeContact)
+                    )
+                }
+
+                SeniorUxScreen.Idle -> it.copy(isRunning = false)
+            }
+        }
+        if (shouldSpeak) {
+            dependencies.narrator.speak(safe, lang)
         }
     }
 
@@ -244,7 +294,7 @@ class MilfSessionController(
                     clientFactory = { client },
                     accessibilityAvailable = { true },
                     dispatch = { action -> ActionResult(action.id, true) }
-                ).also { it.activeClient = client }
+                )
         }
     }
 
