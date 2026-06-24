@@ -26,11 +26,24 @@ class ConfirmRequest(BaseModel):
     id: str
     summary: str
     lang: str
+    contact_id: str | None = None
 
 
 class ConfirmResponse(BaseModel):
     id: str
     approved: bool
+
+
+class TaskComplete(BaseModel):
+    summary: str
+    lang: str
+    contact_id: str | None = None
+
+
+class TaskFailure(BaseModel):
+    message: str
+    lang: str
+    recovery_contact_id: str | None = None
 
 
 class Audio(BaseModel):
@@ -46,6 +59,8 @@ _MESSAGE_TYPES: dict[str, type[BaseModel]] = {
         Narration,
         ConfirmRequest,
         ConfirmResponse,
+        TaskComplete,
+        TaskFailure,
         Audio,
     )
 }

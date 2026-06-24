@@ -2,7 +2,7 @@ package ai.milf.client.protocol
 
 import org.json.JSONObject
 
-sealed interface MilfMessage
+interface MilfMessage
 
 data class Action(
     val id: String,
@@ -25,12 +25,25 @@ data class Narration(
 data class ConfirmRequest(
     val id: String,
     val summary: String,
-    val lang: String
+    val lang: String,
+    val contactId: String? = null
 ) : MilfMessage
 
 data class ConfirmResponse(
     val id: String,
     val approved: Boolean
+) : MilfMessage
+
+data class TaskComplete(
+    val summary: String,
+    val lang: String,
+    val contactId: String? = null
+) : MilfMessage
+
+data class TaskFailure(
+    val message: String,
+    val lang: String,
+    val recoveryContactId: String? = null
 ) : MilfMessage
 
 data class Audio(
@@ -60,14 +73,27 @@ object MilfProtocol {
                 .put("id", message.id)
                 .put("summary", message.summary)
                 .put("lang", message.lang)
+                .putNullable("contact_id", message.contactId)
 
             is ConfirmResponse -> JSONObject()
                 .put("id", message.id)
                 .put("approved", message.approved)
 
+            is TaskComplete -> JSONObject()
+                .put("summary", message.summary)
+                .put("lang", message.lang)
+                .putNullable("contact_id", message.contactId)
+
+            is TaskFailure -> JSONObject()
+                .put("message", message.message)
+                .put("lang", message.lang)
+                .putNullable("recovery_contact_id", message.recoveryContactId)
+
             is Audio -> JSONObject()
                 .put("goal_audio_b64", message.goalAudioB64)
                 .put("lang", message.lang)
+
+            else -> throw IllegalArgumentException("Unknown message class: ${message::class.simpleName}")
         }
         return JSONObject()
             .put("type", typeName(message))
@@ -101,12 +127,25 @@ object MilfProtocol {
             "ConfirmRequest" -> ConfirmRequest(
                 id = data.getString("id"),
                 summary = data.getString("summary"),
-                lang = data.getString("lang")
+                lang = data.getString("lang"),
+                contactId = data.optStringOrNull("contact_id")
             )
 
             "ConfirmResponse" -> ConfirmResponse(
                 id = data.getString("id"),
                 approved = data.getBoolean("approved")
+            )
+
+            "TaskComplete" -> TaskComplete(
+                summary = data.getString("summary"),
+                lang = data.getString("lang"),
+                contactId = data.optStringOrNull("contact_id")
+            )
+
+            "TaskFailure" -> TaskFailure(
+                message = data.getString("message"),
+                lang = data.getString("lang"),
+                recoveryContactId = data.optStringOrNull("recovery_contact_id")
             )
 
             "Audio" -> Audio(
@@ -124,7 +163,10 @@ object MilfProtocol {
         is Narration -> "Narration"
         is ConfirmRequest -> "ConfirmRequest"
         is ConfirmResponse -> "ConfirmResponse"
+        is TaskComplete -> "TaskComplete"
+        is TaskFailure -> "TaskFailure"
         is Audio -> "Audio"
+        else -> throw IllegalArgumentException("Unknown message class: ${message::class.simpleName}")
     }
 }
 
