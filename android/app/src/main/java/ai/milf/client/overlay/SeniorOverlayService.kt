@@ -4,6 +4,7 @@ import ai.milf.client.MainActivity
 import ai.milf.client.MilfApplication
 import ai.milf.client.R
 import ai.milf.client.audio.ConfirmationVoiceRecognizer
+import ai.milf.client.rescue.BuyerRescue
 import ai.milf.client.session.MilfSessionController
 import android.Manifest
 import android.app.Notification
@@ -65,7 +66,14 @@ class SeniorOverlayService : Service() {
                     beginListeningSafely(controller)
                 }
 
-                override fun onCallBuyer() = controller.callBuyer()
+                override fun onCallBuyer() {
+                    val contact = controller.uiState.value.failure?.recoveryContact ?: return
+                    val phone = contact.phone ?: return
+                    val hasCallPermission = checkSelfPermission(
+                        Manifest.permission.CALL_PHONE
+                    ) == PackageManager.PERMISSION_GRANTED
+                    startActivity(BuyerRescue.intentFor(phone, hasCallPermission))
+                }
             }
         )
         scope.launch(Dispatchers.Main.immediate) {
@@ -206,7 +214,7 @@ class SeniorOverlayService : Service() {
         private const val NOTIFICATION_ID = 1001
         private const val TAG = "SeniorOverlayService"
 
-        fun start(context: Context, startListening: Boolean) {
+        fun start(context: Context, startListening: Boolean = false) {
             val intent = Intent(context, SeniorOverlayService::class.java)
                 .putExtra(EXTRA_START_LISTENING, startListening)
             if (

@@ -1,8 +1,7 @@
 package ai.milf.client
 
-import androidx.compose.foundation.background
+import ai.milf.client.session.SeniorUiState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,14 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,95 +29,112 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun MilfUi(
-    state: MainUiState,
+    state: SeniorUiState,
     onBackendUrlChange: (String) -> Unit,
     onLangChange: (String) -> Unit,
-    onMicPressed: () -> Unit,
-    onApprove: () -> Unit,
-    onDeny: () -> Unit,
-    onSpeakDecision: () -> Unit,
-    onOpenAccessibility: () -> Unit
+    onDemoModeChange: (Boolean) -> Unit,
+    onOpenAccessibility: () -> Unit,
+    onOpenOverlayPermission: () -> Unit,
+    onOpenAssistSettings: () -> Unit,
+    onRequestAudioPermission: () -> Unit,
+    onRequestCallPermission: () -> Unit,
+    onStartOverlay: () -> Unit,
+    onStopOverlay: () -> Unit
 ) {
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = Color(0xFFF8FAFC)
         ) {
-            Box(Modifier.fillMaxSize()) {
-                Column(
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
+                Text(
+                    text = "MILF buyer setup",
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF111827)
+                )
+
+                OutlinedTextField(
+                    value = state.backendUrl,
+                    onValueChange = onBackendUrlChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Backend websocket") }
+                )
+
+                LanguageRow(state.lang, onLangChange)
+
+                Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "MILF",
-                            fontSize = 34.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF111827)
-                        )
-                        Spacer(Modifier.height(16.dp))
-                        LanguageRow(state.lang, onLangChange)
-                        Spacer(Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = state.backendUrl,
-                            onValueChange = onBackendUrlChange,
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            label = { Text("Backend") }
-                        )
-                    }
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = state.lastNarration ?: state.status,
-                            fontSize = 26.sp,
-                            lineHeight = 32.sp,
-                            textAlign = TextAlign.Center,
-                            color = Color(0xFF111827),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(28.dp))
-                        Button(
-                            onClick = onMicPressed,
-                            enabled = !state.isRunning || state.isRecording,
-                            modifier = Modifier.size(168.dp),
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                text = if (state.isRecording) "Stop" else "Speak",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    Column(Modifier.fillMaxWidth()) {
-                        if (!state.accessibilityEnabled) {
-                            OutlinedButton(
-                                onClick = onOpenAccessibility,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(64.dp)
-                            ) {
-                                Text("Enable phone control", fontSize = 20.sp)
-                            }
-                        }
-                    }
+                    Text(
+                        text = "Demo watch mode",
+                        fontSize = 18.sp,
+                        color = Color(0xFF111827)
+                    )
+                    Switch(
+                        checked = state.demoMode,
+                        onCheckedChange = onDemoModeChange
+                    )
                 }
 
-                state.confirmation?.let { pending ->
-                    ConfirmationOverlay(
-                        pending = pending,
-                        onApprove = onApprove,
-                        onDeny = onDeny,
-                        onSpeakDecision = onSpeakDecision
-                    )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    SetupButton("Microphone permission", onRequestAudioPermission)
+                    SetupButton("Phone call permission", onRequestCallPermission)
+                    SetupButton("Accessibility Service", onOpenAccessibility)
+                    SetupButton("Display over other apps", onOpenOverlayPermission)
+                    SetupButton("Default assistant app", onOpenAssistSettings)
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                Button(
+                    onClick = onStartOverlay,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                ) {
+                    Text("Start helper", fontSize = 20.sp)
+                }
+
+                OutlinedButton(
+                    onClick = onStopOverlay,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                ) {
+                    Text("Stop helper", fontSize = 18.sp)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SetupButton(
+    label: String,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+    ) {
+        Text(label, fontSize = 18.sp)
     }
 }
 
@@ -135,7 +151,7 @@ private fun LanguageRow(
             .forEach { (code, label) ->
                 val modifier = Modifier
                     .weight(1f)
-                    .height(52.dp)
+                    .height(60.dp)
                 if (selected == code) {
                     Button(
                         onClick = { onLangChange(code) },
@@ -152,69 +168,5 @@ private fun LanguageRow(
                     }
                 }
             }
-    }
-}
-
-@Composable
-private fun ConfirmationOverlay(
-    pending: PendingConfirmation,
-    onApprove: () -> Unit,
-    onDeny: () -> Unit,
-    onSpeakDecision: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xCC111827))
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White, RoundedCornerShape(8.dp))
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = pending.summary,
-                fontSize = 30.sp,
-                lineHeight = 36.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                color = Color(0xFF111827)
-            )
-            Spacer(Modifier.height(28.dp))
-            OutlinedButton(
-                onClick = onSpeakDecision,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-            ) {
-                Text("Speak yes/no", fontSize = 22.sp)
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDeny,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(72.dp)
-                ) {
-                    Text("No", fontSize = 24.sp)
-                }
-                Button(
-                    onClick = onApprove,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(72.dp)
-                ) {
-                    Text("Yes", fontSize = 24.sp)
-                }
-            }
-        }
     }
 }
