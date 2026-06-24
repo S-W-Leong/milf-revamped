@@ -12,6 +12,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -69,10 +70,7 @@ class SeniorOverlayService : Service() {
                 override fun onCallBuyer() {
                     val contact = controller.uiState.value.failure?.recoveryContact ?: return
                     val phone = contact.phone ?: return
-                    val hasCallPermission = checkSelfPermission(
-                        Manifest.permission.CALL_PHONE
-                    ) == PackageManager.PERMISSION_GRANTED
-                    startActivity(BuyerRescue.intentFor(phone, hasCallPermission))
+                    launchRescueCallSafely(phone)
                 }
             }
         )
@@ -155,6 +153,41 @@ class SeniorOverlayService : Service() {
 
     private fun hasRecordAudioPermission(): Boolean =
         checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    private fun hasCallPhonePermission(): Boolean =
+        checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
+
+    private fun launchRescueCallSafely(phone: String) {
+        if (hasCallPhonePermission()) {
+            val callIntent = BuyerRescue.intentFor(phone, hasCallPermission = true)
+            if (canResolve(callIntent) && startRescueActivity(callIntent, "call")) {
+                return
+            }
+            Log.w(TAG, "Unable to launch rescue call; falling back to dialer")
+        }
+
+        val dialIntent = BuyerRescue.intentFor(phone, hasCallPermission = false)
+        if (!canResolve(dialIntent)) {
+            Log.w(TAG, "No activity can handle rescue dial intent")
+            return
+        }
+        startRescueActivity(dialIntent, "dial")
+    }
+
+    private fun canResolve(intent: Intent): Boolean =
+        intent.resolveActivity(packageManager) != null
+
+    private fun startRescueActivity(intent: Intent, label: String): Boolean =
+        try {
+            startActivity(intent)
+            true
+        } catch (exception: SecurityException) {
+            Log.w(TAG, "Unable to launch rescue $label intent", exception)
+            false
+        } catch (exception: ActivityNotFoundException) {
+            Log.w(TAG, "Unable to launch rescue $label intent", exception)
+            false
+        }
 
     private fun openSetupActivity() {
         val intent = Intent(this, MainActivity::class.java)

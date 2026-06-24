@@ -20,4 +20,12 @@ class BuyerRescueTest {
         assertEquals(Intent.ACTION_DIAL, target.action)
         assertEquals("tel:+15551234567", target.uri)
     }
+
+    @Test
+    fun trimsPhoneForTarget() {
+        val target = BuyerRescue.targetFor(" +15551234567 ", hasCallPermission = true)
+
+        assertEquals(Intent.ACTION_CALL, target.action)
+        assertEquals("tel:+15551234567", target.uri)
+    }
 }

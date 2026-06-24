@@ -9,16 +9,18 @@ data class BuyerRescueTarget(
 )
 
 object BuyerRescue {
-    fun targetFor(phone: String, hasCallPermission: Boolean): BuyerRescueTarget =
-        BuyerRescueTarget(
+    fun targetFor(phone: String, hasCallPermission: Boolean): BuyerRescueTarget {
+        val normalizedPhone = phone.trim()
+        return BuyerRescueTarget(
             action = if (hasCallPermission) Intent.ACTION_CALL else Intent.ACTION_DIAL,
-            uri = "tel:$phone"
+            uri = "tel:$normalizedPhone"
         )
+    }
 
     fun intentFor(phone: String, hasCallPermission: Boolean): Intent {
         val target = targetFor(phone, hasCallPermission)
         return Intent(target.action).apply {
-            data = Uri.parse(target.uri)
+            data = Uri.fromParts("tel", phone.trim(), null)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
     }
