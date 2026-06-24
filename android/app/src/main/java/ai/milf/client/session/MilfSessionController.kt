@@ -54,9 +54,10 @@ class MilfSessionController(
         nextSessionId()
         closeActiveClient()
         dependencies.narrator.stop()
-        try {
+        val started = runCatching {
             dependencies.recorder.start()
-        } catch (exception: RuntimeException) {
+        }.isSuccess
+        if (!started) {
             moveLocalSessionToFailure()
             return
         }
@@ -79,9 +80,9 @@ class MilfSessionController(
         val state = _uiState.value
         if (!state.isRecording) return
 
-        val bytes = try {
+        val bytes = runCatching {
             dependencies.recorder.stop()
-        } catch (exception: RuntimeException) {
+        }.getOrElse {
             moveLocalSessionToFailure()
             return
         }

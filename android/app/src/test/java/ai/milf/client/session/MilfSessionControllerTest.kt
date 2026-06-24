@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.IOException
 
 class MilfSessionControllerTest {
     @Test
@@ -276,6 +277,23 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun checkedRecorderFailuresMoveToSafeFailure() = runTest {
+        val recorder = FakeRecorder(failStartWithIo = true)
+        val controller = fakeController(recorder = recorder)
+
+        controller.beginListening()
+
+        assertEquals(SeniorUxScreen.Failure, controller.uiState.value.screen)
+
+        val stopRecorder = FakeRecorder(failStopWithIo = true)
+        val stopController = fakeController(recorder = stopRecorder)
+        stopController.beginListening()
+        stopController.finishListeningAndRun()
+
+        assertEquals(SeniorUxScreen.Failure, stopController.uiState.value.screen)
+    }
+
+    @Test
     fun clientStartFailureMovesToSafeFailureAndClosesClient() = runTest {
         val client = FakeClient(failStart = true)
         val controller = fakeController(client)
@@ -429,13 +447,16 @@ private class FakeClient(
 
 private class FakeRecorder(
     private val failStart: Boolean = false,
-    private val failStop: Boolean = false
+    private val failStop: Boolean = false,
+    private val failStartWithIo: Boolean = false,
+    private val failStopWithIo: Boolean = false
 ) : AudioRecorderLike {
     var isRecording = false
     var stopCalls = 0
     var cancelled = false
 
     override fun start() {
+        if (failStartWithIo) throw IOException("start io failed")
         check(!failStart) { "start failed" }
         isRecording = true
         cancelled = false
@@ -443,6 +464,7 @@ private class FakeRecorder(
 
     override fun stop(): ByteArray {
         check(isRecording) { "stop called while not recording" }
+        if (failStopWithIo) throw IOException("stop io failed")
         check(!failStop) { "stop failed" }
         stopCalls += 1
         isRecording = false
