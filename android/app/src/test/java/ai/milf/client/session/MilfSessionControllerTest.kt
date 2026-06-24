@@ -311,6 +311,8 @@ class MilfSessionControllerTest {
         val client = FakeClient()
         val controller = fakeController(client)
 
+        controller.setDemoMode(true)
+        controller.setWatchMode(true)
         controller.setDemoMode(false)
         controller.setWatchMode(false)
         controller.beginListening()
