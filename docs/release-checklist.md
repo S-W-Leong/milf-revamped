@@ -5,9 +5,9 @@ No release is acceptable until every required gate is complete or has an owner-a
 ## Merge And CI Gates
 
 - [ ] CI is green on the release candidate.
-- [ ] Backend full suite passes in a clean environment.
-- [ ] Android unit tests pass in CI.
-- [ ] Android debug build passes in CI.
+- [ ] Backend full suite passes in CI from a clean Python 3.11 install with `python -m pip install -e .[test]` and `python -m pytest`.
+- [ ] Android unit tests pass in CI with JDK 17 and Android SDK API 35.
+- [ ] Android debug build passes in CI with `./gradlew :app:testDebugUnitTest :app:assembleDebug`.
 - [ ] Hygiene check proves `.env`, `android/local.properties`, `.idea/`, and `android/.idea/` are not tracked.
 - [ ] Lightweight secret check or denylist check finds no obvious committed secrets.
 

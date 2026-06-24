@@ -4,7 +4,7 @@ MILF, short for Make Mobile Interfaces Less Frustrating, is a voice-first Androi
 
 ## Current Status
 
-This repository is on the `UPGRADES` hardening branch. The code is not production-ready until the release checklist passes. The demo path exists, but transport authentication, confirmation policy, CI, privacy docs, and clean setup are being hardened.
+This repository is on the `UPGRADES` hardening branch. The backend and Android client now have authenticated transport, bounded confirmation policy, Android local action policy, failure handling, production setup docs, and CI gates. The code is not production-ready until the release checklist and final production-readiness audit pass.
 
 ## Architecture
 
@@ -20,21 +20,11 @@ This repository is on the `UPGRADES` hardening branch. The code is not productio
 
 ## Backend Setup
 
-Task 2 will add `backend/pyproject.toml`. After that lands, the target clean setup command is:
-
 ```powershell
 cd backend
 python -m pip install -e .[test]
 copy ..\.env.example ..\.env
 python -m pytest
-```
-
-Until Task 2 lands, clean backend setup is not complete. For the current branch state, run tests only when the existing local `.venv` already has the backend dependencies installed:
-
-```powershell
-cd backend
-copy ..\.env.example ..\.env
-..\.venv\Scripts\python -m pytest
 ```
 
 ## Android Setup
@@ -56,7 +46,15 @@ $env:MILF_DEVICE_TOKEN='dev-token'
 python -m milf.server
 ```
 
-Use `ws://10.0.2.2:8765?token=dev-token` only for emulator debug builds. Until Task 3 adds websocket authentication, keep the demo server bound to `127.0.0.1`.
+Use `ws://10.0.2.2:8765?token=dev-token` only for emulator debug builds. Production deployments must use authenticated `wss://` websocket transport.
+
+## CI
+
+GitHub Actions runs three required gates:
+
+- backend tests from a clean Python 3.11 install with `python -m pip install -e .[test]` and `python -m pytest`
+- Android unit tests and debug build with JDK 17 and Android SDK API 35
+- repository hygiene that fails if `.env`, `android/local.properties`, `.idea/`, or `android/.idea/` are tracked
 
 ## Production Rules
 
