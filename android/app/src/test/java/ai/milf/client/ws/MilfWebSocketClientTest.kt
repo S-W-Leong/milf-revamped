@@ -6,6 +6,8 @@ import ai.milf.client.protocol.Audio
 import ai.milf.client.protocol.ConfirmRequest
 import ai.milf.client.protocol.MilfProtocol
 import ai.milf.client.protocol.Narration
+import ai.milf.client.protocol.TaskComplete
+import ai.milf.client.protocol.TaskFailure
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -36,7 +38,15 @@ class MilfWebSocketClientTest {
                 }
 
                 override suspend fun onNarration(text: String, lang: String) = Unit
-                override suspend fun onConfirmRequest(id: String, summary: String, lang: String) = Unit
+                override suspend fun onConfirmRequest(
+                    id: String,
+                    summary: String,
+                    lang: String,
+                    contactId: String?
+                ) = Unit
+
+                override suspend fun onTaskComplete(summary: String, lang: String, contactId: String?) = Unit
+                override suspend fun onTaskFailure(message: String, lang: String, recoveryContactId: String?) = Unit
                 override fun onClosed(reason: String?) = Unit
                 override fun onFailed(message: String) = Unit
             }
@@ -214,7 +224,7 @@ class MilfWebSocketClientTest {
             lang = "en",
             callbacks = noOpCallbacks(
                 onNarration = { _, _ -> error("narration failed") },
-                onConfirmRequest = { _, _, _ -> error("confirm failed") },
+                onConfirmRequest = { _, _, _, _ -> error("confirm failed") },
                 onFailed = { failures += it }
             )
         )
@@ -224,6 +234,62 @@ class MilfWebSocketClientTest {
         advanceUntilIdle()
 
         assertEquals(listOf("narration failed", "confirm failed"), failures)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun routesTaskCompleteToCallback() = runTest {
+        var completed: TaskComplete? = null
+        val client = MilfWebSocketClient(
+            url = "ws://localhost:8765",
+            socketFactory = FakeSocketFactory(),
+            scope = this,
+            audioEncoder = testAudioEncoder
+        )
+        client.start(
+            goalAudio = byteArrayOf(1),
+            lang = "en",
+            callbacks = noOpCallbacks(
+                onTaskComplete = { summary, lang, contactId ->
+                    completed = TaskComplete(summary, lang, contactId)
+                }
+            )
+        )
+
+        client.handleText(
+            MilfProtocol.encode(TaskComplete("Connected to Wei.", "en", "wei-grandson"))
+        )
+        advanceUntilIdle()
+
+        assertEquals(TaskComplete("Connected to Wei.", "en", "wei-grandson"), completed)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun routesTaskFailureToCallback() = runTest {
+        var failed: TaskFailure? = null
+        val client = MilfWebSocketClient(
+            url = "ws://localhost:8765",
+            socketFactory = FakeSocketFactory(),
+            scope = this,
+            audioEncoder = testAudioEncoder
+        )
+        client.start(
+            goalAudio = byteArrayOf(1),
+            lang = "en",
+            callbacks = noOpCallbacks(
+                onTaskFailure = { message, lang, recoveryContactId ->
+                    failed = TaskFailure(message, lang, recoveryContactId)
+                }
+            )
+        )
+
+        client.handleText(
+            MilfProtocol.encode(TaskFailure("Need help.", "en", "buyer-daughter"))
+        )
+        advanceUntilIdle()
+
+        assertEquals(TaskFailure("Need help.", "en", "buyer-daughter"), failed)
     }
 }
 
@@ -272,14 +338,26 @@ private class FakeSocket(
 private fun noOpCallbacks(
     onAction: suspend (Action) -> ActionResult = { ActionResult(id = it.id, ok = true) },
     onNarration: suspend (String, String) -> Unit = { _, _ -> },
-    onConfirmRequest: suspend (String, String, String) -> Unit = { _, _, _ -> },
+    onConfirmRequest: suspend (String, String, String, String?) -> Unit = { _, _, _, _ -> },
+    onTaskComplete: suspend (String, String, String?) -> Unit = { _, _, _ -> },
+    onTaskFailure: suspend (String, String, String?) -> Unit = { _, _, _ -> },
     onFailed: (String) -> Unit = {}
 ): MilfWebSocketClient.Callbacks =
     object : MilfWebSocketClient.Callbacks {
         override suspend fun onAction(action: Action): ActionResult = onAction(action)
         override suspend fun onNarration(text: String, lang: String) = onNarration(text, lang)
-        override suspend fun onConfirmRequest(id: String, summary: String, lang: String) =
-            onConfirmRequest(id, summary, lang)
+        override suspend fun onConfirmRequest(
+            id: String,
+            summary: String,
+            lang: String,
+            contactId: String?
+        ) = onConfirmRequest(id, summary, lang, contactId)
+
+        override suspend fun onTaskComplete(summary: String, lang: String, contactId: String?) =
+            onTaskComplete(summary, lang, contactId)
+
+        override suspend fun onTaskFailure(message: String, lang: String, recoveryContactId: String?) =
+            onTaskFailure(message, lang, recoveryContactId)
 
         override fun onClosed(reason: String?) = Unit
         override fun onFailed(message: String) = onFailed(message)

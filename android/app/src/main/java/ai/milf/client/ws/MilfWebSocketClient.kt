@@ -10,6 +10,7 @@ import ai.milf.client.protocol.MilfProtocol
 import ai.milf.client.protocol.Narration
 import ai.milf.client.protocol.TaskComplete
 import ai.milf.client.protocol.TaskFailure
+import ai.milf.client.session.SessionSocketClient
 import android.util.Base64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,11 +29,13 @@ class MilfWebSocketClient(
     private val audioEncoder: (ByteArray) -> String = {
         Base64.encodeToString(it, Base64.NO_WRAP)
     }
-) {
+) : SessionSocketClient {
     interface Callbacks {
         suspend fun onAction(action: Action): ActionResult
         suspend fun onNarration(text: String, lang: String)
-        suspend fun onConfirmRequest(id: String, summary: String, lang: String)
+        suspend fun onConfirmRequest(id: String, summary: String, lang: String, contactId: String?)
+        suspend fun onTaskComplete(summary: String, lang: String, contactId: String?)
+        suspend fun onTaskFailure(message: String, lang: String, recoveryContactId: String?)
         fun onClosed(reason: String?)
         fun onFailed(message: String)
     }
@@ -59,7 +62,7 @@ class MilfWebSocketClient(
     private var callbacks: Callbacks? = null
     private var pendingMessages: MutableList<String> = mutableListOf()
 
-    fun start(goalAudio: ByteArray, lang: String, callbacks: Callbacks) {
+    override fun start(goalAudio: ByteArray, lang: String, callbacks: Callbacks) {
         val newSessionId: Long
         val oldSocket = synchronized(lock) {
             sessionId += 1
@@ -109,7 +112,7 @@ class MilfWebSocketClient(
         }
     }
 
-    fun send(message: MilfMessage): Boolean =
+    override fun send(message: MilfMessage): Boolean =
         synchronized(lock) { socket }?.send(MilfProtocol.encode(message)) == true
 
     fun handleText(text: String) {
@@ -149,15 +152,36 @@ class MilfWebSocketClient(
 
             is ConfirmRequest -> scope.launch {
                 if (!isActive(messageSessionId)) return@launch
-                runCatching { activeCallbacks.onConfirmRequest(message.id, message.summary, message.lang) }
+                runCatching {
+                    activeCallbacks.onConfirmRequest(
+                        message.id,
+                        message.summary,
+                        message.lang,
+                        message.contactId
+                    )
+                }
                     .onFailure { reportFailure(messageSessionId, it.failureMessage()) }
             }
 
-            is ActionResult, is ConfirmResponse, is TaskComplete, is TaskFailure, is Audio -> Unit
+            is TaskComplete -> scope.launch {
+                if (!isActive(messageSessionId)) return@launch
+                runCatching {
+                    activeCallbacks.onTaskComplete(message.summary, message.lang, message.contactId)
+                }.onFailure { reportFailure(messageSessionId, it.failureMessage()) }
+            }
+
+            is TaskFailure -> scope.launch {
+                if (!isActive(messageSessionId)) return@launch
+                runCatching {
+                    activeCallbacks.onTaskFailure(message.message, message.lang, message.recoveryContactId)
+                }.onFailure { reportFailure(messageSessionId, it.failureMessage()) }
+            }
+
+            is ActionResult, is ConfirmResponse, is Audio -> Unit
         }
     }
 
-    fun close() {
+    override fun close() {
         val oldSocket = synchronized(lock) {
             sessionId += 1
             val existingSocket = socket

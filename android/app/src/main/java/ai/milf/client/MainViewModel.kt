@@ -3,188 +3,91 @@ package ai.milf.client
 import ai.milf.client.accessibility.ActionDispatcher
 import ai.milf.client.accessibility.MilfAccessibilityService
 import ai.milf.client.audio.AudioRecorder
-import ai.milf.client.audio.ConfirmationVoiceParser
 import ai.milf.client.audio.TtsNarrator
-import ai.milf.client.protocol.Action
-import ai.milf.client.protocol.ActionResult
 import ai.milf.client.protocol.ConfirmResponse
+import ai.milf.client.protocol.MilfMessage
+import ai.milf.client.relationship.RelationshipGraph
+import ai.milf.client.session.MilfSessionController
+import ai.milf.client.session.SeniorUiState
+import ai.milf.client.session.SessionSocketClient
 import ai.milf.client.ws.MilfWebSocketClient
 import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 
-data class MainUiState(
-    val backendUrl: String = "ws://10.0.2.2:8765",
-    val lang: String = "en",
-    val isRecording: Boolean = false,
-    val isRunning: Boolean = false,
-    val status: String = "Ready",
-    val lastNarration: String? = null,
-    val confirmation: PendingConfirmation? = null,
-    val accessibilityEnabled: Boolean = false
-)
+typealias MainUiState = SeniorUiState
+typealias PendingConfirmation = ai.milf.client.session.PendingConfirmation
 
-data class PendingConfirmation(
-    val id: String,
-    val summary: String,
-    val lang: String
-)
+val SeniorUiState.status: String
+    get() = captions
 
 class MainViewModel(
-    private val dependencies: Dependencies
+    private val controller: MilfSessionController
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(MainUiState())
-    val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    constructor(dependencies: Dependencies) : this(
+        MilfSessionController(
+            dependencies = dependencies.sessionDependencies,
+            graph = RelationshipGraph.demo()
+        )
+    )
 
-    fun setBackendUrl(url: String) {
-        _uiState.update { it.copy(backendUrl = url.trim()) }
-    }
+    val uiState: StateFlow<SeniorUiState> = controller.uiState
 
-    fun setLang(lang: String) {
-        _uiState.update { it.copy(lang = lang) }
-    }
-
-    fun refreshAccessibilityStatus() {
-        _uiState.update {
-            it.copy(accessibilityEnabled = MilfAccessibilityService.instance != null)
-        }
-    }
-
-    fun startRecording() {
-        dependencies.narrator.stop()
-        dependencies.recorder.start()
-        _uiState.update {
-            it.copy(
-                isRecording = true,
-                isRunning = false,
-                status = "Listening",
-                lastNarration = null,
-                confirmation = null
-            )
-        }
-    }
-
-    fun stopAndRun() {
-        val state = _uiState.value
-        val bytes = dependencies.recorder.stop()
-        val client = dependencies.clientFactory(state.backendUrl)
-        dependencies.activeClient = client
-        _uiState.update {
-            it.copy(
-                isRecording = false,
-                isRunning = true,
-                status = "Working"
-            )
-        }
-        client.start(bytes, state.lang, object : MilfWebSocketClient.Callbacks {
-            override suspend fun onAction(action: Action): ActionResult =
-                ActionDispatcher(MilfAccessibilityService.instance).dispatch(action)
-
-            override suspend fun onNarration(text: String, lang: String) {
-                dependencies.narrator.speak(text, lang)
-                _uiState.update {
-                    it.copy(lastNarration = text, status = "Speaking")
-                }
-            }
-
-            override suspend fun onConfirmRequest(id: String, summary: String, lang: String) {
-                dependencies.narrator.speak(summary, lang)
-                _uiState.update {
-                    it.copy(
-                        confirmation = PendingConfirmation(id, summary, lang),
-                        status = "Confirm"
-                    )
-                }
-            }
-
-            override fun onClosed(reason: String?) {
-                _uiState.update {
-                    it.copy(isRunning = false, status = reason ?: "Done")
-                }
-            }
-
-            override fun onFailed(message: String) {
-                _uiState.update {
-                    it.copy(isRunning = false, status = message)
-                }
-            }
-        })
-    }
-
-    fun approveConfirmation() {
-        respondToConfirmation(approved = true)
-    }
-
-    fun denyConfirmation() {
-        respondToConfirmation(approved = false)
-    }
-
-    fun onConfirmationSpeech(text: String) {
-        when (ConfirmationVoiceParser.parse(text)) {
-            true -> approveConfirmation()
-            false -> denyConfirmation()
-            null -> _uiState.update { it.copy(status = "Please say yes or no") }
-        }
-    }
-
-    private fun respondToConfirmation(approved: Boolean) {
-        val pending = _uiState.value.confirmation ?: return
-        dependencies.sendConfirm?.invoke(approved)
-        dependencies.activeClient?.send(ConfirmResponse(pending.id, approved))
-        _uiState.update {
-            it.copy(
-                confirmation = null,
-                status = if (approved) "Continuing" else "Stopped"
-            )
-        }
-    }
-
-    fun showConfirmationForTest(id: String, summary: String, lang: String) {
-        _uiState.update { it.copy(confirmation = PendingConfirmation(id, summary, lang)) }
-    }
+    fun setBackendUrl(url: String) = controller.setBackendUrl(url)
+    fun setLang(lang: String) = controller.setLang(lang)
+    fun setWatchMode(enabled: Boolean) = controller.setWatchMode(enabled)
+    fun setDemoMode(enabled: Boolean) = controller.setDemoMode(enabled)
+    fun refreshAccessibilityStatus() = controller.refreshAccessibilityStatus()
+    fun startRecording() = controller.beginListening()
+    fun stopAndRun() = controller.finishListeningAndRun()
+    fun approveConfirmation() = controller.approveConfirmation()
+    fun denyConfirmation() = controller.denyConfirmation()
+    fun onConfirmationSpeech(text: String) = controller.onConfirmationSpeech(text)
+    fun showConfirmationForTest(id: String, summary: String, lang: String) =
+        controller.showConfirmationForTest(id, summary, lang, "wei-grandson")
 
     override fun onCleared() {
-        dependencies.recorder.cancel()
-        dependencies.narrator.shutdown()
-        dependencies.activeClient?.close()
+        controller.shutdown()
         super.onCleared()
     }
 
     class Dependencies(
-        val recorder: AudioRecorderLike,
-        val narrator: NarratorLike,
-        val clientFactory: (String) -> MilfWebSocketClient,
-        val sendConfirm: ((Boolean) -> Unit)? = null
+        internal val sessionDependencies: MilfSessionController.Dependencies
     ) {
-        var activeClient: MilfWebSocketClient? = null
-
         companion object {
             fun real(application: Application): Dependencies =
                 Dependencies(
-                    recorder = AndroidAudioRecorder(AudioRecorder(application)),
-                    narrator = AndroidNarrator(TtsNarrator(application)),
-                    clientFactory = { MilfWebSocketClient(it) }
+                    MilfSessionController.Dependencies(
+                        recorder = AndroidAudioRecorder(AudioRecorder(application)),
+                        narrator = AndroidNarrator(TtsNarrator(application)),
+                        clientFactory = { MilfWebSocketClient(it) },
+                        accessibilityAvailable = { MilfAccessibilityService.instance != null },
+                        dispatch = { action ->
+                            ActionDispatcher(MilfAccessibilityService.instance).dispatch(action)
+                        }
+                    )
                 )
 
-            fun fake(sendConfirm: (Boolean) -> Unit): Dependencies =
-                Dependencies(
-                    recorder = object : AudioRecorderLike {
-                        override fun start() = Unit
-                        override fun stop(): ByteArray = byteArrayOf(1)
-                        override fun cancel() = Unit
-                    },
-                    narrator = object : NarratorLike {
-                        override fun speak(text: String, lang: String) = Unit
-                        override fun stop() = Unit
-                        override fun shutdown() = Unit
-                    },
-                    clientFactory = { error("not used") },
-                    sendConfirm = sendConfirm
-                )
+            fun fake(sendConfirm: (Boolean) -> Unit): Dependencies {
+                val client = object : SessionSocketClient {
+                    override fun start(
+                        goalAudio: ByteArray,
+                        lang: String,
+                        callbacks: MilfWebSocketClient.Callbacks
+                    ) = Unit
+
+                    override fun send(message: MilfMessage): Boolean {
+                        if (message is ConfirmResponse) {
+                            sendConfirm(message.approved)
+                        }
+                        return true
+                    }
+
+                    override fun close() = Unit
+                }
+                return Dependencies(MilfSessionController.Dependencies.fake(client))
+            }
         }
     }
 
