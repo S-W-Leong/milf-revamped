@@ -78,6 +78,17 @@ class ActionDispatcherTest {
     }
 
     @Test
+    fun inputTextFailureReturnsFailedActionResult() = runTest {
+        val dispatcher = ActionDispatcher(FakeDeviceActions(inputTextResult = false))
+
+        val result = dispatcher.dispatch(Action("i1", "input_text", mapOf("text" to "Wei")))
+
+        assertEquals(false, result.ok)
+        assertEquals("i1", result.id)
+        assertEquals("input_text failed", result.error)
+    }
+
+    @Test
     fun emptyUiTreeUsesMobileRunStateContract() {
         val state = UiTreeSerializer.serialize(null, screenWidth = 1080, screenHeight = 2400)
 
@@ -91,7 +102,9 @@ class ActionDispatcherTest {
     }
 }
 
-private class FakeDeviceActions : DeviceActions {
+private class FakeDeviceActions(
+    private val inputTextResult: Boolean = true
+) : DeviceActions {
     val calls = mutableListOf<String>()
 
     override suspend fun tap(x: Int, y: Int) {
@@ -102,7 +115,7 @@ private class FakeDeviceActions : DeviceActions {
         calls += "swipe:$x1,$y1,$x2,$y2,$durationMs"
     }
 
-    override suspend fun inputText(text: String, clear: Boolean): Boolean = true
+    override suspend fun inputText(text: String, clear: Boolean): Boolean = inputTextResult
 
     override suspend fun pressButton(button: String): Boolean = true
 

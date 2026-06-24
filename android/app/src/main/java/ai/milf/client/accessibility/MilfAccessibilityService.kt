@@ -44,7 +44,7 @@ class MilfAccessibilityService : AccessibilityService(), DeviceActions {
     }
 
     override suspend fun inputText(text: String, clear: Boolean): Boolean {
-        val root = rootInActiveWindow ?: return false
+        val root = rootForTargetApp() ?: return false
         return try {
             val node = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
             try {
@@ -114,7 +114,7 @@ class MilfAccessibilityService : AccessibilityService(), DeviceActions {
 
     override suspend fun getUiTree(): Map<String, Any?> {
         val metrics = resources.displayMetrics
-        val root = rootInActiveWindow ?: return UiTreeSerializer.serialize(
+        val root = rootForTargetApp() ?: return UiTreeSerializer.serialize(
             null,
             screenWidth = metrics.widthPixels,
             screenHeight = metrics.heightPixels
@@ -128,6 +128,25 @@ class MilfAccessibilityService : AccessibilityService(), DeviceActions {
         } finally {
             root.recycle()
         }
+    }
+
+    private fun rootForTargetApp(): AccessibilityNodeInfo? {
+        val candidates = windows.mapNotNull { window ->
+            val root = window.root ?: return@mapNotNull null
+            AccessibilityRootCandidate(
+                root = root,
+                packageName = root.packageName?.toString().orEmpty(),
+                type = window.type,
+                isActive = window.isActive
+            )
+        }
+        val selected = AccessibilityRootSelector.select(candidates, packageName)
+        candidates.forEach { candidate ->
+            if (candidate.root !== selected) {
+                candidate.root.recycle()
+            }
+        }
+        return selected ?: rootInActiveWindow
     }
 
     private fun pressEnterOnFocusedInput(): Boolean {

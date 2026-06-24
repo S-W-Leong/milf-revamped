@@ -293,7 +293,7 @@ private fun RailCenterContent(
                             contentAlignment = Alignment.CenterStart
                         ) {
                             if (state.commandText.isBlank()) {
-                                Text(READY_PROMPT, color = MilfColors.TextSecondary, fontSize = 14.sp)
+                                Text(state.captions, color = MilfColors.TextSecondary, fontSize = 14.sp)
                             }
                             inner()
                         }
@@ -332,21 +332,47 @@ private fun RailPrimaryAction(
     when {
         state.screen == SeniorUxScreen.Thinking || state.screen == SeniorUxScreen.Acting -> RunStopButton(onRunStop)
         state.screen == SeniorUxScreen.Idle && state.commandText.isNotBlank() -> SendButton(onSubmitText)
-        else -> MicButton(onMicTap)
+        else -> MicButton(isRecording = state.isRecording, onMicTap = onMicTap)
     }
 }
 
 @Composable
-private fun MicButton(onMicTap: () -> Unit) {
+private fun MicButton(isRecording: Boolean, onMicTap: () -> Unit) {
+    val visuals = micButtonVisuals(isRecording)
     IconButton(
         onClick = onMicTap,
         modifier = Modifier
             .size(42.dp)
-            .background(MilfColors.SageDim, CircleShape)
+            .background(visuals.containerColor, CircleShape)
     ) {
-        Icon(Icons.Default.Mic, contentDescription = "Listen", tint = MilfColors.Sage)
+        Icon(
+            Icons.Default.Mic,
+            contentDescription = visuals.contentDescription,
+            tint = visuals.iconColor
+        )
     }
 }
+
+internal data class MicButtonVisuals(
+    val containerColor: Color,
+    val iconColor: Color,
+    val contentDescription: String
+)
+
+internal fun micButtonVisuals(isRecording: Boolean): MicButtonVisuals =
+    if (isRecording) {
+        MicButtonVisuals(
+            containerColor = MilfColors.SageDim,
+            iconColor = MilfColors.Sage,
+            contentDescription = "Mic listening"
+        )
+    } else {
+        MicButtonVisuals(
+            containerColor = MilfColors.MicOffGreyDim,
+            iconColor = MilfColors.MicOffGrey,
+            contentDescription = "Mic off"
+        )
+    }
 
 @Composable
 private fun SendButton(onSubmitText: () -> Unit) {

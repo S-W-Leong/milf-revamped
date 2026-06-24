@@ -14,6 +14,8 @@ object MilfColors {
     val TextMuted = Color(0xFF555555)
     val Sage = Color(0xFFA8C5B5)
     val SageDim = Color(0x26A8C5B5)
+    val MicOffGrey = Color(0xFF7A7A7A)
+    val MicOffGreyDim = Color(0x267A7A7A)
     val ConfirmSage = Color(0xFF7FB5A0)
     val NoRed = Color(0xFFB91C1C)
     val ElectricCyan = Color(0xFF00E5FF)

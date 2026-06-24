@@ -45,10 +45,16 @@ class ActionDispatcher(
                     null
                 }
 
-                "input_text" -> activeDevice.inputText(
-                    text = action.stringArg("text"),
-                    clear = action.boolArg("clear", false)
-                )
+                "input_text" -> {
+                    val inserted = activeDevice.inputText(
+                        text = action.stringArg("text"),
+                        clear = action.boolArg("clear", false)
+                    )
+                    if (!inserted) {
+                        throw IllegalStateException("input_text failed")
+                    }
+                    true
+                }
 
                 "press_button" -> activeDevice.pressButton(action.stringArg("button"))
 

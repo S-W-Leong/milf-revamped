@@ -491,7 +491,7 @@ class MilfSessionController(
         if (!isCurrentSession(callbackSessionId)) return
         val goal = text.trim()
         if (goal.isBlank()) {
-            onNativeSpeechError(callbackSessionId)
+            moveNativeSpeechNoInputToIdle(callbackSessionId)
             return
         }
         val state = _uiState.value
@@ -528,8 +528,29 @@ class MilfSessionController(
     }
 
     private fun onNativeSpeechError(callbackSessionId: Long) {
-        if (isCurrentSession(callbackSessionId)) {
-            moveLocalSessionToFailure()
+        moveNativeSpeechNoInputToIdle(callbackSessionId)
+    }
+
+    private fun moveNativeSpeechNoInputToIdle(callbackSessionId: Long) {
+        if (!claimCurrentSession(callbackSessionId)) return
+
+        dependencies.speechRecognizer.cancel()
+        dependencies.narrator.stop()
+        closeActiveClient()
+        _uiState.update {
+            it.copy(
+                screen = SeniorUxScreen.Idle,
+                isRecording = false,
+                isRunning = false,
+                captions = NO_SPEECH_PROMPT,
+                commandText = "",
+                lastNarration = null,
+                confirmation = null,
+                success = null,
+                failure = null,
+                actionTarget = null,
+                isCollapsed = false
+            )
         }
     }
 
@@ -671,6 +692,7 @@ class MilfSessionController(
     private companion object {
         const val DEFAULT_BACKEND_URL = "ws://10.0.2.2:8765"
         const val SAFE_FAILURE = "I'm having a little trouble with that. Please try again."
+        const val NO_SPEECH_PROMPT = "I didn't hear anything. Please try again."
     }
 }
 

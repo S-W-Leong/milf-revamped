@@ -406,10 +406,13 @@ class MilfSessionControllerTest {
     }
 
     @Test
-    fun nativeSpeechErrorMovesToSafeFailure() = runTest {
+    fun nativeSpeechErrorReturnsToIdleWithoutFallback() = runTest {
+        val client = FakeClient()
+        val narrator = FakeNarrator()
         val recognizer = FakeNativeSpeechRecognizer()
         val controller = fakeController(
-            clients = listOf(FakeClient()),
+            clients = listOf(client),
+            narrator = narrator,
             speechRecognizer = recognizer,
             speechInputMode = SpeechInputMode.Native
         )
@@ -418,9 +421,14 @@ class MilfSessionControllerTest {
         recognizer.deliverError("no speech")
 
         val state = controller.uiState.value
-        assertEquals(SeniorUxScreen.Failure, state.screen)
+        assertEquals(SeniorUxScreen.Idle, state.screen)
         assertEquals(false, state.isRecording)
-        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+        assertEquals(false, state.isRunning)
+        assertEquals("I didn't hear anything. Please try again.", state.captions)
+        assertEquals(null, state.failure)
+        assertEquals(null, client.startedText)
+        assertEquals(false, client.startedAudio)
+        assertEquals(listOf(LISTENING_PROMPT), narrator.spoken.map { it.first })
     }
 
     @Test
@@ -741,9 +749,11 @@ class MilfSessionControllerTest {
 
 private class FakeNarrator : NarratorLike {
     var onSpeak: (String, String) -> Unit = { _, _ -> }
+    val spoken = mutableListOf<Pair<String, String>>()
     var stopCalls = 0
 
     override fun speak(text: String, lang: String) {
+        spoken += text to lang
         onSpeak(text, lang)
     }
 
