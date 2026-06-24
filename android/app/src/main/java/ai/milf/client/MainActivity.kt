@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
                 onBackendUrlChange = viewModel::setBackendUrl,
                 onCheckBackendConnection = viewModel::checkBackendConnection,
                 onLangChange = viewModel::setLang,
+                onSpeechInputModeChange = viewModel::setSpeechInputMode,
                 onOpenAccessibility = {
                     startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 },

@@ -87,6 +87,8 @@ MERALION_API_URL
 
 The Android app uses native on-device speech recognition for the main mic flow and sends the transcript as a `TextGoal`, so ILMU/MERaLiON keys are not required for device demos. Backend audio STT defaults to `MILF_STT_BACKEND=router` for ILMU/MERaLiON. Set `MILF_STT_BACKEND=mock` only when you want local smoke tests or legacy audio-upload clients to use `MILF_MOCK_TRANSCRIPT`.
 
+The app's Agent config tab can switch the mic input between `Native` and `Backend STT`. `Native` uses Android speech recognition and sends text; `Backend STT` uploads audio and uses the backend STT setting above.
+
 ## Android Setup
 
 Build and run tests from the Android project directory:

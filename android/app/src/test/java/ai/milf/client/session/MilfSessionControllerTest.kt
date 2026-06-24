@@ -89,7 +89,7 @@ class MilfSessionControllerTest {
         controller.beginListening()
         controller.finishListeningAndRun()
         client.callbacks?.onTaskFailure(
-            message = "I'm having a little trouble doing that. Want me to call your daughter to help?",
+            message = "I'm having a little trouble with that. Please try again.",
             lang = "en",
             recoveryContactId = "buyer-daughter"
         )
@@ -421,6 +421,47 @@ class MilfSessionControllerTest {
         assertEquals(SeniorUxScreen.Failure, state.screen)
         assertEquals(false, state.isRecording)
         assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+    }
+
+    @Test
+    fun speechInputModeConfigControlsMicPath() = runTest {
+        val client = FakeClient()
+        val recognizer = FakeNativeSpeechRecognizer()
+        val recorder = FakeRecorder()
+        val controller = fakeController(
+            clients = listOf(client),
+            recorder = recorder,
+            speechRecognizer = recognizer,
+            speechInputMode = SpeechInputMode.Native
+        )
+
+        assertEquals(SpeechInputMode.Native, controller.uiState.value.speechInputMode)
+        controller.setSpeechInputMode(SpeechInputMode.BackendAudio)
+        controller.beginListening()
+        controller.finishListeningAndRun()
+
+        assertEquals(SpeechInputMode.BackendAudio, controller.uiState.value.speechInputMode)
+        assertEquals(null, recognizer.startedLang)
+        assertEquals(1, recorder.stopCalls)
+        assertEquals(true, client.startedAudio)
+        assertEquals(null, client.startedText)
+    }
+
+    @Test
+    fun setSpeechInputModePersistsChoice() = runTest {
+        val saved = mutableListOf<SpeechInputMode>()
+        val controller = MilfSessionController(
+            dependencies = testDependencies(
+                clients = listOf(FakeClient()),
+                saveSpeechInputMode = { saved += it }
+            ),
+            graph = RelationshipGraph.demo()
+        )
+
+        controller.setSpeechInputMode(SpeechInputMode.BackendAudio)
+
+        assertEquals(listOf(SpeechInputMode.BackendAudio), saved)
+        assertEquals(SpeechInputMode.BackendAudio, controller.uiState.value.speechInputMode)
     }
 
     @Test
@@ -820,6 +861,7 @@ private fun testDependencies(
     narrator: FakeNarrator = FakeNarrator(),
     initialBackendUrl: String = "ws://10.0.2.2:8765",
     saveBackendUrl: (String) -> Unit = {},
+    saveSpeechInputMode: (SpeechInputMode) -> Unit = {},
     speechRecognizer: FakeNativeSpeechRecognizer = FakeNativeSpeechRecognizer(),
     speechInputMode: SpeechInputMode = SpeechInputMode.BackendAudio,
     setupStatus: () -> SetupStatus = {
@@ -843,6 +885,7 @@ private fun testDependencies(
         },
         initialBackendUrl = initialBackendUrl,
         saveBackendUrl = saveBackendUrl,
+        saveSpeechInputMode = saveSpeechInputMode,
         setupStatus = setupStatus,
         dispatch = { action -> ActionResult(action.id, true) }
     )

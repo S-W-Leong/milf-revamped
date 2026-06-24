@@ -87,6 +87,7 @@ data class SeniorUiState(
     val assistantSelected: Boolean = false,
     val overlayEnabled: Boolean = false,
     val isCollapsed: Boolean = false,
+    val speechInputMode: SpeechInputMode = SpeechInputMode.Native,
     val appScreen: AppScreen = AppScreen.Main,
     val selectedConfigTab: ConfigTab = ConfigTab.Permissions
 )

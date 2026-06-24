@@ -4,6 +4,7 @@ import ai.milf.client.session.AppScreen
 import ai.milf.client.session.BackendConnectionStatus
 import ai.milf.client.session.ConfigTab
 import ai.milf.client.session.SeniorUiState
+import ai.milf.client.session.SpeechInputMode
 import ai.milf.client.session.canStartHelper
 import ai.milf.client.session.selectableLanguages
 import ai.milf.client.ui.MilfColors
@@ -44,6 +45,7 @@ fun MilfUi(
     onBackendUrlChange: (String) -> Unit,
     onCheckBackendConnection: () -> Unit,
     onLangChange: (String) -> Unit,
+    onSpeechInputModeChange: (SpeechInputMode) -> Unit,
     onOpenAccessibility: () -> Unit,
     onOpenOverlayPermission: () -> Unit,
     onOpenAssistSettings: () -> Unit,
@@ -71,6 +73,7 @@ fun MilfUi(
                     onBackendUrlChange = onBackendUrlChange,
                     onCheckBackendConnection = onCheckBackendConnection,
                     onLangChange = onLangChange,
+                    onSpeechInputModeChange = onSpeechInputModeChange,
                     onOpenAccessibility = onOpenAccessibility,
                     onOpenOverlayPermission = onOpenOverlayPermission,
                     onOpenAssistSettings = onOpenAssistSettings,
@@ -166,6 +169,7 @@ private fun ConfigScreen(
     onBackendUrlChange: (String) -> Unit,
     onCheckBackendConnection: () -> Unit,
     onLangChange: (String) -> Unit,
+    onSpeechInputModeChange: (SpeechInputMode) -> Unit,
     onOpenAccessibility: () -> Unit,
     onOpenOverlayPermission: () -> Unit,
     onOpenAssistSettings: () -> Unit,
@@ -239,6 +243,7 @@ private fun ConfigScreen(
             ConfigTab.Agent -> AgentTab(
                 state = state,
                 onLangChange = onLangChange,
+                onSpeechInputModeChange = onSpeechInputModeChange,
                 onStartOverlay = onStartOverlay,
                 onStopOverlay = onStopOverlay
             )
@@ -326,11 +331,13 @@ private fun BackendTab(
 private fun AgentTab(
     state: SeniorUiState,
     onLangChange: (String) -> Unit,
+    onSpeechInputModeChange: (SpeechInputMode) -> Unit,
     onStartOverlay: () -> Unit,
     onStopOverlay: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LanguageRow(state.lang, onLangChange)
+        SpeechInputModeRow(state.speechInputMode, onSpeechInputModeChange)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             Button(
                 onClick = onStartOverlay,
@@ -431,6 +438,38 @@ private fun LanguageRow(
                     Text(option.label, fontSize = 12.sp, textAlign = TextAlign.Center)
                 }
             }
+    }
+}
+
+@Composable
+private fun SpeechInputModeRow(
+    selected: SpeechInputMode,
+    onSpeechInputModeChange: (SpeechInputMode) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        listOf(
+            SpeechInputMode.Native to "Native",
+            SpeechInputMode.BackendAudio to "Backend STT"
+        ).forEach { (mode, label) ->
+            val isSelected = selected == mode
+            Button(
+                onClick = { onSpeechInputModeChange(mode) },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSelected) MilfColors.SageDim else MilfColors.DarkSurface,
+                    contentColor = if (isSelected) MilfColors.Sage else MilfColors.TextSecondary
+                ),
+                contentPadding = ButtonDefaults.TextButtonContentPadding
+            ) {
+                Text(label, fontSize = 12.sp, textAlign = TextAlign.Center)
+            }
+        }
     }
 }
 

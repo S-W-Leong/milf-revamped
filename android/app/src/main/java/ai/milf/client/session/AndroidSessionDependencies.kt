@@ -24,7 +24,7 @@ fun androidSessionDependencies(application: Application): MilfSessionController.
     MilfSessionController.Dependencies(
         recorder = AndroidAudioRecorder(AudioRecorder(application)),
         speechRecognizer = AndroidNativeSpeechRecognizer(GoalSpeechRecognizer(application)),
-        speechInputMode = SpeechInputMode.Native,
+        speechInputMode = application.savedSpeechInputMode(),
         narrator = AndroidNarrator(TtsNarrator(application)),
         clientFactory = { MilfWebSocketClient(it) },
         initialBackendUrl = application.backendPrefs()
@@ -34,6 +34,12 @@ fun androidSessionDependencies(application: Application): MilfSessionController.
             application.backendPrefs()
                 .edit()
                 .putString(KEY_BACKEND_URL, url)
+                .apply()
+        },
+        saveSpeechInputMode = { mode ->
+            application.backendPrefs()
+                .edit()
+                .putString(KEY_SPEECH_INPUT_MODE, mode.name)
                 .apply()
         },
         checkBackendConnection = { url, callback ->
@@ -56,12 +62,18 @@ fun androidSessionDependencies(application: Application): MilfSessionController.
 private const val DEFAULT_BACKEND_URL = "ws://10.0.2.2:8765"
 private const val PREFS_NAME = "milf_setup"
 private const val KEY_BACKEND_URL = "backend_url"
+private const val KEY_SPEECH_INPUT_MODE = "speech_input_mode"
 
 private fun Context.backendPrefs() =
     getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
 private fun Context.hasPermission(permission: String): Boolean =
     checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+
+private fun Context.savedSpeechInputMode(): SpeechInputMode {
+    val value = backendPrefs().getString(KEY_SPEECH_INPUT_MODE, null) ?: return SpeechInputMode.Native
+    return runCatching { SpeechInputMode.valueOf(value) }.getOrDefault(SpeechInputMode.Native)
+}
 
 private fun Context.isMilfAssistantSelected(): Boolean {
     val selected = Settings.Secure.getString(contentResolver, "assistant") ?: return false

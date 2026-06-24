@@ -8,6 +8,7 @@ import ai.milf.client.session.ConfigTab
 import ai.milf.client.session.MilfSessionController
 import ai.milf.client.session.SeniorUiState
 import ai.milf.client.session.SessionSocketClient
+import ai.milf.client.session.SpeechInputMode
 import ai.milf.client.session.androidSessionDependencies
 import ai.milf.client.session.canStartHelper
 import ai.milf.client.ws.MilfWebSocketClient
@@ -38,6 +39,7 @@ class MainViewModel(
 
     fun setBackendUrl(url: String) = controller.setBackendUrl(url)
     fun setLang(lang: String) = controller.setLang(lang)
+    fun setSpeechInputMode(mode: SpeechInputMode) = controller.setSpeechInputMode(mode)
     fun setWatchMode(enabled: Boolean) = controller.setWatchMode(enabled)
     fun setDemoMode(enabled: Boolean) = controller.setDemoMode(enabled)
     fun setCommandText(text: String) = controller.setCommandText(text)

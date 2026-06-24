@@ -164,14 +164,14 @@ def test_task_complete_round_trips():
 def test_task_failure_round_trips():
     raw = encode(
         TaskFailure(
-            message="I'm having a little trouble doing that. Want me to call your daughter to help?",
+            message="I'm having a little trouble with that. Please try again.",
             lang="en",
             recovery_contact_id="buyer-daughter",
         )
     )
 
     assert decode(raw) == TaskFailure(
-        message="I'm having a little trouble doing that. Want me to call your daughter to help?",
+        message="I'm having a little trouble with that. Please try again.",
         lang="en",
         recovery_contact_id="buyer-daughter",
     )
@@ -276,7 +276,7 @@ fun taskCompleteRoundTrips() {
 fun taskFailureRoundTrips() {
     val raw = MilfProtocol.encode(
         TaskFailure(
-            message = "I'm having a little trouble doing that. Want me to call your daughter to help?",
+            message = "I'm having a little trouble with that. Please try again.",
             lang = "en",
             recoveryContactId = "buyer-daughter"
         )
@@ -284,7 +284,7 @@ fun taskFailureRoundTrips() {
 
     assertEquals(
         TaskFailure(
-            message = "I'm having a little trouble doing that. Want me to call your daughter to help?",
+            message = "I'm having a little trouble with that. Please try again.",
             lang = "en",
             recoveryContactId = "buyer-daughter"
         ),
@@ -772,7 +772,7 @@ async def test_send_task_outcomes():
 
     await conn.send_task_complete("You're connected to Wei.", "en", "wei-grandson")
     await conn.send_task_failure(
-        "I'm having a little trouble doing that. Want me to call your daughter to help?",
+        "I'm having a little trouble with that. Please try again.",
         "en",
         "buyer-daughter",
     )
@@ -788,7 +788,7 @@ async def test_send_task_outcomes():
     assert sent[1] == {
         "type": "TaskFailure",
         "data": {
-            "message": "I'm having a little trouble doing that. Want me to call your daughter to help?",
+            "message": "I'm having a little trouble with that. Please try again.",
             "lang": "en",
             "recovery_contact_id": "buyer-daughter",
         },
@@ -943,7 +943,7 @@ async def test_run_task_sends_safe_failure_on_agent_error():
     assert result.success is False
     assert conn.failures == [
         (
-            "I'm having a little trouble doing that. Want me to call your daughter to help?",
+            "I'm having a little trouble with that. Please try again.",
             "en",
             "buyer-daughter",
         )
@@ -988,7 +988,7 @@ try:
     result = await narrate_events(handler, connection, lang)
 except Exception:
     await connection.send_task_failure(
-        "I'm having a little trouble doing that. Want me to call your daughter to help?",
+        "I'm having a little trouble with that. Please try again.",
         lang,
         recovery_contact_id=escape.id,
     )
@@ -1006,7 +1006,7 @@ if success:
         await connection.send_task_complete("Done.", lang)
 else:
     await connection.send_task_failure(
-        "I'm having a little trouble doing that. Want me to call your daughter to help?",
+        "I'm having a little trouble with that. Please try again.",
         lang,
         recovery_contact_id=escape.id,
     )
@@ -1021,7 +1021,7 @@ try:
     await run_task(conn, audio, first.lang, stt)
 except Exception:
     await conn.send_task_failure(
-        "I'm having a little trouble doing that. Want me to call your daughter to help?",
+        "I'm having a little trouble with that. Please try again.",
         first.lang,
         recovery_contact_id="buyer-daughter",
     )
@@ -1245,7 +1245,7 @@ class MilfSessionControllerTest {
         controller.beginListening()
         controller.finishListeningAndRun()
         client.callbacks?.onTaskFailure(
-            message = "I'm having a little trouble doing that. Want me to call your daughter to help?",
+            message = "I'm having a little trouble with that. Please try again.",
             lang = "en",
             recoveryContactId = "buyer-daughter"
         )
@@ -1477,7 +1477,7 @@ Continue the class with:
             }
 
             override fun onFailed(message: String) {
-                val safe = "I'm having a little trouble doing that. Want me to call your daughter to help?"
+                val safe = "I'm having a little trouble with that. Please try again."
                 dependencies.narrator.speak(safe, _uiState.value.lang)
                 _uiState.update {
                     it.copy(
@@ -1922,7 +1922,7 @@ private fun FailureOverlay(state: SeniorUiState, onRetry: () -> Unit, onCallBuye
     FullOverlay {
         CaptionText(
             state.failure?.message
-                ?: "I'm having a little trouble doing that. Want me to call your daughter to help?"
+                ?: "I'm having a little trouble with that. Please try again."
         )
         Spacer(Modifier.height(24.dp))
         Button(
@@ -2930,7 +2930,7 @@ On device:
 4. Tap Stop.
 
 Expected:
-- Failure screen says: "I'm having a little trouble doing that. Want me to call your daughter to help?"
+- Failure screen says: "I'm having a little trouble with that. Please try again."
 - "YES, call daughter" opens the call or dialer intent for the configured buyer number.
 - "Try again" returns to Listening.
 

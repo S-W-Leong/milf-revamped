@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable
 
@@ -15,17 +16,33 @@ from milf.ws_driver import WebSocketDriver
 SAFE_FAILURE_COPY = (
     "I'm having a little trouble doing that. Want me to call your daughter to help?"
 )
+APP_CARDS_DIR = Path(__file__).resolve().parents[2] / "config" / "app_cards"
 logger = logging.getLogger(__name__)
+
+
+def build_mobile_config() -> Any:
+    from mobilerun import AgentConfig, AppCardConfig, MobileConfig
+
+    return MobileConfig(
+        agent=AgentConfig(
+            max_steps=30,
+            reasoning=True,
+            streaming=True,
+            app_cards=AppCardConfig(
+                enabled=True,
+                mode="local",
+                app_cards_dir=str(APP_CARDS_DIR),
+            ),
+        ),
+    )
 
 
 def build_agent(goal: str, driver: WebSocketDriver, custom_tools: dict[str, Any]) -> Any:
     from llama_index.llms.openai import OpenAI
-    from mobilerun import AgentConfig, MobileAgent, MobileConfig
+    from mobilerun import MobileAgent
 
     model = os.environ.get("OPENAI_MODEL", "gpt-4o")
-    config = MobileConfig(
-        agent=AgentConfig(max_steps=30, reasoning=True, streaming=True),
-    )
+    config = build_mobile_config()
 
     return MobileAgent(
         goal=goal,

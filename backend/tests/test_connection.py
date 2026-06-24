@@ -67,7 +67,7 @@ async def test_send_task_outcomes():
 
     await conn.send_task_complete("You're connected to Wei.", "en", "wei-grandson")
     await conn.send_task_failure(
-        "I'm having a little trouble doing that. Want me to call your daughter to help?",
+        "I'm having a little trouble with that. Please try again.",
         "en",
         "buyer-daughter",
     )
@@ -83,7 +83,7 @@ async def test_send_task_outcomes():
     assert sent[1] == {
         "type": "TaskFailure",
         "data": {
-            "message": "I'm having a little trouble doing that. Want me to call your daughter to help?",
+            "message": "I'm having a little trouble with that. Please try again.",
             "lang": "en",
             "recovery_contact_id": "buyer-daughter",
         },

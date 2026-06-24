@@ -32,7 +32,10 @@ class MilfSessionController(
     private val graph: RelationshipGraph = RelationshipGraph.demo()
 ) {
     private val _uiState = MutableStateFlow(
-        SeniorUiState(backendUrl = dependencies.initialBackendUrl)
+        SeniorUiState(
+            backendUrl = dependencies.initialBackendUrl,
+            speechInputMode = dependencies.speechInputMode
+        )
     )
     val uiState: StateFlow<SeniorUiState> = _uiState.asStateFlow()
     private val sessionId = AtomicLong(0L)
@@ -73,6 +76,11 @@ class MilfSessionController(
 
     fun setLang(lang: String) {
         _uiState.update { it.copy(lang = lang) }
+    }
+
+    fun setSpeechInputMode(mode: SpeechInputMode) {
+        dependencies.saveSpeechInputMode(mode)
+        _uiState.update { it.copy(speechInputMode = mode) }
     }
 
     fun setCommandText(text: String) {
@@ -140,7 +148,7 @@ class MilfSessionController(
                 isCollapsed = false
             )
         }
-        val started = if (dependencies.speechInputMode == SpeechInputMode.Native) {
+        val started = if (_uiState.value.speechInputMode == SpeechInputMode.Native) {
             runCatching {
                 dependencies.speechRecognizer.start(
                     lang = _uiState.value.lang,
@@ -164,7 +172,7 @@ class MilfSessionController(
         val state = _uiState.value
         if (!state.isRecording) return
 
-        if (dependencies.speechInputMode == SpeechInputMode.Native) {
+        if (state.speechInputMode == SpeechInputMode.Native) {
             val stopped = runCatching {
                 dependencies.speechRecognizer.stop()
             }.isSuccess
@@ -612,6 +620,7 @@ class MilfSessionController(
         val clientFactory: (String) -> SessionSocketClient,
         val initialBackendUrl: String = DEFAULT_BACKEND_URL,
         val saveBackendUrl: (String) -> Unit = {},
+        val saveSpeechInputMode: (SpeechInputMode) -> Unit = {},
         val checkBackendConnection: (String, (BackendConnectionStatus) -> Unit) -> Unit = { _, callback ->
             callback(BackendConnectionStatus.Connected)
         },

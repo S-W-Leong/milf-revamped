@@ -1,6 +1,5 @@
 from milf.context import (
     AGENT_OVERLAY_INTERACTION,
-    WHATSAPP_APP_CARD,
     acknowledgment,
     build_goal,
     escape_contact,
@@ -30,20 +29,25 @@ def test_resolve_unknown_returns_none():
     assert resolve_contact("open the weather") is None
 
 
-def test_build_goal_includes_contact_card_and_confirmation():
+def test_build_goal_includes_contact_context_and_confirmation():
     goal = build_goal("I want to see my grandson")
     assert "Contact id: wei-grandson." in goal
     assert "Intended contact: Wei." in goal
     assert "Relationship: grandson." in goal
     assert "Preferred channel: WhatsApp video." in goal
     assert "confirm_action" in goal
-    assert WHATSAPP_APP_CARD.strip()[:10] in goal
+    assert "WhatsApp app card:" not in goal
+    assert "com.whatsapp" not in goal
+    assert "Start the video call with the video-call icon" not in goal
 
 
-def test_whatsapp_card_uses_direct_package_launch():
-    assert "start_app" in WHATSAPP_APP_CARD
-    assert "com.whatsapp" in WHATSAPP_APP_CARD
-    assert "Do not use open_app" in WHATSAPP_APP_CARD
+def test_build_goal_omits_whatsapp_card_for_unknown_intent():
+    goal = build_goal("What's up")
+
+    assert "Spoken intent: \"What's up\"." in goal
+    assert "WhatsApp app card:" not in goal
+    assert "com.whatsapp" not in goal
+    assert "confirm_action" in goal
 
 
 def test_build_goal_tells_agent_overlay_taps_pass_through_outside_rail():

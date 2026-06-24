@@ -74,7 +74,7 @@ The whole senior-facing UX is a single state machine living in an overlay. Five 
 
 ### State F — Failure (the real product) ⚠️
 - **Rule:** Never "you did it wrong." Never a raw error. Never a dead end.
-- **Visual + voice:** *"I'm having a little trouble doing that. Want me to call your daughter to help?"*
+- **Visual + voice:** *"I'm having a little trouble with that. Please try again."*
 - **Controls:** Big **YES (call daughter)** / big **Try again**.
 - **Escape hatch:** "Call my daughter/son" connects the senior to the **buyer** — ties failure recovery directly to the relationship Gemini structurally lacks.
 - **Telemetry:** Every failure silently logs to the buyer's ambient health view (see §5), so repeated failures surface to the person who can fix them.

@@ -9,16 +9,6 @@ from pydantic import BaseModel
 
 CONTACTS_PATH = Path(__file__).with_name("contacts.json")
 
-WHATSAPP_APP_CARD = """
-WhatsApp app card:
-- Use WhatsApp for video calls; Android package is com.whatsapp.
-- Launch WhatsApp with start_app(package="com.whatsapp"). Do not use open_app by label for WhatsApp.
-- After WhatsApp opens, use the Calls tab or open the chat target directly.
-- If the contact is not visible, use the search icon to find the target by display name.
-- Start the video call with the video-call icon.
-- Prefer accessibility text/content-description when identifying the Calls tab, search icon, chat target, and video-call icon.
-"""
-
 SAFETY_CONFIRMATION = (
     "SAFETY: before placing the call or any send/payment, MUST call confirm_action "
     "with a short summary and only proceed if confirmed."
@@ -80,7 +70,6 @@ def build_goal(intent: str) -> str:
             f"Preferred channel: {contact.preferred_app} {contact.preferred_channel}."
         )
 
-    parts.append(WHATSAPP_APP_CARD.strip())
     parts.append(AGENT_OVERLAY_INTERACTION.strip())
     parts.append(SAFETY_CONFIRMATION)
 

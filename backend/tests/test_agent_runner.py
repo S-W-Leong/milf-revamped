@@ -147,7 +147,7 @@ async def test_run_task_sends_safe_failure_on_agent_error():
     assert result.success is False
     assert conn.failures == [
         (
-            "I'm having a little trouble doing that. Want me to call your daughter to help?",
+            "I'm having a little trouble with that. Please try again.",
             "en",
             "buyer-daughter",
         )
@@ -173,7 +173,7 @@ async def test_run_task_sends_safe_failure_when_agent_reports_failure():
     assert conn.completions == []
     assert conn.failures == [
         (
-            "I'm having a little trouble doing that. Want me to call your daughter to help?",
+            "I'm having a little trouble with that. Please try again.",
             "en",
             "buyer-daughter",
         )
@@ -200,7 +200,7 @@ async def test_run_task_sends_safe_failure_when_confirmation_declined():
     assert conn.completions == []
     assert conn.failures == [
         (
-            "I'm having a little trouble doing that. Want me to call your daughter to help?",
+            "I'm having a little trouble with that. Please try again.",
             "en",
             "buyer-daughter",
         )
