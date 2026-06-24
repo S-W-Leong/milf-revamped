@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import logging
 import os
 from types import SimpleNamespace
 from typing import Any, Callable
 
-from milf.confirmation import build_confirmation_tool
+from milf.confirmation import ConfirmationDeclined, build_confirmation_tool
 from milf.connection import AppConnection
 from milf.context import acknowledgment, build_goal, escape_contact, resolve_contact
 from milf.narration import narrate_events
@@ -14,6 +15,7 @@ from milf.ws_driver import WebSocketDriver
 SAFE_FAILURE_COPY = (
     "I'm having a little trouble doing that. Want me to call your daughter to help?"
 )
+logger = logging.getLogger(__name__)
 
 
 def build_agent(goal: str, driver: WebSocketDriver, custom_tools: dict[str, Any]) -> Any:
@@ -64,7 +66,16 @@ async def run_task(
 
     try:
         result = await narrate_events(handler, connection, lang)
+    except ConfirmationDeclined:
+        logger.info("Confirmation declined during agent run.", exc_info=True)
+        await connection.send_task_failure(
+            SAFE_FAILURE_COPY,
+            lang,
+            recovery_contact_id=escape.id,
+        )
+        return SimpleNamespace(success=False, reason="confirmation_declined")
     except Exception:
+        logger.exception("Agent run failed.")
         await connection.send_task_failure(
             SAFE_FAILURE_COPY,
             lang,

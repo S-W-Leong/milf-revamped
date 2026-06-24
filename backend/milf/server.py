@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import logging
 import os
 
 import websockets
@@ -10,6 +11,7 @@ from milf.protocol import Audio, decode
 from milf.stt import make_stt
 
 PROTOCOL_ERROR = 1002
+logger = logging.getLogger(__name__)
 
 
 async def _handler(ws):
@@ -17,33 +19,35 @@ async def _handler(ws):
         await ws.send(raw)
 
     conn = AppConnection(send)
-    stt = make_stt()
     first = decode(await ws.recv())
     if not isinstance(first, Audio):
         await ws.close(code=PROTOCOL_ERROR, reason="first frame must be Audio")
         return
-    audio = base64.b64decode(first.goal_audio_b64)
 
     async def pump() -> None:
         async for raw in ws:
             conn.on_message(raw)
 
-    pump_task = asyncio.create_task(pump())
+    pump_task = None
     try:
-        try:
-            await run_task(conn, audio, first.lang, stt)
-        except Exception:
-            await conn.send_task_failure(
-                SAFE_FAILURE_COPY,
-                first.lang,
-                recovery_contact_id="buyer-daughter",
-            )
+        stt = make_stt()
+        audio = base64.b64decode(first.goal_audio_b64, validate=True)
+        pump_task = asyncio.create_task(pump())
+        await run_task(conn, audio, first.lang, stt)
+    except Exception:
+        logger.exception("Backend task handling failed.")
+        await conn.send_task_failure(
+            SAFE_FAILURE_COPY,
+            first.lang,
+            recovery_contact_id="buyer-daughter",
+        )
     finally:
-        pump_task.cancel()
-        try:
-            await pump_task
-        except asyncio.CancelledError:
-            pass
+        if pump_task is not None:
+            pump_task.cancel()
+            try:
+                await pump_task
+            except asyncio.CancelledError:
+                pass
 
 
 async def serve(host=None, port=None):

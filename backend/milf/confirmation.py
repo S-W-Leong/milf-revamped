@@ -3,6 +3,10 @@ from __future__ import annotations
 from milf.connection import AppConnection
 
 
+class ConfirmationDeclined(Exception):
+    """Raised when the senior declines an irreversible action."""
+
+
 def build_confirmation_tool(
     connection: AppConnection, lang: str, contact_id: str | None = None
 ) -> dict:
@@ -15,7 +19,7 @@ def build_confirmation_tool(
             )
         if approved:
             return "User confirmed. Proceed with the action."
-        return "User declined. Do not perform the action; stop and end the task."
+        raise ConfirmationDeclined("User declined confirmation.")
 
     return {
         "confirm_action": {
