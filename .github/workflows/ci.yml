@@ -32,7 +32,7 @@ jobs:
       - name: Run lightweight secret denylist
         shell: bash
         run: |
-          if git grep -nI -E '(-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9_]{36,}|github_pat_[A-Za-z0-9_]+|sk-[A-Za-z0-9]{20,})' -- . ':!.env.example'; then
+          if git grep -nI -E '(-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9_]{36,}|github_pat_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{20,})' -- . ':!.env.example'; then
             echo "Potential committed secret matched the denylist."
             exit 1
           fi

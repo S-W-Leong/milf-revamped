@@ -8,7 +8,6 @@ class TtsNarrator(
     context: Context
 ) : TextToSpeech.OnInitListener {
     private val tts = TextToSpeech(context.applicationContext, this)
-    private var initialized = false
     private var ready = false
     private var onFailure: (String) -> Unit = {}
 
@@ -17,7 +16,6 @@ class TtsNarrator(
     }
 
     override fun onInit(status: Int) {
-        initialized = true
         ready = status == TextToSpeech.SUCCESS
         if (ready) {
             runCatching { tts.language = Locale.ENGLISH }
@@ -33,11 +31,8 @@ class TtsNarrator(
     fun speak(text: String, lang: String) {
         if (text.isBlank()) return
         if (!ready) {
-            if (initialized) {
-                onFailure("Audio playback unavailable")
-                error("Audio playback unavailable")
-            }
-            return
+            onFailure("Audio playback unavailable")
+            error("Audio playback unavailable")
         }
 
         runCatching {

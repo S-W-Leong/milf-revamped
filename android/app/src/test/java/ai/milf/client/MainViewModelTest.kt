@@ -2,6 +2,7 @@ package ai.milf.client
 
 import ai.milf.client.protocol.Action
 import ai.milf.client.protocol.ActionResult
+import ai.milf.client.protocol.ConfirmRequest
 import ai.milf.client.protocol.MilfProtocol
 import ai.milf.client.protocol.Narration
 import ai.milf.client.security.ActionPolicy
@@ -125,6 +126,92 @@ class MainViewModelTest {
         assertFalse(viewModel.uiState.value.isRecording)
         assertFalse(viewModel.uiState.value.isRunning)
         assertEquals("Could not play audio", viewModel.uiState.value.status)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun confirmationSpeakFailureKeepsButtonsAvailable() = runTest {
+        lateinit var client: MilfWebSocketClient
+        val dependencies = testDependencies(
+            narrator = FakeNarrator(speakFailure = IllegalStateException("speaker failed")),
+            clientFactory = { url ->
+                MilfWebSocketClient(
+                    url = url,
+                    socketFactory = CloseTrackingSocketFactory(),
+                    scope = this,
+                    clientSecurity = ClientSecurity(
+                        isDebugBuild = true,
+                        defaultBackendUrl = "ws://10.0.2.2:8765",
+                        deviceToken = "dev-token"
+                    ),
+                    audioEncoder = { "audio" }
+                ).also { client = it }
+            }
+        )
+        val viewModel = MainViewModel(dependencies)
+
+        viewModel.stopAndRun()
+        client.handleText(MilfProtocol.encode(ConfirmRequest("c1", "Call Wei now?", "en")))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isRunning)
+        assertEquals(PendingConfirmation("c1", "Call Wei now?", "en"), viewModel.uiState.value.confirmation)
+        assertEquals("Could not play audio", viewModel.uiState.value.status)
+    }
+
+    @Test
+    fun websocketFailureClearsPendingConfirmation() = runTest {
+        lateinit var client: MilfWebSocketClient
+        val dependencies = testDependencies(
+            clientFactory = { url ->
+                MilfWebSocketClient(
+                    url = url,
+                    socketFactory = CloseTrackingSocketFactory(),
+                    clientSecurity = ClientSecurity(
+                        isDebugBuild = true,
+                        defaultBackendUrl = "ws://10.0.2.2:8765",
+                        deviceToken = "dev-token"
+                    ),
+                    audioEncoder = { "audio" }
+                ).also { client = it }
+            }
+        )
+        val viewModel = MainViewModel(dependencies)
+
+        viewModel.stopAndRun()
+        viewModel.showConfirmationForTest("c1", "Call Wei now?", "en")
+        client.handleText("{")
+
+        assertNull(viewModel.uiState.value.confirmation)
+        assertFalse(viewModel.uiState.value.isRunning)
+    }
+
+    @Test
+    fun websocketCloseClearsPendingConfirmation() = runTest {
+        val socketFactory = CloseTrackingSocketFactory()
+        val dependencies = testDependencies(
+            clientFactory = { url ->
+                MilfWebSocketClient(
+                    url = url,
+                    socketFactory = socketFactory,
+                    clientSecurity = ClientSecurity(
+                        isDebugBuild = true,
+                        defaultBackendUrl = "ws://10.0.2.2:8765",
+                        deviceToken = "dev-token"
+                    ),
+                    audioEncoder = { "audio" }
+                )
+            }
+        )
+        val viewModel = MainViewModel(dependencies)
+
+        viewModel.stopAndRun()
+        viewModel.showConfirmationForTest("c1", "Call Wei now?", "en")
+        socketFactory.listener?.onClosed("server closed")
+
+        assertNull(viewModel.uiState.value.confirmation)
+        assertFalse(viewModel.uiState.value.isRunning)
+        assertEquals("server closed", viewModel.uiState.value.status)
     }
 
     @Test
@@ -383,12 +470,16 @@ private class CloseTrackingSocketFactory(
     private val sendResult: Boolean = true
 ) : MilfWebSocketClient.SocketFactory {
     var socket: CloseTrackingSocket? = null
+    var listener: MilfWebSocketClient.TextListener? = null
 
     override fun open(
         url: String,
         listener: MilfWebSocketClient.TextListener
     ): MilfWebSocketClient.Socket =
-        CloseTrackingSocket(sendResult).also { socket = it }
+        CloseTrackingSocket(sendResult).also {
+            this.listener = listener
+            socket = it
+        }
 }
 
 private class CloseTrackingSocket(

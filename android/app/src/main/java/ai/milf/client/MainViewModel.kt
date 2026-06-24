@@ -154,22 +154,19 @@ class MainViewModel(
             }
 
             override suspend fun onConfirmRequest(id: String, summary: String, lang: String) {
+                val pending = PendingConfirmation(id, summary, lang)
+                _uiState.update {
+                    it.copy(
+                        confirmation = pending,
+                        status = "Confirm"
+                    )
+                }
                 if (!speakSafely(summary, lang)) {
-                    clearActiveClient()
                     _uiState.update {
                         it.copy(
-                            isRunning = false,
-                            confirmation = null,
                             status = "Could not play audio"
                         )
                     }
-                    return
-                }
-                _uiState.update {
-                    it.copy(
-                        confirmation = PendingConfirmation(id, summary, lang),
-                        status = "Confirm"
-                    )
                 }
             }
 
@@ -179,7 +176,11 @@ class MainViewModel(
                     dependencies.activeClient = null
                 }
                 _uiState.update {
-                    it.copy(isRunning = false, status = reason ?: "Done")
+                    it.copy(
+                        isRunning = false,
+                        confirmation = null,
+                        status = reason ?: "Done"
+                    )
                 }
             }
 
@@ -189,7 +190,11 @@ class MainViewModel(
                     dependencies.activeClient = null
                 }
                 _uiState.update {
-                    it.copy(isRunning = false, status = message)
+                    it.copy(
+                        isRunning = false,
+                        confirmation = null,
+                        status = message
+                    )
                 }
             }
         }
