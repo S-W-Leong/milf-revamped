@@ -2,4 +2,7 @@
     <string name="app_name">MILF</string>
     <string name="accessibility_service_label">MILF phone control</string>
     <string name="accessibility_service_description">Lets MILF act on spoken requests after you start a session.</string>
+    <string name="overlay_permission_label">Allow display over other apps</string>
+    <string name="assist_setup_label">Set MILF as assistant app</string>
+    <string name="overlay_running">MILF helper is ready</string>
 </resources>
