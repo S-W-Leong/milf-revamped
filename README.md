@@ -52,11 +52,11 @@ source .venv/bin/activate
 uv pip install mobilerun llama-index-llms-openai websockets "pydantic>=2" httpx pytest pytest-asyncio
 ```
 
-Run the backend with the mock STT adapter:
+Run the backend for Android native-STT demos:
 
 ```bash
 cd backend
-PYTHONPATH=. MILF_STT_BACKEND=mock python -m milf.server
+PYTHONPATH=. python -m milf.server
 ```
 
 By default, the websocket server listens on `0.0.0.0:8765`.
@@ -85,7 +85,7 @@ MERALION_API_KEY
 MERALION_API_URL
 ```
 
-The Android app uses native on-device speech recognition for the main mic flow and sends the transcript as a `TextGoal`, so ILMU/MERaLiON keys are not required for device demos. `MILF_STT_BACKEND=mock` is still enough for local smoke tests and legacy audio-upload clients. Use `MILF_STT_BACKEND=router` only when you want backend audio STT through ILMU/MERaLiON, with the corresponding API keys and URLs set.
+The Android app uses native on-device speech recognition for the main mic flow and sends the transcript as a `TextGoal`, so ILMU/MERaLiON keys are not required for device demos. Backend audio STT defaults to `MILF_STT_BACKEND=router` for ILMU/MERaLiON. Set `MILF_STT_BACKEND=mock` only when you want local smoke tests or legacy audio-upload clients to use `MILF_MOCK_TRANSCRIPT`.
 
 ## Android Setup
 
@@ -151,7 +151,7 @@ cd android
 
    ```bash
    cd backend
-   PYTHONPATH=. MILF_STT_BACKEND=mock python -m milf.server
+   PYTHONPATH=. python -m milf.server
    ```
 
 2. Install the Android app:

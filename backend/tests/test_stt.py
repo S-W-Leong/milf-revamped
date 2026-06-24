@@ -72,6 +72,15 @@ def test_make_stt_router_mode(monkeypatch):
     assert isinstance(make_stt(), RouterSTT)
 
 
+def test_make_stt_defaults_to_router_mode(monkeypatch):
+    monkeypatch.delenv("MILF_STT_BACKEND", raising=False)
+    monkeypatch.setenv("ILMU_API_URL", "https://ilmu.test/asr")
+    monkeypatch.setenv("ILMU_API_KEY", "ilmu-key")
+    monkeypatch.setenv("MERALION_API_URL", "https://meralion.test/asr")
+    monkeypatch.setenv("MERALION_API_KEY", "meralion-key")
+    assert isinstance(make_stt(), RouterSTT)
+
+
 def test_make_stt_rejects_unknown_backend(monkeypatch):
     monkeypatch.setenv("MILF_STT_BACKEND", "mockk")
     with pytest.raises(ValueError, match="MILF_STT_BACKEND"):

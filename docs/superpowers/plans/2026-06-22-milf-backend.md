@@ -603,7 +603,7 @@ class RouterSTT(STTAdapter):
         return await self._routes.get(lang, self._default).transcribe(audio, lang)
 
 def make_stt() -> STTAdapter:
-    backend = os.getenv("MILF_STT_BACKEND", "mock")
+    backend = os.getenv("MILF_STT_BACKEND", "router")
     if backend == "mock":
         return MockSTT(os.getenv("MILF_MOCK_TRANSCRIPT", "I want to see my grandson"))
     ilmu = IlmuSTT(api_url=os.environ["ILMU_API_URL"], api_key=os.environ["ILMU_API_KEY"])

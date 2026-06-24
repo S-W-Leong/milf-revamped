@@ -83,7 +83,7 @@ class RouterSTT(STTAdapter):
 
 
 def make_stt() -> STTAdapter:
-    backend = os.environ.get("MILF_STT_BACKEND", "mock").lower()
+    backend = os.environ.get("MILF_STT_BACKEND", "router").lower()
     if backend == "mock":
         canned = os.environ.get("MILF_MOCK_TRANSCRIPT", "I want to see my grandson")
         return MockSTT(canned)
