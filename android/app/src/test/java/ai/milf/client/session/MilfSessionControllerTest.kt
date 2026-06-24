@@ -381,6 +381,21 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun narrationUpdatesDedicatedReplyWithoutReplacingStatusCaption() = runTest {
+        val client = FakeClient()
+        val controller = fakeController(client)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        client.callbacks?.onNarration("I found Wei. Opening WhatsApp now.", "en")
+
+        val state = controller.uiState.value
+        assertEquals(SeniorUxScreen.Thinking, state.screen)
+        assertEquals(THINKING_PROMPT, state.captions)
+        assertEquals("I found Wei. Opening WhatsApp now.", state.lastNarration)
+    }
+
+    @Test
     fun firstActionMovesToActingAndSetsActionTarget() = runTest {
         val client = FakeClient()
         val controller = fakeController(client = client)

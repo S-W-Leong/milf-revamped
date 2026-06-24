@@ -335,7 +335,7 @@ class MilfSessionController(
                         it
                     } else {
                         updated = true
-                        it.copy(lastNarration = text, captions = text)
+                        it.copy(lastNarration = text)
                     }
                 }
                 if (updated) {
