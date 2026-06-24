@@ -261,6 +261,36 @@ class MilfSessionControllerTest {
         assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
     }
 
+    @Test
+    fun cancelActiveSessionStopsWorkAndReturnsToIdle() = runTest {
+        val client = FakeClient()
+        val recorder = FakeRecorder()
+        val narrator = FakeNarrator()
+        val controller = fakeController(
+            clients = listOf(client),
+            recorder = recorder,
+            narrator = narrator
+        )
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        controller.showConfirmationForTest("c1", "Calling Wei?", "en", "wei-grandson")
+        val stopCallsBeforeCancel = narrator.stopCalls
+        controller.cancelActiveSession()
+        client.callbacks?.onTaskComplete("Old success.", "en", "wei-grandson")
+
+        val state = controller.uiState.value
+        assertEquals(true, client.closed)
+        assertEquals(true, recorder.cancelled)
+        assertEquals(stopCallsBeforeCancel + 1, narrator.stopCalls)
+        assertEquals(SeniorUxScreen.Idle, state.screen)
+        assertEquals(false, state.isRecording)
+        assertEquals(false, state.isRunning)
+        assertEquals(null, state.confirmation)
+        assertEquals(null, state.success)
+        assertEquals(null, state.failure)
+    }
+
     private fun fakeController(
         client: FakeClient = FakeClient(),
         narrator: FakeNarrator = FakeNarrator()
@@ -283,12 +313,16 @@ class MilfSessionControllerTest {
 
 private class FakeNarrator : NarratorLike {
     var onSpeak: (String, String) -> Unit = { _, _ -> }
+    var stopCalls = 0
 
     override fun speak(text: String, lang: String) {
         onSpeak(text, lang)
     }
 
-    override fun stop() = Unit
+    override fun stop() {
+        stopCalls += 1
+    }
+
     override fun shutdown() = Unit
 }
 
@@ -318,9 +352,11 @@ private class FakeClient(
 private class FakeRecorder : AudioRecorderLike {
     var isRecording = false
     var stopCalls = 0
+    var cancelled = false
 
     override fun start() {
         isRecording = true
+        cancelled = false
     }
 
     override fun stop(): ByteArray {
@@ -331,6 +367,7 @@ private class FakeRecorder : AudioRecorderLike {
     }
 
     override fun cancel() {
+        cancelled = true
         isRecording = false
     }
 }

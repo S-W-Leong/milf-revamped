@@ -5,6 +5,7 @@ import ai.milf.client.session.SeniorUxScreen
 import ai.milf.client.ui.SeniorOverlayUi
 import android.content.Context
 import android.graphics.PixelFormat
+import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -67,7 +68,7 @@ class OverlayWindowController(
         composeView = view
         params = initialParams
         view.setOverlayContent(initialState)
-        windowManager.addView(view, initialParams)
+        addViewSafely(view, initialParams)
     }
 
     fun update(state: SeniorUiState) {
@@ -85,7 +86,7 @@ class OverlayWindowController(
         current.flags = next.flags
         current.format = next.format
         params = current
-        windowManager.updateViewLayout(view, current)
+        if (!updateViewLayoutSafely(view, current)) return
         view.setOverlayContent(state)
     }
 
@@ -95,10 +96,47 @@ class OverlayWindowController(
         params = null
         removed = true
         if (view.isAttachedToWindow) {
-            windowManager.removeView(view)
+            removeViewSafely(view)
         }
         view.disposeComposition()
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+    }
+
+    private fun addViewSafely(view: ComposeView, layoutParams: WindowManager.LayoutParams) {
+        try {
+            windowManager.addView(view, layoutParams)
+        } catch (exception: RuntimeException) {
+            Log.w(TAG, "Unable to add overlay window", exception)
+            clearWindowState(view)
+        }
+    }
+
+    private fun updateViewLayoutSafely(view: ComposeView, layoutParams: WindowManager.LayoutParams): Boolean {
+        return try {
+            windowManager.updateViewLayout(view, layoutParams)
+            true
+        } catch (exception: RuntimeException) {
+            Log.w(TAG, "Unable to update overlay window", exception)
+            clearWindowState(view)
+            false
+        }
+    }
+
+    private fun removeViewSafely(view: ComposeView) {
+        try {
+            windowManager.removeView(view)
+        } catch (exception: RuntimeException) {
+            Log.w(TAG, "Unable to remove overlay window", exception)
+        }
+    }
+
+    private fun clearWindowState(view: ComposeView) {
+        if (composeView === view) {
+            composeView = null
+        }
+        params = null
+        removed = true
+        view.disposeComposition()
     }
 
     private fun ComposeView.setOverlayContent(state: SeniorUiState) {
@@ -165,12 +203,13 @@ class OverlayWindowController(
                     val deltaX = event.rawX - downRawX
                     val deltaY = event.rawY - downRawY
                     dragging = dragging || abs(deltaX) > touchSlop || abs(deltaY) > touchSlop
+                    if (!dragging) return true
                     collapsedX = startX - deltaX.toInt()
                     collapsedY = startY + deltaY.toInt()
                     current.x = collapsedX
                     current.y = collapsedY
                     if (view.isAttachedToWindow) {
-                        windowManager.updateViewLayout(view, current)
+                        updateViewLayoutSafely(view as ComposeView, current)
                     }
                     return true
                 }
@@ -195,5 +234,9 @@ class OverlayWindowController(
             }
             return false
         }
+    }
+
+    private companion object {
+        const val TAG = "OverlayWindowController"
     }
 }

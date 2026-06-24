@@ -115,6 +115,25 @@ class MilfSessionController(
 
     fun callBuyer() = Unit
 
+    fun cancelActiveSession() {
+        nextSessionId()
+        dependencies.recorder.cancel()
+        dependencies.narrator.stop()
+        closeActiveClient()
+        _uiState.update {
+            it.copy(
+                screen = SeniorUxScreen.Idle,
+                isRecording = false,
+                isRunning = false,
+                captions = "Ready",
+                lastNarration = null,
+                confirmation = null,
+                success = null,
+                failure = null
+            )
+        }
+    }
+
     fun showConfirmationForTest(id: String, summary: String, lang: String, contactId: String?) {
         _uiState.update {
             it.copy(

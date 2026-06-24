@@ -20,13 +20,15 @@ val SeniorUiState.status: String
     get() = captions
 
 class MainViewModel(
-    private val controller: MilfSessionController
+    private val controller: MilfSessionController,
+    private val ownsController: Boolean = true
 ) : ViewModel() {
     constructor(dependencies: Dependencies) : this(
         MilfSessionController(
             dependencies = dependencies.sessionDependencies,
             graph = RelationshipGraph.demo()
-        )
+        ),
+        ownsController = true
     )
 
     val uiState: StateFlow<SeniorUiState> = controller.uiState
@@ -45,7 +47,9 @@ class MainViewModel(
         controller.showConfirmationForTest(id, summary, lang, "wei-grandson")
 
     override fun onCleared() {
-        controller.shutdown()
+        if (ownsController) {
+            controller.shutdown()
+        }
         super.onCleared()
     }
 
@@ -83,7 +87,10 @@ class MainViewModel(
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            MainViewModel(Dependencies.real(application)) as T
+            MainViewModel(
+                controller = (application as MilfApplication).sessionController,
+                ownsController = false
+            ) as T
     }
 }
 
