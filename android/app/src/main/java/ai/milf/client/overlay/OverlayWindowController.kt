@@ -6,8 +6,6 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.util.Log
 import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
 import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
@@ -18,12 +16,13 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import kotlin.math.abs
 
 internal object OverlayWindowSizing {
     fun expandedWidthPx(): Int = WindowManager.LayoutParams.MATCH_PARENT
     fun expandedHeightPx(): Int = WindowManager.LayoutParams.MATCH_PARENT
     fun collapsedSizeDp(): Int = 66
+    fun windowFlags(state: SeniorUiState): Int =
+        if (state.isCollapsed) WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE else 0
 
     fun railWidthPx(screenWidthPx: Int, density: Float): Int {
         val marginPx = (24 * density).toInt()
@@ -73,7 +72,6 @@ class OverlayWindowController(
         val view = ComposeView(context).also {
             it.setViewTreeLifecycleOwner(owner)
             it.setViewTreeSavedStateRegistryOwner(owner)
-            it.setOnTouchListener(DragTouchListener())
         }
         val initialParams = paramsFor(initialState)
         composeView = view
@@ -160,6 +158,7 @@ class OverlayWindowController(
                 onExitAgent = callbacks::onExitAgent,
                 onOutsideExpandedTap = callbacks::onOutsideExpandedTap,
                 onExpandOverlay = callbacks::onExpandOverlay,
+                onBubbleDrag = ::dragCollapsedBubble,
                 onApprove = callbacks::onApprove,
                 onDeny = callbacks::onDeny,
                 onTransientMessageShown = callbacks::onTransientMessageShown
@@ -173,7 +172,7 @@ class OverlayWindowController(
             if (expanded) OverlayWindowSizing.expandedWidthPx() else dp(OverlayWindowSizing.collapsedSizeDp()),
             if (expanded) OverlayWindowSizing.expandedHeightPx() else dp(OverlayWindowSizing.collapsedSizeDp()),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            OverlayWindowSizing.windowFlags(state),
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = if (expanded) Gravity.TOP or Gravity.START else Gravity.TOP or Gravity.END
@@ -185,59 +184,16 @@ class OverlayWindowController(
     private fun dp(value: Int): Int =
         (value * context.resources.displayMetrics.density).toInt()
 
-    private inner class DragTouchListener : View.OnTouchListener {
-        private var startX = 0
-        private var startY = 0
-        private var downRawX = 0f
-        private var downRawY = 0f
-        private var dragging = false
-        private val touchSlop = dp(8)
+    private fun dragCollapsedBubble(deltaX: Float, deltaY: Float) {
+        val view = composeView ?: return
+        val current = params ?: return
+        if (!currentState.isCollapsed || !view.isAttachedToWindow) return
 
-        override fun onTouch(view: View, event: MotionEvent): Boolean {
-            val current = params ?: return false
-            if (!currentState.isCollapsed) return false
-
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    startX = current.x
-                    startY = current.y
-                    downRawX = event.rawX
-                    downRawY = event.rawY
-                    dragging = false
-                    return true
-                }
-
-                MotionEvent.ACTION_MOVE -> {
-                    val deltaX = event.rawX - downRawX
-                    val deltaY = event.rawY - downRawY
-                    dragging = dragging || abs(deltaX) > touchSlop || abs(deltaY) > touchSlop
-                    if (!dragging) return true
-                    collapsedX = startX - deltaX.toInt()
-                    collapsedY = startY + deltaY.toInt()
-                    current.x = collapsedX
-                    current.y = collapsedY
-                    if (view.isAttachedToWindow) {
-                        updateViewLayoutSafely(view as ComposeView, current)
-                    }
-                    return true
-                }
-
-                MotionEvent.ACTION_UP -> {
-                    if (!dragging) {
-                        view.performClick()
-                        callbacks.onExpandOverlay()
-                    }
-                    dragging = false
-                    return true
-                }
-
-                MotionEvent.ACTION_CANCEL -> {
-                    dragging = false
-                    return true
-                }
-            }
-            return false
-        }
+        collapsedX -= deltaX.toInt()
+        collapsedY += deltaY.toInt()
+        current.x = collapsedX
+        current.y = collapsedY
+        updateViewLayoutSafely(view, current)
     }
 
     private companion object {

@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
@@ -55,10 +56,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -76,13 +79,17 @@ fun SeniorOverlayUi(
     onExitAgent: () -> Unit,
     onOutsideExpandedTap: () -> Unit,
     onExpandOverlay: () -> Unit,
+    onBubbleDrag: (Float, Float) -> Unit,
     onApprove: () -> Unit,
     onDeny: () -> Unit,
     onTransientMessageShown: () -> Unit
 ) {
     MaterialTheme {
         if (state.isCollapsed) {
-            CollapsedBubble(onExpandOverlay)
+            CollapsedBubble(
+                onExpandOverlay = onExpandOverlay,
+                onBubbleDrag = onBubbleDrag
+            )
         } else {
             ExpandedOverlayShell(
                 state = state,
@@ -101,10 +108,20 @@ fun SeniorOverlayUi(
 }
 
 @Composable
-private fun CollapsedBubble(onExpandOverlay: () -> Unit) {
+private fun CollapsedBubble(
+    onExpandOverlay: () -> Unit,
+    onBubbleDrag: (Float, Float) -> Unit
+) {
     Button(
         onClick = onExpandOverlay,
-        modifier = Modifier.size(MilfDimens.BubbleSize),
+        modifier = Modifier
+            .size(MilfDimens.BubbleSize)
+            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    onBubbleDrag(dragAmount.x, dragAmount.y)
+                }
+            },
         shape = CircleShape,
         colors = ButtonDefaults.buttonColors(containerColor = MilfColors.DarkSurface),
         border = BorderStroke(1.dp, MilfColors.Border)
@@ -152,6 +169,14 @@ private fun ExpandedOverlayShell(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 104.dp)
+            )
+        }
+        if (state.shouldShowNarrationReply) {
+            NarrationReplyPill(
+                text = state.lastNarration.orEmpty(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 94.dp)
             )
         }
         ControlRail(
@@ -246,13 +271,19 @@ private fun RailCenterContent(
                 SeniorUxScreen.Idle -> BasicTextField(
                     value = state.commandText,
                     onValueChange = onCommandTextChange,
+                    modifier = Modifier.fillMaxSize(),
                     singleLine = true,
                     textStyle = TextStyle(color = MilfColors.TextPrimary, fontSize = 14.sp),
                     decorationBox = { inner ->
-                        if (state.commandText.isBlank()) {
-                            Text(READY_PROMPT, color = MilfColors.TextSecondary, fontSize = 14.sp)
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (state.commandText.isBlank()) {
+                                Text(READY_PROMPT, color = MilfColors.TextSecondary, fontSize = 14.sp)
+                            }
+                            inner()
                         }
-                        inner()
                     }
                 )
 
@@ -342,6 +373,38 @@ private fun ExitAgentButton(onExitAgent: () -> Unit) {
             .border(1.dp, MilfColors.BorderStrong, CircleShape)
     ) {
         Icon(Icons.Default.Close, contentDescription = "Exit MILF", tint = MilfColors.TextPrimary)
+    }
+}
+
+@Composable
+private fun NarrationReplyPill(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .widthIn(max = MilfDimens.RailMaxWidth)
+            .padding(horizontal = MilfDimens.RailHorizontalMargin)
+            .height(MilfDimens.ReplyPillHeight),
+        shape = RoundedCornerShape(MilfDimens.ReplyPillCorner),
+        color = MilfColors.DarkSurface,
+        border = BorderStroke(1.dp, MilfColors.Border),
+        shadowElevation = 12.dp
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text,
+                color = MilfColors.TextPrimary,
+                fontSize = 13.sp,
+                lineHeight = 17.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
@@ -443,3 +506,9 @@ private fun MiniWaveform() {
         }
     }
 }
+
+private val SeniorUiState.shouldShowNarrationReply: Boolean
+    get() = !lastNarration.isNullOrBlank() &&
+        screen != SeniorUxScreen.Idle &&
+        screen != SeniorUxScreen.Failure &&
+        screen != SeniorUxScreen.Confirming

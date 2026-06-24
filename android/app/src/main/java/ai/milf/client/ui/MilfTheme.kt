@@ -26,6 +26,8 @@ object MilfDimens {
     val RailMaxWidth = 560.dp
     val RailHorizontalMargin = 24.dp
     val RailCorner = 22.dp
+    val ReplyPillHeight = 48.dp
+    val ReplyPillCorner = 18.dp
     val BubbleSize = 66.dp
     val BubbleCorner = 33.dp
     val CardCorner = 18.dp
