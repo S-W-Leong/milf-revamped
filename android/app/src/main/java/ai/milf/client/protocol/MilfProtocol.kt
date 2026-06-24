@@ -1,5 +1,6 @@
 package ai.milf.client.protocol
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 sealed interface MilfMessage
@@ -190,7 +191,27 @@ private fun JSONObject.putMap(values: Map<String, Any?>): JSONObject {
 }
 
 private fun JSONObject.putNullable(key: String, value: Any?): JSONObject =
-    put(key, value ?: JSONObject.NULL)
+    put(key, value.toJsonValue())
+
+private fun Any?.toJsonValue(): Any = when (this) {
+    null -> JSONObject.NULL
+    is Map<*, *> -> JSONObject().apply {
+        this@toJsonValue.forEach { (key, value) ->
+            putNullable(key.toString(), value)
+        }
+    }
+    is Iterable<*> -> JSONArray().apply {
+        this@toJsonValue.forEach { value ->
+            put(value.toJsonValue())
+        }
+    }
+    is Array<*> -> JSONArray().apply {
+        this@toJsonValue.forEach { value ->
+            put(value.toJsonValue())
+        }
+    }
+    else -> this
+}
 
 private fun JSONObject.toMap(): Map<String, Any?> {
     val out = linkedMapOf<String, Any?>()
@@ -201,7 +222,19 @@ private fun JSONObject.toMap(): Map<String, Any?> {
 }
 
 private fun JSONObject.optNullable(key: String): Any? =
-    if (!has(key) || isNull(key)) null else get(key)
+    if (!has(key) || isNull(key)) null else get(key).fromJsonValue()
+
+private fun Any?.fromJsonValue(): Any? = when (this) {
+    JSONObject.NULL -> null
+    is JSONObject -> toMap()
+    is JSONArray -> toList()
+    else -> this
+}
+
+private fun JSONArray.toList(): List<Any?> =
+    (0 until length()).map { index ->
+        get(index).fromJsonValue()
+    }
 
 private fun JSONObject.optStringOrNull(key: String): String? =
     if (!has(key) || isNull(key)) null else getString(key)

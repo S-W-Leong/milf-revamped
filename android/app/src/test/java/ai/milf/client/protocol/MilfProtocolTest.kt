@@ -93,6 +93,26 @@ class MilfProtocolTest {
         assertEquals(message, MilfProtocol.decode(raw))
     }
 
+    @Test
+    fun actionResultRoundTripsNestedMapResult() {
+        val state = mapOf(
+            "a11y_tree" to mapOf("children" to emptyList<Map<String, Any?>>()),
+            "phone_state" to mapOf("packageName" to "com.whatsapp"),
+            "device_context" to mapOf(
+                "screen_bounds" to mapOf("width" to 1080, "height" to 2400)
+            )
+        )
+        val raw = MilfProtocol.encode(ActionResult(id = "a1", ok = true, result = state))
+        val result = JSONObject(raw)
+            .getJSONObject("data")
+            .getJSONObject("result")
+
+        assertEquals("com.whatsapp", result.getJSONObject("phone_state").getString("packageName"))
+
+        val decoded = MilfProtocol.decode(raw) as ActionResult
+        assertEquals(state, decoded.result)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun unknownTypeRaises() {
         MilfProtocol.decode("""{"type":"Nope","data":{}}""")
