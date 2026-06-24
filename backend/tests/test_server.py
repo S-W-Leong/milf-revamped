@@ -17,13 +17,42 @@ from milf.protocol import (
     decode,
     encode,
 )
-from milf.server import _dispatch_first_frame, _handler
+from milf.server import _configure_logging, _dispatch_first_frame, _handler
 from milf.stt import MockSTT
 
 
 async def _serve_once():
     server = await websockets.serve(_handler, "127.0.0.1", 0)
     return server, server.sockets[0].getsockname()[1]
+
+
+def test_configure_logging_uses_env_level(monkeypatch):
+    captured = {}
+
+    def fake_basic_config(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setenv("MILF_LOG_LEVEL", "DEBUG")
+    monkeypatch.setattr("logging.basicConfig", fake_basic_config)
+
+    _configure_logging()
+
+    assert captured["level"] == logging.DEBUG
+    assert captured["format"] == "%(asctime)s %(levelname)s %(name)s %(message)s"
+
+
+def test_configure_logging_defaults_to_info(monkeypatch):
+    captured = {}
+
+    def fake_basic_config(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.delenv("MILF_LOG_LEVEL", raising=False)
+    monkeypatch.setattr("logging.basicConfig", fake_basic_config)
+
+    _configure_logging()
+
+    assert captured["level"] == logging.INFO
 
 
 async def test_server_sends_safe_failure_when_make_stt_fails(monkeypatch):
