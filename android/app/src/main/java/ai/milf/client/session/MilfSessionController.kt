@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 
@@ -39,6 +40,7 @@ class MilfSessionController(
     )
     val uiState: StateFlow<SeniorUiState> = _uiState.asStateFlow()
     private val sessionId = AtomicLong(0L)
+    private val backendSessionId = UUID.randomUUID().toString()
 
     fun setBackendUrl(url: String) {
         val trimmed = url.trim()
@@ -248,7 +250,12 @@ class MilfSessionController(
             )
         }
         try {
-            client.start(bytes, state.lang, callbacks(callbackSessionId, client))
+            client.start(
+                bytes,
+                state.lang,
+                callbacks(callbackSessionId, client),
+                backendSessionId = backendSessionId
+            )
         } catch (exception: RuntimeException) {
             moveLocalSessionToFailure(expectedClient = client)
         }
@@ -285,7 +292,12 @@ class MilfSessionController(
             )
         }
         try {
-            client.startText(goal, state.lang, callbacks(callbackSessionId, client))
+            client.startText(
+                goal,
+                state.lang,
+                callbacks(callbackSessionId, client),
+                backendSessionId = backendSessionId
+            )
         } catch (exception: RuntimeException) {
             moveLocalSessionToFailure(expectedClient = client)
         }
@@ -543,7 +555,12 @@ class MilfSessionController(
             }
         }
         try {
-            client.startText(goal, state.lang, callbacks(callbackSessionId, client))
+            client.startText(
+                goal,
+                state.lang,
+                callbacks(callbackSessionId, client),
+                backendSessionId = backendSessionId
+            )
         } catch (exception: RuntimeException) {
             moveLocalSessionToFailure(expectedClient = client)
         }

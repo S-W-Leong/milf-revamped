@@ -63,16 +63,40 @@ class MilfWebSocketClient(
     private var callbacks: Callbacks? = null
     private var pendingMessages: MutableList<String> = mutableListOf()
 
-    override fun start(goalAudio: ByteArray, lang: String, callbacks: Callbacks) {
+    override fun start(
+        goalAudio: ByteArray,
+        lang: String,
+        callbacks: Callbacks,
+        backendSessionId: String?
+    ) {
         startSession(callbacks) { sessionId ->
             val encodedAudio = audioEncoder(goalAudio)
-            send(sessionId, Audio(goalAudioB64 = encodedAudio, lang = lang))
+            send(
+                sessionId,
+                Audio(
+                    goalAudioB64 = encodedAudio,
+                    lang = lang,
+                    sessionId = backendSessionId,
+                )
+            )
         }
     }
 
-    override fun startText(goalText: String, lang: String, callbacks: Callbacks) {
+    override fun startText(
+        goalText: String,
+        lang: String,
+        callbacks: Callbacks,
+        backendSessionId: String?
+    ) {
         startSession(callbacks) { sessionId ->
-            send(sessionId, TextGoal(goalText = goalText, lang = lang))
+            send(
+                sessionId,
+                TextGoal(
+                    goalText = goalText,
+                    lang = lang,
+                    sessionId = backendSessionId,
+                )
+            )
         }
     }
 

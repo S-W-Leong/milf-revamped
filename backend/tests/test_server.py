@@ -149,6 +149,53 @@ async def test_server_reuses_session_for_multiple_text_goals(monkeypatch):
     assert sessions[0][1] is sessions[1][1]
 
 
+async def test_server_reuses_durable_session_across_reconnected_text_goals(monkeypatch):
+    sessions = []
+
+    async def fake_run_intent(conn, intent, lang, session=None):
+        sessions.append((intent, session))
+        if intent == "search movie":
+            session.recent_user_inputs.append("search movie")
+            await conn.send_task_complete("Which app should I use?", lang)
+            return
+        await conn.send_task_complete("Searching movie on YouTube.", lang)
+
+    monkeypatch.setattr("milf.server.run_intent", fake_run_intent)
+
+    server, port = await _serve_once()
+    async with server:
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+            await ws.send(
+                encode(
+                    TextGoal(
+                        goal_text="search movie",
+                        lang="en",
+                        session_id="manual-test-session",
+                    )
+                )
+            )
+            first = decode(await ws.recv())
+
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+            await ws.send(
+                encode(
+                    TextGoal(
+                        goal_text="YT",
+                        lang="en",
+                        session_id="manual-test-session",
+                    )
+                )
+            )
+            second = decode(await ws.recv())
+
+    assert isinstance(first, TaskComplete)
+    assert isinstance(second, TaskComplete)
+    assert sessions[0][0] == "search movie"
+    assert sessions[1][0] == "YT"
+    assert sessions[0][1] is sessions[1][1]
+    assert sessions[1][1].recent_user_inputs == ["search movie"]
+
+
 async def test_server_short_circuits_greeting_text_goal():
     class FakeIntentAgent:
         async def classify(self, intent, lang):

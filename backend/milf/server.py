@@ -15,6 +15,7 @@ from milf.stt import make_stt
 
 PROTOCOL_ERROR = 1002
 logger = logging.getLogger(__name__)
+_sessions: dict[str, MILFSession] = {}
 
 
 async def _dispatch_first_frame(
@@ -42,7 +43,7 @@ async def _handler(ws):
         await ws.send(raw)
 
     conn = AppConnection(send)
-    session = MILFSession()
+    connection_session: MILFSession | None = None
     goal_queue = asyncio.Queue()
     pump_task = None
 
@@ -54,6 +55,7 @@ async def _handler(ws):
     if not isinstance(first, Audio | TextGoal):
         await ws.close(code=PROTOCOL_ERROR, reason="first frame must be Audio or TextGoal")
         return
+    connection_session = _session_for_goal(first) or MILFSession()
 
     async def pump() -> None:
         try:
@@ -74,6 +76,7 @@ async def _handler(ws):
             if goal is None:
                 break
             try:
+                session = _session_for_goal(goal) or connection_session
                 await _dispatch_first_frame(conn, goal, session=session)
             except websockets.ConnectionClosed:
                 raise
@@ -128,6 +131,18 @@ async def _call_with_optional_session(
     if accepts_session_positionally:
         return await fn(*call_args, session)
     return await fn(*call_args)
+
+
+def _session_for_goal(goal: Audio | TextGoal) -> MILFSession | None:
+    session_id = goal.session_id
+    if session_id is None or not session_id.strip():
+        return None
+    session_id = session_id.strip()
+    session = _sessions.get(session_id)
+    if session is None:
+        session = MILFSession(session_id=session_id)
+        _sessions[session_id] = session
+    return session
 
 
 def _configure_logging() -> None:

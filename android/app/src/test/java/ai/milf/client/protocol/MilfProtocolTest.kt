@@ -39,6 +39,34 @@ class MilfProtocolTest {
     }
 
     @Test
+    fun textGoalRoundTripsSessionId() {
+        val raw = MilfProtocol.encode(
+            TextGoal(goalText = "search movie", lang = "en", sessionId = "session-123")
+        )
+        val data = JSONObject(raw).getJSONObject("data")
+
+        assertEquals("session-123", data.getString("session_id"))
+        assertEquals(
+            TextGoal(goalText = "search movie", lang = "en", sessionId = "session-123"),
+            MilfProtocol.decode(raw)
+        )
+    }
+
+    @Test
+    fun audioRoundTripsSessionId() {
+        val raw = MilfProtocol.encode(
+            Audio(goalAudioB64 = "AQID", lang = "en", sessionId = "session-123")
+        )
+        val data = JSONObject(raw).getJSONObject("data")
+
+        assertEquals("session-123", data.getString("session_id"))
+        assertEquals(
+            Audio(goalAudioB64 = "AQID", lang = "en", sessionId = "session-123"),
+            MilfProtocol.decode(raw)
+        )
+    }
+
+    @Test
     fun confirmRequestRoundTripsContactId() {
         val message = ConfirmRequest(
             id = "c1",

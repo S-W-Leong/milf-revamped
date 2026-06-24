@@ -82,13 +82,15 @@ class MainViewModel(
                     override fun start(
                         goalAudio: ByteArray,
                         lang: String,
-                        callbacks: MilfWebSocketClient.Callbacks
+                        callbacks: MilfWebSocketClient.Callbacks,
+                        backendSessionId: String?
                     ) = Unit
 
                     override fun startText(
                         goalText: String,
                         lang: String,
-                        callbacks: MilfWebSocketClient.Callbacks
+                        callbacks: MilfWebSocketClient.Callbacks,
+                        backendSessionId: String?
                     ) = Unit
 
                     override fun send(message: MilfMessage): Boolean {

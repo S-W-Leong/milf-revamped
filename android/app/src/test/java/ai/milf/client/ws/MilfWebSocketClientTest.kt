@@ -77,7 +77,8 @@ class MilfWebSocketClientTest {
         client.start(
             goalAudio = byteArrayOf(1, 2, 3),
             lang = "zh",
-            callbacks = noOpCallbacks()
+            callbacks = noOpCallbacks(),
+            backendSessionId = "session-123"
         )
 
         val socket = factory.sockets.single()
@@ -87,6 +88,7 @@ class MilfWebSocketClientTest {
         val audio = MilfProtocol.decode(socket.sent.single()) as Audio
         assertEquals("AQID", audio.goalAudioB64)
         assertEquals("zh", audio.lang)
+        assertEquals("session-123", audio.sessionId)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -103,13 +105,15 @@ class MilfWebSocketClientTest {
         client.start(
             goalAudio = byteArrayOf(1, 2, 3),
             lang = "en",
-            callbacks = noOpCallbacks()
+            callbacks = noOpCallbacks(),
+            backendSessionId = "session-123"
         )
         advanceUntilIdle()
 
         val audio = MilfProtocol.decode(factory.sockets.single().sent.single()) as Audio
         assertEquals("AQID", audio.goalAudioB64)
         assertEquals("en", audio.lang)
+        assertEquals("session-123", audio.sessionId)
     }
 
     @Test
@@ -120,13 +124,53 @@ class MilfWebSocketClientTest {
             socketFactory = factory
         )
 
-        client.startText("I want to see my grandson", "en", noOpCallbacks())
+        client.startText(
+            "I want to see my grandson",
+            "en",
+            noOpCallbacks(),
+            backendSessionId = "session-123",
+        )
         factory.sockets.single().open()
 
         assertEquals(
-            TextGoal(goalText = "I want to see my grandson", lang = "en"),
+            TextGoal(
+                goalText = "I want to see my grandson",
+                lang = "en",
+                sessionId = "session-123",
+            ),
             MilfProtocol.decode(factory.sockets.single().sent.single())
         )
+    }
+
+    @Test
+    fun repeatedStartTextCanReuseBackendSessionIdAcrossNewSockets() {
+        val factory = FakeSocketFactory()
+        val client = MilfWebSocketClient(
+            url = "ws://localhost:8765",
+            socketFactory = factory
+        )
+
+        client.startText(
+            "search movie",
+            "en",
+            noOpCallbacks(),
+            backendSessionId = "session-123",
+        )
+        factory.sockets.single().open()
+        client.startText(
+            "YT",
+            "en",
+            noOpCallbacks(),
+            backendSessionId = "session-123",
+        )
+        factory.sockets.last().open()
+
+        val first = MilfProtocol.decode(factory.sockets.first().sent.single()) as TextGoal
+        val second = MilfProtocol.decode(factory.sockets.last().sent.single()) as TextGoal
+        assertEquals("session-123", first.sessionId)
+        assertEquals("session-123", second.sessionId)
+        assertEquals("search movie", first.goalText)
+        assertEquals("YT", second.goalText)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

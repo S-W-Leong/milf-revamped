@@ -1,4 +1,4 @@
-from milf.protocol import Action, ConfirmResponse, TextGoal, decode, encode
+from milf.protocol import Audio, Action, ConfirmResponse, TextGoal, decode, encode
 
 
 def test_action_roundtrip():
@@ -20,6 +20,32 @@ def test_text_goal_round_trips():
     assert decode(raw) == TextGoal(
         goal_text="I want to see my grandson",
         lang="en",
+    )
+
+
+def test_text_goal_round_trips_session_id():
+    raw = encode(
+        TextGoal(
+            goal_text="search movie",
+            lang="en",
+            session_id="session-123",
+        )
+    )
+
+    assert decode(raw) == TextGoal(
+        goal_text="search movie",
+        lang="en",
+        session_id="session-123",
+    )
+
+
+def test_audio_round_trips_session_id():
+    raw = encode(Audio(goal_audio_b64="AQID", lang="en", session_id="session-123"))
+
+    assert decode(raw) == Audio(
+        goal_audio_b64="AQID",
+        lang="en",
+        session_id="session-123",
     )
 
 

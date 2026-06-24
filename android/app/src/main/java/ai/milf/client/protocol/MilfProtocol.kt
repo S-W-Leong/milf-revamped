@@ -49,12 +49,14 @@ data class TaskFailure(
 
 data class Audio(
     val goalAudioB64: String,
-    val lang: String
+    val lang: String,
+    val sessionId: String? = null
 ) : MilfMessage
 
 data class TextGoal(
     val goalText: String,
-    val lang: String
+    val lang: String,
+    val sessionId: String? = null
 ) : MilfMessage
 
 object MilfProtocol {
@@ -98,10 +100,12 @@ object MilfProtocol {
             is Audio -> JSONObject()
                 .put("goal_audio_b64", message.goalAudioB64)
                 .put("lang", message.lang)
+                .putNullable("session_id", message.sessionId)
 
             is TextGoal -> JSONObject()
                 .put("goal_text", message.goalText)
                 .put("lang", message.lang)
+                .putNullable("session_id", message.sessionId)
         }
         return JSONObject()
             .put("type", typeName(message))
@@ -158,12 +162,14 @@ object MilfProtocol {
 
             "Audio" -> Audio(
                 goalAudioB64 = data.getString("goal_audio_b64"),
-                lang = data.getString("lang")
+                lang = data.getString("lang"),
+                sessionId = data.optStringOrNull("session_id")
             )
 
             "TextGoal" -> TextGoal(
                 goalText = data.getString("goal_text"),
-                lang = data.getString("lang")
+                lang = data.getString("lang"),
+                sessionId = data.optStringOrNull("session_id")
             )
 
             else -> throw IllegalArgumentException("Unknown message type: $type")

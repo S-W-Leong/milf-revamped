@@ -49,11 +49,13 @@ class TaskFailure(BaseModel):
 class Audio(BaseModel):
     goal_audio_b64: str
     lang: str
+    session_id: str | None = None
 
 
 class TextGoal(BaseModel):
     goal_text: str
     lang: str
+    session_id: str | None = None
 
 
 _MESSAGE_TYPES: dict[str, type[BaseModel]] = {

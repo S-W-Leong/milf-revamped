@@ -522,6 +522,25 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun textCommandsReuseBackendSessionIdAcrossNewSocketClients() = runTest {
+        val firstClient = FakeClient()
+        val secondClient = FakeClient()
+        val controller = fakeController(clients = listOf(firstClient, secondClient))
+
+        controller.setCommandText("search movie")
+        controller.submitTextCommand()
+        firstClient.callbacks?.onTaskComplete("Which app should I use?", "en", null)
+
+        controller.setCommandText("YT")
+        controller.submitTextCommand()
+
+        assertEquals("search movie", firstClient.startedText)
+        assertEquals("YT", secondClient.startedText)
+        assertEquals(firstClient.backendSessionId, secondClient.backendSessionId)
+        assertEquals(false, firstClient.backendSessionId.isNullOrBlank())
+    }
+
+    @Test
     fun runStopClosesClientAndReturnsToIdleWithoutRemovingOverlay() = runTest {
         val client = FakeClient()
         val controller = fakeController(client = client)
@@ -830,16 +849,29 @@ private class FakeClient(
     var callbacks: MilfWebSocketClient.Callbacks? = null
     var startedText: String? = null
     var startedAudio = false
+    var backendSessionId: String? = null
 
-    override fun start(goalAudio: ByteArray, lang: String, callbacks: MilfWebSocketClient.Callbacks) {
+    override fun start(
+        goalAudio: ByteArray,
+        lang: String,
+        callbacks: MilfWebSocketClient.Callbacks,
+        backendSessionId: String?
+    ) {
         check(!failStart) { "client start failed" }
         startedAudio = true
+        this.backendSessionId = backendSessionId
         this.callbacks = callbacks
     }
 
-    override fun startText(goalText: String, lang: String, callbacks: MilfWebSocketClient.Callbacks) {
+    override fun startText(
+        goalText: String,
+        lang: String,
+        callbacks: MilfWebSocketClient.Callbacks,
+        backendSessionId: String?
+    ) {
         check(!failStart) { "client start failed" }
         startedText = goalText
+        this.backendSessionId = backendSessionId
         this.callbacks = callbacks
     }
 
