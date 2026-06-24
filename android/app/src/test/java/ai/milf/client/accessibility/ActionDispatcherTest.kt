@@ -64,6 +64,20 @@ class ActionDispatcherTest {
     }
 
     @Test
+    fun getAppsReturnsInstalledApps() = runTest {
+        val dispatcher = ActionDispatcher(FakeDeviceActions())
+
+        val result = dispatcher.dispatch(Action("a1", "get_apps", mapOf("include_system" to false)))
+
+        assertEquals(true, result.ok)
+        assertEquals("a1", result.id)
+        assertEquals(
+            listOf(mapOf("package" to "com.whatsapp", "label" to "WhatsApp")),
+            result.result
+        )
+    }
+
+    @Test
     fun emptyUiTreeUsesMobileRunStateContract() {
         val state = UiTreeSerializer.serialize(null, screenWidth = 1080, screenHeight = 2400)
 
@@ -99,4 +113,7 @@ private class FakeDeviceActions : DeviceActions {
     override suspend fun getUiTree(): Map<String, Any?> = emptyMap()
 
     override suspend fun getDate(): String = "2026-06-24"
+
+    override suspend fun getApps(includeSystem: Boolean): List<Map<String, String>> =
+        listOf(mapOf("package" to "com.whatsapp", "label" to "WhatsApp"))
 }

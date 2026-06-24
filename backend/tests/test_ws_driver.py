@@ -69,6 +69,19 @@ async def test_get_date_returns_device_date():
     assert await task == "2026-06-24"
 
 
+async def test_get_apps_is_advertised_and_returns_installed_apps():
+    sent, conn = _wire()
+    driver = WebSocketDriver(conn)
+    task = asyncio.create_task(driver.get_apps(include_system=False))
+    await asyncio.sleep(0)
+    action = decode(sent[0])
+    assert "get_apps" in driver.supported
+    assert action.name == "get_apps" and action.args == {"include_system": False}
+    apps = [{"package": "com.whatsapp", "label": "WhatsApp"}]
+    conn.on_message(encode(ActionResult(id=action.id, ok=True, result=apps)))
+    assert await task == apps
+
+
 async def test_unsupported_method_raises():
     _, conn = _wire()
     driver = WebSocketDriver(conn)

@@ -3,6 +3,7 @@ package ai.milf.client.accessibility
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.graphics.Path
 import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
@@ -87,6 +88,25 @@ class MilfAccessibilityService : AccessibilityService(), DeviceActions {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
         return packageName
+    }
+
+    override suspend fun getApps(includeSystem: Boolean): List<Map<String, String>> {
+        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        return packageManager.queryIntentActivities(launcherIntent, 0)
+            .asSequence()
+            .filter { info ->
+                includeSystem ||
+                    (info.activityInfo.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+            }
+            .map { info ->
+                mapOf(
+                    "package" to info.activityInfo.packageName,
+                    "label" to info.loadLabel(packageManager).toString()
+                )
+            }
+            .distinctBy { it["package"] }
+            .sortedBy { it["label"]?.lowercase().orEmpty() }
+            .toList()
     }
 
     override suspend fun screenshot(hideOverlay: Boolean): String =

@@ -10,6 +10,7 @@ interface DeviceActions {
     suspend fun inputText(text: String, clear: Boolean): Boolean
     suspend fun pressButton(button: String): Boolean
     suspend fun startApp(packageName: String, activity: String?): String
+    suspend fun getApps(includeSystem: Boolean): List<Map<String, String>>
     suspend fun screenshot(hideOverlay: Boolean): String
     suspend fun getUiTree(): Map<String, Any?>
     suspend fun getDate(): String = LocalDate.now().toString()
@@ -54,6 +55,10 @@ class ActionDispatcher(
                 "start_app" -> activeDevice.startApp(
                     packageName = action.stringArg("package"),
                     activity = action.nullableStringArg("activity")
+                )
+
+                "get_apps" -> activeDevice.getApps(
+                    includeSystem = action.boolArg("include_system", true)
                 )
 
                 "screenshot" -> activeDevice.screenshot(action.boolArg("hide_overlay", true))

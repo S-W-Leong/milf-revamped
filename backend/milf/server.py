@@ -50,14 +50,19 @@ async def _handler(ws):
     try:
         pump_task = asyncio.create_task(pump())
         await _dispatch_first_frame(conn, first)
+    except websockets.ConnectionClosed:
+        logger.debug("Websocket closed during task handling.")
     except Exception:
         logger.exception("Backend task handling failed.")
         lang = getattr(first, "lang", "en")
-        await conn.send_task_failure(
-            SAFE_FAILURE_COPY,
-            lang,
-            recovery_contact_id="buyer-daughter",
-        )
+        try:
+            await conn.send_task_failure(
+                SAFE_FAILURE_COPY,
+                lang,
+                recovery_contact_id="buyer-daughter",
+            )
+        except websockets.ConnectionClosed:
+            logger.debug("Websocket closed before task failure could be sent.")
     finally:
         if pump_task is not None:
             pump_task.cancel()

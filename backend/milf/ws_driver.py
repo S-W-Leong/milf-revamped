@@ -13,6 +13,7 @@ class WebSocketDriver(DeviceDriver):
         "input_text",
         "press_button",
         "start_app",
+        "get_apps",
         "screenshot",
         "get_ui_tree",
         "get_date",
@@ -77,6 +78,11 @@ class WebSocketDriver(DeviceDriver):
             "start_app", {"package": package, "activity": activity}
         )
 
+    async def get_apps(self, include_system: bool = True) -> list[dict[str, str]]:
+        return await self._send_supported(
+            "get_apps", {"include_system": include_system}
+        )
+
     async def screenshot(self, hide_overlay: bool = True) -> bytes:
         payload = await self._send_supported("screenshot", {"hide_overlay": hide_overlay})
         if isinstance(payload, str):
@@ -120,9 +126,6 @@ class WebSocketDriver(DeviceDriver):
         raise NotImplementedError
 
     async def uninstall_app(self, package: str) -> str:
-        raise NotImplementedError
-
-    async def get_apps(self, include_system: bool = True) -> list[dict[str, str]]:
         raise NotImplementedError
 
     async def list_packages(self, include_system: bool = False) -> list[str]:
