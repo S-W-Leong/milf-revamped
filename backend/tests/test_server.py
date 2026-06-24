@@ -7,7 +7,16 @@ import pytest
 import websockets
 
 from milf.agent_runner import SAFE_FAILURE_COPY
-from milf.protocol import Audio, TaskFailure, TextGoal, decode, encode
+from milf.intent_router import IntentAgentDecision
+from milf.protocol import (
+    Audio,
+    Narration,
+    TaskComplete,
+    TaskFailure,
+    TextGoal,
+    decode,
+    encode,
+)
 from milf.server import _dispatch_first_frame, _handler
 from milf.stt import MockSTT
 
@@ -74,14 +83,74 @@ async def test_dispatch_first_frame_routes_text_goal(monkeypatch):
     conn = DispatchConnection()
     called = []
 
-    async def fake_run_intent(connection, intent, lang):
-        called.append((connection, intent, lang))
+    async def fake_run_intent(connection, intent, lang, session=None):
+        called.append((connection, intent, lang, session))
 
     monkeypatch.setattr("milf.server.run_intent", fake_run_intent)
 
     await _dispatch_first_frame(conn, TextGoal(goal_text="call Wei", lang="en"))
 
-    assert called == [(conn, "call Wei", "en")]
+    assert called == [(conn, "call Wei", "en", None)]
+
+
+async def test_server_reuses_session_for_multiple_text_goals(monkeypatch):
+    sessions = []
+
+    async def fake_run_intent(conn, intent, lang, session=None):
+        sessions.append((intent, session))
+        await conn.send_task_complete(f"handled {intent}", lang)
+
+    monkeypatch.setattr("milf.server.run_intent", fake_run_intent)
+
+    server, port = await _serve_once()
+    async with server:
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+            await ws.send(encode(TextGoal(goal_text="send hello", lang="en")))
+            first = decode(await ws.recv())
+
+            await ws.send(encode(TextGoal(goal_text="Wei", lang="en")))
+            second = decode(await ws.recv())
+
+    assert isinstance(first, TaskComplete)
+    assert first.summary == "handled send hello"
+    assert isinstance(second, TaskComplete)
+    assert second.summary == "handled Wei"
+    assert sessions[0][0] == "send hello"
+    assert sessions[1][0] == "Wei"
+    assert sessions[0][1] is sessions[1][1]
+
+
+async def test_server_short_circuits_greeting_text_goal():
+    class FakeIntentAgent:
+        async def classify(self, intent, lang):
+            return IntentAgentDecision(
+                route="chat",
+                reply="Hi, what would you like me to help you do on your phone?",
+                confidence=0.9,
+            )
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        "milf.agent_runner.build_default_intent_agent",
+        lambda: FakeIntentAgent(),
+    )
+    server, port = await _serve_once()
+    try:
+        async with server:
+            async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+                await ws.send(encode(TextGoal(goal_text="helo", lang="en")))
+
+                narration = decode(await ws.recv())
+                complete = decode(await ws.recv())
+    finally:
+        monkeypatch.undo()
+
+    assert isinstance(narration, Narration)
+    assert narration.text == "Hi, what would you like me to help you do on your phone?"
+    assert narration.lang == "en"
+    assert isinstance(complete, TaskComplete)
+    assert complete.summary == narration.text
+    assert complete.lang == "en"
 
 
 async def test_dispatch_first_frame_rejects_unknown_message():

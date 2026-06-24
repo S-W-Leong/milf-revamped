@@ -51,6 +51,15 @@ def resolve_contact(phrase: str) -> Contact | None:
     return None
 
 
+def contact_by_id(contact_id: str | None) -> Contact | None:
+    if contact_id is None:
+        return None
+    for contact in _contacts():
+        if contact.id == contact_id:
+            return contact
+    return None
+
+
 def escape_contact() -> Contact:
     for contact in _contacts():
         if contact.escape:
@@ -58,8 +67,8 @@ def escape_contact() -> Contact:
     raise RuntimeError("contacts.json must contain one escape contact")
 
 
-def build_goal(intent: str) -> str:
-    contact = resolve_contact(intent)
+def build_goal(intent: str, contact: Contact | None = None) -> str:
+    contact = contact or resolve_contact(intent)
     parts = [f"Spoken intent: {intent!r}."]
 
     if contact is not None:
@@ -76,8 +85,8 @@ def build_goal(intent: str) -> str:
     return "\n\n".join(parts)
 
 
-def acknowledgment(intent: str) -> str:
-    contact = resolve_contact(intent)
+def acknowledgment(intent: str, contact: Contact | None = None) -> str:
+    contact = contact or resolve_contact(intent)
     if contact is not None:
         return f"Okay, let me help you reach {contact.display_name}."
     return "Okay, let me help you with that."

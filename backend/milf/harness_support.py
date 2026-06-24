@@ -3,6 +3,7 @@ from typing import Any, Callable
 from milf.agent_runner import run_task
 from milf.connection import AppConnection
 from milf.mock_app import MockApp
+from milf.session import MILFSession
 from milf.stt import MockSTT
 from milf.ws_driver import WebSocketDriver
 
@@ -11,6 +12,8 @@ async def run_once(
     scripted: dict[str, Any],
     transcript: str,
     agent_factory: Callable[[str, WebSocketDriver, dict[str, Any]], Any],
+    intent_router: Callable | None = None,
+    session: MILFSession | None = None,
 ) -> bool:
     mock = MockApp(scripted, auto_approve=True)
     conn = AppConnection(send=None)
@@ -27,6 +30,8 @@ async def run_once(
         "en",
         MockSTT(transcript),
         agent_factory,
+        intent_router=intent_router,
+        session=session,
     )
     return bool(result.success)
 
@@ -36,10 +41,12 @@ async def run_n(
     scripted: dict[str, Any],
     transcript: str,
     agent_factory: Callable[[str, WebSocketDriver, dict[str, Any]], Any],
+    intent_router: Callable | None = None,
+    session: MILFSession | None = None,
 ) -> float:
     wins = 0
     for _ in range(n):
-        if await run_once(scripted, transcript, agent_factory):
+        if await run_once(scripted, transcript, agent_factory, intent_router, session):
             wins += 1
 
     return wins / n

@@ -2,14 +2,27 @@ from __future__ import annotations
 
 import logging
 import os
+from inspect import Parameter, signature
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable
 
 from milf.confirmation import ConfirmationDeclined, build_confirmation_tool
 from milf.connection import AppConnection
-from milf.context import acknowledgment, build_goal, escape_contact, resolve_contact
+from milf.context import (
+    acknowledgment,
+    build_goal,
+    contact_by_id,
+    escape_contact,
+    resolve_contact,
+)
+from milf.intent_router import (
+    IntentRoute,
+    build_default_intent_agent,
+    route_intent_with_agent,
+)
 from milf.narration import narrate_events
+from milf.session import MILFSession
 from milf.stt import STTAdapter
 from milf.ws_driver import WebSocketDriver
 
@@ -64,17 +77,66 @@ async def run_intent(
     intent: str,
     lang: str,
     agent_factory: Callable[[str, WebSocketDriver, dict[str, Any]], Any] = build_agent,
+    intent_router: Callable[[str, str], Any] | None = None,
+    session: MILFSession | None = None,
 ) -> Any:
-    contact = resolve_contact(intent)
-    escape = escape_contact()
-    await connection.send_narration(acknowledgment(intent), lang)
+    session = session or MILFSession()
+    if intent_router is None:
+        route = await route_intent_with_agent(
+            intent,
+            lang,
+            build_default_intent_agent(),
+            session=session,
+        )
+    else:
+        route = await _call_intent_router(intent_router, intent, lang, session)
+    session.record_user_route(intent, route)
+    logger.info(
+        "MILF intent route selected.",
+        extra={
+            "session_id": session.session_id,
+            "route_kind": route.kind,
+            "contact_id": route.contact_id,
+            "requires_confirmation": route.requires_confirmation,
+            "normalized_intent_present": route.normalized_intent is not None,
+            "lang": lang,
+        },
+    )
 
-    goal = build_goal(intent)
+    if route.kind in {"reply", "clarify"}:
+        logger.info(
+            "MILF responding without MobileRun.",
+            extra={
+                "session_id": session.session_id,
+                "route_kind": route.kind,
+                "lang": lang,
+            },
+        )
+        message = route.message or "What would you like me to help you do on your phone?"
+        await connection.send_narration(message, lang)
+        await connection.send_task_complete(message, lang)
+        return SimpleNamespace(success=route.kind == "reply", reason=route.kind)
+
+    routed_intent = route.normalized_intent or intent
+    contact = contact_by_id(route.contact_id) or resolve_contact(routed_intent)
+    escape = escape_contact()
+    await connection.send_narration(acknowledgment(routed_intent, contact=contact), lang)
+
+    goal = build_goal(routed_intent, contact=contact)
     driver = WebSocketDriver(connection)
     custom_tools = build_confirmation_tool(
         connection,
         lang,
-        contact_id=contact.id if contact is not None else None,
+        contact_id=route.contact_id or (contact.id if contact is not None else None),
+    )
+    logger.info(
+        "MILF starting MobileRun.",
+        extra={
+            "session_id": session.session_id,
+            "contact_id": contact.id if contact is not None else route.contact_id,
+            "requires_confirmation": route.requires_confirmation,
+            "lang": lang,
+        },
     )
     agent = agent_factory(goal, driver, custom_tools)
     handler = agent.run()
@@ -83,6 +145,9 @@ async def run_intent(
         result = await narrate_events(handler, connection, lang)
     except ConfirmationDeclined:
         logger.info("Confirmation declined during agent run.", exc_info=True)
+        session.record_mobile_run_result(
+            route, status="confirmation_declined", reason="confirmation_declined"
+        )
         await connection.send_task_failure(
             SAFE_FAILURE_COPY,
             lang,
@@ -91,6 +156,7 @@ async def run_intent(
         return SimpleNamespace(success=False, reason="confirmation_declined")
     except Exception:
         logger.exception("Agent run failed.")
+        session.record_mobile_run_result(route, status="agent_error", reason="agent_error")
         await connection.send_task_failure(
             SAFE_FAILURE_COPY,
             lang,
@@ -98,6 +164,19 @@ async def run_intent(
         )
         return SimpleNamespace(success=False, reason="agent_error")
 
+    session.record_mobile_run_result(result=result, route=route)
+    logger.info(
+        "MILF MobileRun finished.",
+        extra={
+            "session_id": session.session_id,
+            "mobile_run_status": session.last_mobile_run.status
+            if session.last_mobile_run is not None
+            else "unknown",
+            "reason": getattr(result, "reason", None),
+            "contact_id": contact.id if contact is not None else route.contact_id,
+            "lang": lang,
+        },
+    )
     if getattr(result, "success", True):
         if contact is not None:
             await connection.send_task_complete(
@@ -123,6 +202,39 @@ async def run_task(
     lang: str,
     stt: STTAdapter,
     agent_factory: Callable[[str, WebSocketDriver, dict[str, Any]], Any] = build_agent,
+    intent_router: Callable[[str, str], Any] | None = None,
+    session: MILFSession | None = None,
 ) -> Any:
     intent = await stt.transcribe(audio, lang)
-    return await run_intent(connection, intent, lang, agent_factory)
+    return await run_intent(
+        connection,
+        intent,
+        lang,
+        agent_factory,
+        intent_router=intent_router,
+        session=session,
+    )
+
+
+async def _call_intent_router(
+    intent_router: Callable[..., Any],
+    intent: str,
+    lang: str,
+    session: MILFSession,
+) -> IntentRoute:
+    router_signature = signature(intent_router)
+    parameters = list(router_signature.parameters.values())
+    accepts_session_keyword = any(
+        parameter.kind == Parameter.VAR_KEYWORD
+        or parameter.name == "session"
+        for parameter in parameters
+    )
+    accepts_session_positionally = any(
+        parameter.kind == Parameter.VAR_POSITIONAL for parameter in parameters
+    ) or len(parameters) >= 3
+
+    if accepts_session_keyword:
+        return await intent_router(intent, lang, session=session)
+    if accepts_session_positionally:
+        return await intent_router(intent, lang, session)
+    return await intent_router(intent, lang)

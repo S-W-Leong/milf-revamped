@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from milf.harness_support import run_n
+from milf.intent_router import IntentRoute
 
 
 class ScriptedHandler:
@@ -28,10 +29,18 @@ async def test_run_n_reports_full_success():
     def factory(goal, driver, custom_tools):
         return SimpleNamespace(run=lambda: ScriptedHandler(driver._connection, True))
 
+    async def router(intent, lang):
+        return IntentRoute(
+            kind="execute",
+            normalized_intent="I want to see my grandson",
+            contact_id="wei-grandson",
+        )
+
     ratio = await run_n(
         5,
         scripted={"get_ui_tree": {"nodes": []}},
         transcript="see grandson",
         agent_factory=factory,
+        intent_router=router,
     )
     assert ratio == 1.0
