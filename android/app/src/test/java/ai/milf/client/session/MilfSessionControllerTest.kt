@@ -719,6 +719,65 @@ class MilfSessionControllerTest {
         assertEquals(BackendConnectionStatus.Unknown, controller.uiState.value.backendConnectionStatus)
     }
 
+    @Test
+    fun disconnectBackendClearsConnectionAndIgnoresStaleCheckResult() = runTest {
+        var callback: ((BackendConnectionStatus) -> Unit)? = null
+        val controller = MilfSessionController(
+            dependencies = testDependencies(
+                clients = listOf(FakeClient()),
+                checkBackendConnection = { _, result -> callback = result }
+            ),
+            graph = RelationshipGraph.demo()
+        )
+
+        controller.refreshBackendConnection()
+        controller.disconnectBackend()
+        callback?.invoke(BackendConnectionStatus.Connected)
+
+        assertEquals(false, controller.uiState.value.backendConnectionRequested)
+        assertEquals(BackendConnectionStatus.Disconnected, controller.uiState.value.backendConnectionStatus)
+        assertEquals(false, controller.uiState.value.canStartHelper)
+    }
+
+    @Test
+    fun autoBackendRefreshCanTurnConnectedIntoFailed() = runTest {
+        var callback: ((BackendConnectionStatus) -> Unit)? = null
+        val controller = MilfSessionController(
+            dependencies = testDependencies(
+                clients = listOf(FakeClient()),
+                checkBackendConnection = { _, result -> callback = result }
+            ),
+            graph = RelationshipGraph.demo()
+        )
+        controller.setBackendConnectionStatus(BackendConnectionStatus.Connected)
+
+        controller.refreshBackendConnection()
+        callback?.invoke(BackendConnectionStatus.Failed)
+
+        assertEquals(true, controller.uiState.value.backendConnectionRequested)
+        assertEquals(BackendConnectionStatus.Failed, controller.uiState.value.backendConnectionStatus)
+        assertEquals(false, controller.uiState.value.canStartHelper)
+    }
+
+    @Test
+    fun connectBackendEnablesAutoChecksAndStartsChecking() = runTest {
+        var checks = 0
+        val controller = MilfSessionController(
+            dependencies = testDependencies(
+                clients = listOf(FakeClient()),
+                checkBackendConnection = { _, _ -> checks += 1 }
+            ),
+            graph = RelationshipGraph.demo()
+        )
+        controller.disconnectBackend()
+
+        controller.connectBackend()
+
+        assertEquals(true, controller.uiState.value.backendConnectionRequested)
+        assertEquals(BackendConnectionStatus.Checking, controller.uiState.value.backendConnectionStatus)
+        assertEquals(1, checks)
+    }
+
     private fun fakeController(
         client: FakeClient = FakeClient(),
         narrator: FakeNarrator = FakeNarrator()
@@ -872,6 +931,9 @@ private fun testDependencies(
     initialBackendUrl: String = "ws://10.0.2.2:8765",
     saveBackendUrl: (String) -> Unit = {},
     saveSpeechInputMode: (SpeechInputMode) -> Unit = {},
+    checkBackendConnection: (String, (BackendConnectionStatus) -> Unit) -> Unit = { _, callback ->
+        callback(BackendConnectionStatus.Connected)
+    },
     speechRecognizer: FakeNativeSpeechRecognizer = FakeNativeSpeechRecognizer(),
     speechInputMode: SpeechInputMode = SpeechInputMode.BackendAudio,
     setupStatus: () -> SetupStatus = {
@@ -896,6 +958,7 @@ private fun testDependencies(
         initialBackendUrl = initialBackendUrl,
         saveBackendUrl = saveBackendUrl,
         saveSpeechInputMode = saveSpeechInputMode,
+        checkBackendConnection = checkBackendConnection,
         setupStatus = setupStatus,
         dispatch = { action -> ActionResult(action.id, true) }
     )

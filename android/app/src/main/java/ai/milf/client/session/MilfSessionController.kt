@@ -46,22 +46,44 @@ class MilfSessionController(
         _uiState.update {
             it.copy(
                 backendUrl = trimmed,
-                backendConnectionStatus = BackendConnectionStatus.Unknown
+                backendConnectionStatus = BackendConnectionStatus.Unknown,
+                backendConnectionRequested = true
             )
         }
     }
 
-    fun checkBackendConnection() {
-        val url = _uiState.value.backendUrl
+    fun checkBackendConnection() = connectBackend()
+
+    fun connectBackend() {
+        _uiState.update { it.copy(backendConnectionRequested = true) }
+        refreshBackendConnection()
+    }
+
+    fun disconnectBackend() {
+        _uiState.update {
+            it.copy(
+                backendConnectionRequested = false,
+                backendConnectionStatus = BackendConnectionStatus.Disconnected
+            )
+        }
+    }
+
+    fun refreshBackendConnection() {
+        val state = _uiState.value
+        if (!state.backendConnectionRequested) return
+
+        val url = state.backendUrl
         if (url.isBlank()) {
             setBackendConnectionStatus(BackendConnectionStatus.Failed)
             return
         }
 
-        setBackendConnectionStatus(BackendConnectionStatus.Checking)
+        if (state.backendConnectionStatus != BackendConnectionStatus.Connected) {
+            setBackendConnectionStatus(BackendConnectionStatus.Checking)
+        }
         dependencies.checkBackendConnection(url) { status ->
             _uiState.update {
-                if (it.backendUrl == url) {
+                if (it.backendUrl == url && it.backendConnectionRequested) {
                     it.copy(backendConnectionStatus = status)
                 } else {
                     it

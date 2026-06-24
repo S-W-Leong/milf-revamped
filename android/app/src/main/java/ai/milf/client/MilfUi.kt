@@ -43,7 +43,8 @@ import androidx.compose.ui.unit.sp
 fun MilfUi(
     state: SeniorUiState,
     onBackendUrlChange: (String) -> Unit,
-    onCheckBackendConnection: () -> Unit,
+    onConnectBackend: () -> Unit,
+    onDisconnectBackend: () -> Unit,
     onLangChange: (String) -> Unit,
     onSpeechInputModeChange: (SpeechInputMode) -> Unit,
     onOpenAccessibility: () -> Unit,
@@ -71,7 +72,8 @@ fun MilfUi(
                 ConfigScreen(
                     state = state,
                     onBackendUrlChange = onBackendUrlChange,
-                    onCheckBackendConnection = onCheckBackendConnection,
+                    onConnectBackend = onConnectBackend,
+                    onDisconnectBackend = onDisconnectBackend,
                     onLangChange = onLangChange,
                     onSpeechInputModeChange = onSpeechInputModeChange,
                     onOpenAccessibility = onOpenAccessibility,
@@ -167,7 +169,8 @@ private fun MainScreen(
 private fun ConfigScreen(
     state: SeniorUiState,
     onBackendUrlChange: (String) -> Unit,
-    onCheckBackendConnection: () -> Unit,
+    onConnectBackend: () -> Unit,
+    onDisconnectBackend: () -> Unit,
     onLangChange: (String) -> Unit,
     onSpeechInputModeChange: (SpeechInputMode) -> Unit,
     onOpenAccessibility: () -> Unit,
@@ -237,7 +240,8 @@ private fun ConfigScreen(
             ConfigTab.Backend -> BackendTab(
                 state = state,
                 onBackendUrlChange = onBackendUrlChange,
-                onCheckBackendConnection = onCheckBackendConnection
+                onConnectBackend = onConnectBackend,
+                onDisconnectBackend = onDisconnectBackend
             )
 
             ConfigTab.Agent -> AgentTab(
@@ -284,8 +288,14 @@ private fun PermissionsTab(
 private fun BackendTab(
     state: SeniorUiState,
     onBackendUrlChange: (String) -> Unit,
-    onCheckBackendConnection: () -> Unit
+    onConnectBackend: () -> Unit,
+    onDisconnectBackend: () -> Unit
 ) {
+    val shouldDisconnect = state.backendConnectionRequested &&
+        state.backendConnectionStatus in setOf(
+            BackendConnectionStatus.Checking,
+            BackendConnectionStatus.Connected
+        )
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
             value = state.backendUrl,
@@ -304,7 +314,7 @@ private fun BackendTab(
             )
         )
         Button(
-            onClick = onCheckBackendConnection,
+            onClick = if (shouldDisconnect) onDisconnectBackend else onConnectBackend,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -314,7 +324,7 @@ private fun BackendTab(
                 contentColor = MilfColors.Sage
             )
         ) {
-            Text("Check connection")
+            Text(if (shouldDisconnect) "Disconnect" else "Connect")
         }
         ReadinessLine(
             ReadinessRow(
@@ -539,5 +549,6 @@ private fun backendStatusText(status: BackendConnectionStatus): String =
         BackendConnectionStatus.Unknown -> "Not checked"
         BackendConnectionStatus.Checking -> "Checking"
         BackendConnectionStatus.Connected -> "Connected"
+        BackendConnectionStatus.Disconnected -> "Disconnected"
         BackendConnectionStatus.Failed -> "Failed"
     }

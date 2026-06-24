@@ -14,6 +14,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels {
@@ -34,11 +35,18 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 viewModel.refreshSetupStatus()
             }
+            LaunchedEffect(state.backendUrl, state.backendConnectionRequested) {
+                while (state.backendConnectionRequested) {
+                    viewModel.refreshBackendConnection()
+                    delay(3_000)
+                }
+            }
 
             MilfUi(
                 state = state,
                 onBackendUrlChange = viewModel::setBackendUrl,
-                onCheckBackendConnection = viewModel::checkBackendConnection,
+                onConnectBackend = viewModel::connectBackend,
+                onDisconnectBackend = viewModel::disconnectBackend,
                 onLangChange = viewModel::setLang,
                 onSpeechInputModeChange = viewModel::setSpeechInputMode,
                 onOpenAccessibility = {

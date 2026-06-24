@@ -52,6 +52,9 @@ class MainViewModel(
     fun refreshSetupStatus() = controller.refreshSetupStatus()
     fun canStartHelper(): Boolean = controller.refreshSetupStatus().canStartHelper
     fun checkBackendConnection() = controller.checkBackendConnection()
+    fun connectBackend() = controller.connectBackend()
+    fun disconnectBackend() = controller.disconnectBackend()
+    fun refreshBackendConnection() = controller.refreshBackendConnection()
     fun startRecording() = controller.beginListening()
     fun stopAndRun() = controller.finishListeningAndRun()
     fun approveConfirmation() = controller.approveConfirmation()

@@ -15,6 +15,7 @@ enum class BackendConnectionStatus {
     Unknown,
     Checking,
     Connected,
+    Disconnected,
     Failed
 }
 
@@ -80,6 +81,7 @@ data class SeniorUiState(
     val failure: FailureState? = null,
     val actionTarget: ActionTarget? = null,
     val backendConnectionStatus: BackendConnectionStatus = BackendConnectionStatus.Unknown,
+    val backendConnectionRequested: Boolean = true,
     val microphonePermissionGranted: Boolean = false,
     val callPhonePermissionGranted: Boolean = false,
     val overlayPermissionGranted: Boolean = false,
@@ -95,6 +97,7 @@ data class SeniorUiState(
 val SeniorUiState.canStartHelper: Boolean
     get() = backendUrl.isNotBlank() &&
         lang.isNotBlank() &&
+        backendConnectionRequested &&
         backendConnectionStatus == BackendConnectionStatus.Connected &&
         microphonePermissionGranted &&
         callPhonePermissionGranted &&
