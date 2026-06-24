@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
                 ConfirmationVoiceRecognizer(
                     context = this,
                     onText = viewModel::onConfirmationSpeech,
-                    onError = { }
+                    onError = viewModel::onConfirmationSpeechError
                 )
             }
             DisposableEffect(Unit) {
@@ -40,6 +40,8 @@ class MainActivity : ComponentActivity() {
             ) { granted ->
                 if (granted) {
                     viewModel.startRecording()
+                } else {
+                    viewModel.onMicrophonePermissionDenied()
                 }
             }
 
@@ -63,9 +65,13 @@ class MainActivity : ComponentActivity() {
                 onSpeakDecision = {
                     state.confirmation?.let { confirmationVoice.listen(it.lang) }
                 },
-                onOpenAccessibility = {
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                }
+                onRequestAccessibility = viewModel::requestAccessibilityDisclosure,
+                onAcceptAccessibility = {
+                    if (viewModel.acceptAccessibilityDisclosure()) {
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    }
+                },
+                onDismissAccessibility = viewModel::dismissAccessibilityDisclosure
             )
         }
     }

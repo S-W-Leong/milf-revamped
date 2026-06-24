@@ -8,6 +8,8 @@ import ai.milf.client.audio.TtsNarrator
 import ai.milf.client.protocol.Action
 import ai.milf.client.protocol.ActionResult
 import ai.milf.client.protocol.ConfirmResponse
+import ai.milf.client.security.ActionPolicy
+import ai.milf.client.security.ClientSecurity
 import ai.milf.client.ws.MilfWebSocketClient
 import android.app.Application
 import androidx.lifecycle.ViewModel
@@ -18,14 +20,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 data class MainUiState(
-    val backendUrl: String = "ws://10.0.2.2:8765",
+    val backendUrl: String = BuildConfig.MILF_DEFAULT_BACKEND_URL,
     val lang: String = "en",
     val isRecording: Boolean = false,
     val isRunning: Boolean = false,
     val status: String = "Ready",
     val lastNarration: String? = null,
     val confirmation: PendingConfirmation? = null,
-    val accessibilityEnabled: Boolean = false
+    val accessibilityEnabled: Boolean = false,
+    val showAccessibilityDisclosure: Boolean = false
 )
 
 data class PendingConfirmation(
@@ -39,6 +42,12 @@ class MainViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+
+    init {
+        dependencies.narrator.setFailureCallback { message ->
+            _uiState.update { it.copy(status = message) }
+        }
+    }
 
     fun setBackendUrl(url: String) {
         _uiState.update { it.copy(backendUrl = url.trim()) }
@@ -54,9 +63,44 @@ class MainViewModel(
         }
     }
 
+    fun requestAccessibilityDisclosure() {
+        _uiState.update { it.copy(showAccessibilityDisclosure = true) }
+    }
+
+    fun dismissAccessibilityDisclosure() {
+        _uiState.update { it.copy(showAccessibilityDisclosure = false) }
+    }
+
+    fun acceptAccessibilityDisclosure(): Boolean {
+        if (!_uiState.value.showAccessibilityDisclosure) return false
+        _uiState.update { it.copy(showAccessibilityDisclosure = false) }
+        return true
+    }
+
+    fun onMicrophonePermissionDenied() {
+        _uiState.update {
+            it.copy(
+                isRecording = false,
+                isRunning = false,
+                status = "Microphone permission needed"
+            )
+        }
+    }
+
     fun startRecording() {
-        dependencies.narrator.stop()
-        dependencies.recorder.start()
+        runCatching { dependencies.narrator.stop() }
+        runCatching { dependencies.recorder.start() }
+            .getOrElse {
+                runCatching { dependencies.recorder.cancel() }
+                _uiState.update { state ->
+                    state.copy(
+                        isRecording = false,
+                        isRunning = false,
+                        status = "Could not start microphone"
+                    )
+                }
+                return
+            }
         _uiState.update {
             it.copy(
                 isRecording = true,
@@ -70,8 +114,34 @@ class MainViewModel(
 
     fun stopAndRun() {
         val state = _uiState.value
-        val bytes = dependencies.recorder.stop()
-        val client = dependencies.clientFactory(state.backendUrl)
+        val bytes = runCatching { dependencies.recorder.stop() }
+            .getOrElse {
+                runCatching { dependencies.recorder.cancel() }
+                clearActiveClient()
+                _uiState.update { current ->
+                    current.copy(
+                        isRecording = false,
+                        isRunning = false,
+                        confirmation = null,
+                        status = "Could not finish recording"
+                    )
+                }
+                return
+            }
+        val securedUrl = runCatching { dependencies.clientSecurity.secureWebSocketUrl(state.backendUrl) }
+            .getOrElse { error ->
+                clearActiveClient()
+                _uiState.update {
+                    it.copy(
+                        isRecording = false,
+                        isRunning = false,
+                        status = error.message ?: "Connection preflight failed"
+                    )
+                }
+                return
+        }
+        clearActiveClient()
+        val client = dependencies.clientFactory(securedUrl)
         dependencies.activeClient = client
         _uiState.update {
             it.copy(
@@ -80,39 +150,81 @@ class MainViewModel(
                 status = "Working"
             )
         }
-        client.start(bytes, state.lang, object : MilfWebSocketClient.Callbacks {
+        val callbacks = object : MilfWebSocketClient.Callbacks {
             override suspend fun onAction(action: Action): ActionResult =
-                ActionDispatcher(MilfAccessibilityService.instance).dispatch(action)
+                ActionDispatcher(MilfAccessibilityService.instance, dependencies.actionPolicy)
+                    .dispatch(action)
 
             override suspend fun onNarration(text: String, lang: String) {
-                dependencies.narrator.speak(text, lang)
+                if (!speakSafely(text, lang)) {
+                    clearActiveClient()
+                    _uiState.update {
+                        it.copy(isRunning = false, status = "Could not play audio")
+                    }
+                    return
+                }
                 _uiState.update {
                     it.copy(lastNarration = text, status = "Speaking")
                 }
             }
 
             override suspend fun onConfirmRequest(id: String, summary: String, lang: String) {
-                dependencies.narrator.speak(summary, lang)
+                val pending = PendingConfirmation(id, summary, lang)
                 _uiState.update {
                     it.copy(
-                        confirmation = PendingConfirmation(id, summary, lang),
+                        confirmation = pending,
                         status = "Confirm"
                     )
+                }
+                if (!speakSafely(summary, lang)) {
+                    _uiState.update {
+                        it.copy(
+                            status = "Could not play audio"
+                        )
+                    }
                 }
             }
 
             override fun onClosed(reason: String?) {
+                dependencies.actionPolicy.recordDenial()
+                if (dependencies.activeClient === client) {
+                    dependencies.activeClient = null
+                }
                 _uiState.update {
-                    it.copy(isRunning = false, status = reason ?: "Done")
+                    it.copy(
+                        isRunning = false,
+                        confirmation = null,
+                        status = "Connection closed"
+                    )
                 }
             }
 
             override fun onFailed(message: String) {
+                dependencies.actionPolicy.recordDenial()
+                if (dependencies.activeClient === client) {
+                    dependencies.activeClient = null
+                }
                 _uiState.update {
-                    it.copy(isRunning = false, status = message)
+                    it.copy(
+                        isRunning = false,
+                        confirmation = null,
+                        status = "Connection failed"
+                    )
                 }
             }
-        })
+        }
+        runCatching { client.start(bytes, state.lang, callbacks) }
+            .onFailure {
+                clearActiveClient()
+                _uiState.update { current ->
+                    current.copy(
+                        isRecording = false,
+                        isRunning = false,
+                        confirmation = null,
+                        status = "Could not connect"
+                    )
+                }
+            }
     }
 
     fun approveConfirmation() {
@@ -131,16 +243,44 @@ class MainViewModel(
         }
     }
 
+    fun onConfirmationSpeechError(message: String) {
+        _uiState.update {
+            it.copy(status = message.ifBlank { "Could not hear confirmation" })
+        }
+    }
+
     private fun respondToConfirmation(approved: Boolean) {
         val pending = _uiState.value.confirmation ?: return
         dependencies.sendConfirm?.invoke(approved)
-        dependencies.activeClient?.send(ConfirmResponse(pending.id, approved))
+        val sent = runCatching {
+            dependencies.activeClient?.send(ConfirmResponse(pending.id, approved)) == true
+        }.getOrDefault(false)
+        if (approved && sent) {
+            dependencies.actionPolicy.recordApproval()
+        } else {
+            dependencies.actionPolicy.recordDenial()
+        }
         _uiState.update {
             it.copy(
                 confirmation = null,
-                status = if (approved) "Continuing" else "Stopped"
+                status = if (!sent) {
+                    "Could not send confirmation"
+                } else if (approved) {
+                    "Continuing"
+                } else {
+                    "Stopped"
+                }
             )
         }
+    }
+
+    private fun speakSafely(text: String, lang: String): Boolean =
+        runCatching { dependencies.narrator.speak(text, lang) }.isSuccess
+
+    private fun clearActiveClient() {
+        dependencies.actionPolicy.recordDenial()
+        dependencies.activeClient?.close()
+        dependencies.activeClient = null
     }
 
     fun showConfirmationForTest(id: String, summary: String, lang: String) {
@@ -148,8 +288,8 @@ class MainViewModel(
     }
 
     override fun onCleared() {
-        dependencies.recorder.cancel()
-        dependencies.narrator.shutdown()
+        runCatching { dependencies.recorder.cancel() }
+        runCatching { dependencies.narrator.shutdown() }
         dependencies.activeClient?.close()
         super.onCleared()
     }
@@ -158,7 +298,9 @@ class MainViewModel(
         val recorder: AudioRecorderLike,
         val narrator: NarratorLike,
         val clientFactory: (String) -> MilfWebSocketClient,
-        val sendConfirm: ((Boolean) -> Unit)? = null
+        val sendConfirm: ((Boolean) -> Unit)? = null,
+        val clientSecurity: ClientSecurity = ClientSecurity(),
+        val actionPolicy: ActionPolicy = ActionPolicy()
     ) {
         var activeClient: MilfWebSocketClient? = null
 
@@ -170,7 +312,10 @@ class MainViewModel(
                     clientFactory = { MilfWebSocketClient(it) }
                 )
 
-            fun fake(sendConfirm: (Boolean) -> Unit): Dependencies =
+            fun fake(
+                sendConfirm: (Boolean) -> Unit,
+                actionPolicy: ActionPolicy = ActionPolicy()
+            ): Dependencies =
                 Dependencies(
                     recorder = object : AudioRecorderLike {
                         override fun start() = Unit
@@ -183,7 +328,8 @@ class MainViewModel(
                         override fun shutdown() = Unit
                     },
                     clientFactory = { error("not used") },
-                    sendConfirm = sendConfirm
+                    sendConfirm = sendConfirm,
+                    actionPolicy = actionPolicy
                 )
         }
     }
@@ -207,6 +353,7 @@ interface NarratorLike {
     fun speak(text: String, lang: String)
     fun stop()
     fun shutdown()
+    fun setFailureCallback(onFailure: (String) -> Unit) = Unit
 }
 
 private class AndroidAudioRecorder(
@@ -223,4 +370,6 @@ private class AndroidNarrator(
     override fun speak(text: String, lang: String) = narrator.speak(text, lang)
     override fun stop() = narrator.stop()
     override fun shutdown() = narrator.shutdown()
+    override fun setFailureCallback(onFailure: (String) -> Unit) =
+        narrator.setFailureCallback(onFailure)
 }

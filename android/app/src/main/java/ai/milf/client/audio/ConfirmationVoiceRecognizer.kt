@@ -24,11 +24,12 @@ class ConfirmationVoiceRecognizer(
             .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             .putExtra(RecognizerIntent.EXTRA_LANGUAGE, localeTag(lang))
-        recognizer.startListening(intent)
+        runCatching { recognizer.startListening(intent) }
+            .onFailure { onError("Could not hear confirmation") }
     }
 
     fun destroy() {
-        recognizer.destroy()
+        runCatching { recognizer.destroy() }
     }
 
     override fun onResults(results: Bundle) {

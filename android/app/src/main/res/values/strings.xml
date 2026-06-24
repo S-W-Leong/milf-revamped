@@ -1,5 +1,13 @@
 <resources>
     <string name="app_name">MILF</string>
+    <string name="audio_recording_disclosure">Tap Speak to record one request. Recording stops when you tap Stop.</string>
+    <string name="enable_phone_control">Enable phone control</string>
+    <string name="accessibility_control_disclosure">Phone control reads supported app screens and acts only after confirmation.</string>
+    <string name="accessibility_consent_title">Phone control access</string>
+    <string name="accessibility_consent_disclosure">MILF uses Android Accessibility to read supported app screens, perform gestures, and take screenshots only when a confirmed action requires it. Do not enable this unless you want MILF to help control your phone during a session.</string>
+    <string name="accessibility_consent_accept">I understand</string>
+    <string name="accessibility_consent_dismiss">Not now</string>
+    <string name="confirmation_disclosure">Approving allows one sensitive phone action for this request.</string>
     <string name="accessibility_service_label">MILF phone control</string>
-    <string name="accessibility_service_description">Lets MILF act on spoken requests after you start a session.</string>
+    <string name="accessibility_service_description">MILF reads supported app screens, performs gestures, and takes screenshots only for confirmed actions during a session.</string>
 </resources>

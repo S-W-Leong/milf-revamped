@@ -1,16 +1,20 @@
 package ai.milf.client
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -23,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -37,7 +42,9 @@ fun MilfUi(
     onApprove: () -> Unit,
     onDeny: () -> Unit,
     onSpeakDecision: () -> Unit,
-    onOpenAccessibility: () -> Unit
+    onRequestAccessibility: () -> Unit,
+    onAcceptAccessibility: () -> Unit,
+    onDismissAccessibility: () -> Unit
 ) {
     MaterialTheme {
         Surface(
@@ -48,9 +55,10 @@ fun MilfUi(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
+                    verticalArrangement = Arrangement.spacedBy(32.dp)
                 ) {
                     Column(Modifier.fillMaxWidth()) {
                         Text(
@@ -71,7 +79,10 @@ fun MilfUi(
                         )
                     }
 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
                             text = state.lastNarration ?: state.status,
                             fontSize = 26.sp,
@@ -93,18 +104,36 @@ fun MilfUi(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.audio_recording_disclosure),
+                            fontSize = 16.sp,
+                            lineHeight = 22.sp,
+                            textAlign = TextAlign.Center,
+                            color = Color(0xFF475569),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
                     Column(Modifier.fillMaxWidth()) {
                         if (!state.accessibilityEnabled) {
                             OutlinedButton(
-                                onClick = onOpenAccessibility,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(64.dp)
+                                onClick = onRequestAccessibility,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 64.dp)
                             ) {
-                                Text("Enable phone control", fontSize = 20.sp)
+                                Text(stringResource(R.string.enable_phone_control), fontSize = 20.sp)
                             }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.accessibility_control_disclosure),
+                                fontSize = 16.sp,
+                                lineHeight = 22.sp,
+                                textAlign = TextAlign.Center,
+                                color = Color(0xFF475569),
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -115,6 +144,13 @@ fun MilfUi(
                         onApprove = onApprove,
                         onDeny = onDeny,
                         onSpeakDecision = onSpeakDecision
+                    )
+                }
+
+                if (state.showAccessibilityDisclosure) {
+                    AccessibilityDisclosureOverlay(
+                        onAccept = onAcceptAccessibility,
+                        onDismiss = onDismissAccessibility
                     )
                 }
             }
@@ -135,7 +171,7 @@ private fun LanguageRow(
             .forEach { (code, label) ->
                 val modifier = Modifier
                     .weight(1f)
-                    .height(52.dp)
+                    .heightIn(min = 52.dp)
                 if (selected == code) {
                     Button(
                         onClick = { onLangChange(code) },
@@ -162,7 +198,7 @@ private fun ConfirmationOverlay(
     onDeny: () -> Unit,
     onSpeakDecision: () -> Unit
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xCC111827))
@@ -172,7 +208,9 @@ private fun ConfirmationOverlay(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(max = maxHeight)
                 .background(Color.White, RoundedCornerShape(8.dp))
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -184,12 +222,21 @@ private fun ConfirmationOverlay(
                 textAlign = TextAlign.Center,
                 color = Color(0xFF111827)
             )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.confirmation_disclosure),
+                fontSize = 18.sp,
+                lineHeight = 24.sp,
+                textAlign = TextAlign.Center,
+                color = Color(0xFF475569),
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(Modifier.height(28.dp))
             OutlinedButton(
                 onClick = onSpeakDecision,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
+                    .heightIn(min = 64.dp)
             ) {
                 Text("Speak yes/no", fontSize = 22.sp)
             }
@@ -202,7 +249,7 @@ private fun ConfirmationOverlay(
                     onClick = onDeny,
                     modifier = Modifier
                         .weight(1f)
-                        .height(72.dp)
+                        .heightIn(min = 72.dp)
                 ) {
                     Text("No", fontSize = 24.sp)
                 }
@@ -210,10 +257,70 @@ private fun ConfirmationOverlay(
                     onClick = onApprove,
                     modifier = Modifier
                         .weight(1f)
-                        .height(72.dp)
+                        .heightIn(min = 72.dp)
                 ) {
                     Text("Yes", fontSize = 24.sp)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccessibilityDisclosureOverlay(
+    onAccept: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xCC111827))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 560.dp)
+                .background(Color.White, RoundedCornerShape(8.dp))
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.accessibility_consent_title),
+                fontSize = 28.sp,
+                lineHeight = 34.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = Color(0xFF111827)
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.accessibility_consent_disclosure),
+                fontSize = 18.sp,
+                lineHeight = 26.sp,
+                textAlign = TextAlign.Center,
+                color = Color(0xFF334155),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = onAccept,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+            ) {
+                Text(stringResource(R.string.accessibility_consent_accept), fontSize = 22.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+            ) {
+                Text(stringResource(R.string.accessibility_consent_dismiss), fontSize = 22.sp)
             }
         }
     }

@@ -1,23 +1,32 @@
 from __future__ import annotations
 
-import os
 from typing import Any, Callable
 
 from milf.confirmation import build_confirmation_tool
 from milf.connection import AppConnection
 from milf.context import acknowledgment, build_goal
 from milf.narration import narrate_events
+from milf.policy import ConfirmationPolicy
+from milf.runtime_logging import configure_dependency_logging
+from milf.settings import Settings
 from milf.stt import STTAdapter
 from milf.ws_driver import WebSocketDriver
 
 
-def build_agent(goal: str, driver: WebSocketDriver, custom_tools: dict[str, Any]) -> Any:
+def build_agent(
+    goal: str,
+    driver: WebSocketDriver,
+    custom_tools: dict[str, Any],
+    settings: Settings | None = None,
+) -> Any:
     from llama_index.llms.openai import OpenAI
     from mobilerun import AgentConfig, MobileAgent, MobileConfig
 
-    model = os.environ.get("OPENAI_MODEL", "gpt-4o")
+    configure_dependency_logging()
+    settings = settings or Settings.from_env()
+    model = settings.openai_model
     config = MobileConfig(
-        agent=AgentConfig(max_steps=30, reasoning=True, streaming=True),
+        agent=AgentConfig(max_steps=30, reasoning=True, streaming=False),
     )
 
     return MobileAgent(
@@ -46,8 +55,9 @@ async def run_task(
     await connection.send_narration(acknowledgment(intent), lang)
 
     goal = build_goal(intent)
-    driver = WebSocketDriver(connection)
-    custom_tools = build_confirmation_tool(connection, lang)
+    policy = ConfirmationPolicy()
+    driver = WebSocketDriver(connection, policy)
+    custom_tools = build_confirmation_tool(connection, lang, policy)
     agent = agent_factory(goal, driver, custom_tools)
     handler = agent.run()
 
