@@ -2,7 +2,7 @@ package ai.milf.client.protocol
 
 import org.json.JSONObject
 
-interface MilfMessage
+sealed interface MilfMessage
 
 data class Action(
     val id: String,
@@ -92,8 +92,6 @@ object MilfProtocol {
             is Audio -> JSONObject()
                 .put("goal_audio_b64", message.goalAudioB64)
                 .put("lang", message.lang)
-
-            else -> throw IllegalArgumentException("Unknown message class: ${message::class.simpleName}")
         }
         return JSONObject()
             .put("type", typeName(message))
@@ -166,7 +164,6 @@ object MilfProtocol {
         is TaskComplete -> "TaskComplete"
         is TaskFailure -> "TaskFailure"
         is Audio -> "Audio"
-        else -> throw IllegalArgumentException("Unknown message class: ${message::class.simpleName}")
     }
 }
 

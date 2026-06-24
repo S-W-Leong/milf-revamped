@@ -8,6 +8,8 @@ import ai.milf.client.protocol.ConfirmResponse
 import ai.milf.client.protocol.MilfMessage
 import ai.milf.client.protocol.MilfProtocol
 import ai.milf.client.protocol.Narration
+import ai.milf.client.protocol.TaskComplete
+import ai.milf.client.protocol.TaskFailure
 import android.util.Base64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -151,7 +153,7 @@ class MilfWebSocketClient(
                     .onFailure { reportFailure(messageSessionId, it.failureMessage()) }
             }
 
-            is ActionResult, is ConfirmResponse, is Audio -> Unit
+            is ActionResult, is ConfirmResponse, is TaskComplete, is TaskFailure, is Audio -> Unit
         }
     }
 

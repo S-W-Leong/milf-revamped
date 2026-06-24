@@ -57,12 +57,26 @@ class MilfProtocolTest {
         val message = TaskFailure(
             message = "Could not identify the recipient",
             lang = "en",
-            recoveryContactId = null
+            recoveryContactId = "buyer-daughter"
         )
         val raw = MilfProtocol.encode(message)
         val envelope = JSONObject(raw)
 
         assertEquals("TaskFailure", envelope.getString("type"))
+        assertEquals("buyer-daughter", envelope.getJSONObject("data").getString("recovery_contact_id"))
+        assertEquals(message, MilfProtocol.decode(raw))
+    }
+
+    @Test
+    fun taskFailureRoundTripsNullRecoveryContactId() {
+        val message = TaskFailure(
+            message = "Could not identify the recipient",
+            lang = "en",
+            recoveryContactId = null
+        )
+        val raw = MilfProtocol.encode(message)
+        val envelope = JSONObject(raw)
+
         assertTrue(envelope.getJSONObject("data").isNull("recovery_contact_id"))
         assertEquals(message, MilfProtocol.decode(raw))
     }

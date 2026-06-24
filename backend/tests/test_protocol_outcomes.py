@@ -30,7 +30,7 @@ def test_task_failure_roundtrips_recovery_contact_id():
     message = TaskFailure(
         message="Could not identify the recipient",
         lang="en",
-        recovery_contact_id=None,
+        recovery_contact_id="buyer-daughter",
     )
 
     raw = encode(message)
@@ -38,5 +38,19 @@ def test_task_failure_roundtrips_recovery_contact_id():
     decoded = decode(raw)
 
     assert payload["type"] == "TaskFailure"
-    assert payload["data"]["recovery_contact_id"] is None
+    assert payload["data"]["recovery_contact_id"] == "buyer-daughter"
     assert decoded == message
+
+
+def test_task_failure_roundtrips_null_recovery_contact_id():
+    message = TaskFailure(
+        message="Could not identify the recipient",
+        lang="en",
+        recovery_contact_id=None,
+    )
+
+    raw = encode(message)
+    payload = json.loads(raw)
+
+    assert payload["data"]["recovery_contact_id"] is None
+    assert decode(raw) == message
