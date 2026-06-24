@@ -3,9 +3,16 @@ from __future__ import annotations
 from milf.connection import AppConnection
 
 
-def build_confirmation_tool(connection: AppConnection, lang: str) -> dict:
+def build_confirmation_tool(
+    connection: AppConnection, lang: str, contact_id: str | None = None
+) -> dict:
     async def confirm_action(summary: str, *, ctx=None, **kwargs) -> str:
-        approved = await connection.request_confirmation(summary, lang)
+        if contact_id is None:
+            approved = await connection.request_confirmation(summary, lang)
+        else:
+            approved = await connection.request_confirmation(
+                summary, lang, contact_id=contact_id
+            )
         if approved:
             return "User confirmed. Proceed with the action."
         return "User declined. Do not perform the action; stop and end the task."

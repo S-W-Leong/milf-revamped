@@ -11,6 +11,8 @@ from milf.protocol import (
     ConfirmRequest,
     ConfirmResponse,
     Narration,
+    TaskComplete,
+    TaskFailure,
     decode,
     encode,
 )
@@ -36,8 +38,12 @@ class AppConnection:
         finally:
             self._pending.pop(action.id, None)
 
-    async def request_confirmation(self, summary: str, lang: str) -> bool:
-        request = ConfirmRequest(id=self._new_id(), summary=summary, lang=lang)
+    async def request_confirmation(
+        self, summary: str, lang: str, contact_id: str | None = None
+    ) -> bool:
+        request = ConfirmRequest(
+            id=self._new_id(), summary=summary, lang=lang, contact_id=contact_id
+        )
         future = self._create_pending(request.id, ConfirmResponse)
         try:
             await self._send(encode(request))
@@ -48,6 +54,26 @@ class AppConnection:
 
     async def send_narration(self, text: str, lang: str) -> None:
         await self._send(encode(Narration(text=text, lang=lang)))
+
+    async def send_task_complete(
+        self, summary: str, lang: str, contact_id: str | None = None
+    ) -> None:
+        await self._send(
+            encode(TaskComplete(summary=summary, lang=lang, contact_id=contact_id))
+        )
+
+    async def send_task_failure(
+        self, message: str, lang: str, recovery_contact_id: str | None = None
+    ) -> None:
+        await self._send(
+            encode(
+                TaskFailure(
+                    message=message,
+                    lang=lang,
+                    recovery_contact_id=recovery_contact_id,
+                )
+            )
+        )
 
     def on_message(self, raw: str) -> None:
         msg = decode(raw)

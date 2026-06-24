@@ -4,7 +4,7 @@ import os
 
 import websockets
 
-from milf.agent_runner import run_task
+from milf.agent_runner import SAFE_FAILURE_COPY, run_task
 from milf.connection import AppConnection
 from milf.protocol import Audio, decode
 from milf.stt import make_stt
@@ -30,7 +30,14 @@ async def _handler(ws):
 
     pump_task = asyncio.create_task(pump())
     try:
-        await run_task(conn, audio, first.lang, stt)
+        try:
+            await run_task(conn, audio, first.lang, stt)
+        except Exception:
+            await conn.send_task_failure(
+                SAFE_FAILURE_COPY,
+                first.lang,
+                recovery_contact_id="buyer-daughter",
+            )
     finally:
         pump_task.cancel()
         try:
