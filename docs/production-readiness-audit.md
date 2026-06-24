@@ -2,8 +2,9 @@
 
 **Date:** 2026-06-24  
 **Branch:** `UPGRADES`  
-**Implementation head under audit:** `241de22 fix: close runtime and CI review gaps`  
+**Implementation head under audit:** `2a28aad fix: close privacy disclosure review gaps`
 **CI observation head:** `f19d107 docs: record clean checkout verification`
+**Latest pushed head needing CI observation:** `2a28aad fix: close privacy disclosure review gaps`
 **Draft PR:** https://github.com/S-W-Leong/milf-revamped/pull/1
 **Result:** Not release-ready. Automated local and clean-checkout gates pass, but external CI evidence, device rehearsal, production deployment evidence, and owner signoff remain open.
 
@@ -21,7 +22,7 @@
 | Clean-checkout Android setup and build | Pass | From the same fresh local clone, with only a generated `android/local.properties` pointing to the local SDK, `.\gradlew.bat --no-daemon --console=plain :app:testDebugUnitTest :app:assembleDebug` returned `BUILD SUCCESSFUL` with `43 actionable tasks: 43 executed`. |
 | Sensitive logging review | Pass | Static review found no repository-owned runtime logging of tokens, audio, transcripts, screenshots, or full UI trees. `configure_dependency_logging()` clamps `mobilerun` and `websockets` to WARNING before server startup and before MobileRun agent construction, and MobileRun streaming is disabled. Tests cover dependency logger clamping, non-streaming MobileRun config, and websocket startup logging clamp. |
 | User-facing disclosure copy | Pass for local implementation, owner review still pending | Android now shows audio recording scope copy, confirmation scope copy, an in-app accessibility disclosure before opening system settings, resource-backed consent controls, and an accessibility-service description that names screen reading, gestures, screenshots, and confirmed actions. Tests cover disclosure resource content and the ViewModel disclosure acceptance gate. |
-| GitHub Actions CI | Partial, not release-sufficient | `UPGRADES` was pushed and draft PR #1 was opened. GitHub Actions run `28074399402` started for head `f19d10777e6e2b23aab4bbbee52bcc182e3efceb`; the repository hygiene and backend jobs were observed successful, and Android was still in progress. The GitHub connector token was revoked while polling, and unauthenticated GitHub endpoints returned 404, so final CI status for the PR could not be observed from this session. |
+| GitHub Actions CI | Partial, not release-sufficient | `UPGRADES` was pushed and draft PR #1 was opened. GitHub Actions run `28074399402` started for head `f19d10777e6e2b23aab4bbbee52bcc182e3efceb`; the repository hygiene and backend jobs were observed successful, and Android was still in progress. Later commits, including `2a28aad`, were pushed to the PR. The GitHub connector token was revoked while polling, and unauthenticated GitHub endpoints returned 404, so final CI status for the latest PR head could not be observed from this session. |
 | Device or emulator rehearsal | Pending | No accessibility onboarding evidence or 10-run WhatsApp hero rehearsal log is recorded. |
 
 ## Backend Status
