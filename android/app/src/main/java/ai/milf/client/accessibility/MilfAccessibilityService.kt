@@ -93,9 +93,18 @@ class MilfAccessibilityService : AccessibilityService(), DeviceActions {
         ScreenshotCapture.captureBase64Png(this)
 
     override suspend fun getUiTree(): Map<String, Any?> {
-        val root = rootInActiveWindow ?: return UiTreeSerializer.serialize(null)
+        val metrics = resources.displayMetrics
+        val root = rootInActiveWindow ?: return UiTreeSerializer.serialize(
+            null,
+            screenWidth = metrics.widthPixels,
+            screenHeight = metrics.heightPixels
+        )
         return try {
-            UiTreeSerializer.serialize(root)
+            UiTreeSerializer.serialize(
+                root,
+                screenWidth = metrics.widthPixels,
+                screenHeight = metrics.heightPixels
+            )
         } finally {
             root.recycle()
         }

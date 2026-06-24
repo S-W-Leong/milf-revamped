@@ -3,6 +3,7 @@ package ai.milf.client.accessibility
 import ai.milf.client.protocol.Action
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ActionDispatcherTest {
@@ -60,6 +61,19 @@ class ActionDispatcherTest {
         assertEquals(true, result.ok)
         assertEquals("d1", result.id)
         assertEquals("2026-06-24", result.result)
+    }
+
+    @Test
+    fun emptyUiTreeUsesMobileRunStateContract() {
+        val state = UiTreeSerializer.serialize(null, screenWidth = 1080, screenHeight = 2400)
+
+        assertTrue(state.containsKey("a11y_tree"))
+        assertTrue(state.containsKey("phone_state"))
+        assertTrue(state.containsKey("device_context"))
+        assertEquals(
+            mapOf("width" to 1080, "height" to 2400),
+            (state["device_context"] as Map<*, *>)["screen_bounds"]
+        )
     }
 }
 

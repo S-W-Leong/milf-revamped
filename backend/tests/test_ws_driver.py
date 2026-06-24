@@ -25,15 +25,37 @@ async def test_tap_sends_action_and_returns_result():
     assert await task is None
 
 
-async def test_get_ui_tree_returns_payload_verbatim():
+async def test_get_ui_tree_returns_mobilerun_state_payload_verbatim():
+    sent, conn = _wire()
+    driver = WebSocketDriver(conn)
+    payload = {
+        "a11y_tree": {
+            "boundsInScreen": {"left": 0, "top": 0, "right": 1080, "bottom": 2400},
+            "children": [],
+        },
+        "phone_state": {"packageName": "com.whatsapp"},
+        "device_context": {"screen_bounds": {"width": 1080, "height": 2400}},
+    }
+    task = asyncio.create_task(driver.get_ui_tree())
+    await asyncio.sleep(0)
+    action = decode(sent[0])
+    assert action.name == "get_ui_tree"
+    conn.on_message(encode(ActionResult(id=action.id, ok=True, result=payload)))
+    assert await task == payload
+
+
+async def test_get_ui_tree_rejects_payload_missing_mobilerun_state_keys():
     sent, conn = _wire()
     driver = WebSocketDriver(conn)
     task = asyncio.create_task(driver.get_ui_tree())
     await asyncio.sleep(0)
     action = decode(sent[0])
-    assert action.name == "get_ui_tree"
-    conn.on_message(encode(ActionResult(id=action.id, ok=True, result={"nodes": [1, 2]})))
-    assert await task == {"nodes": [1, 2]}
+    conn.on_message(encode(ActionResult(id=action.id, ok=True, result={"nodes": []})))
+    with pytest.raises(
+        RuntimeError,
+        match="missing MobileRun state keys: a11y_tree, phone_state, device_context",
+    ):
+        await task
 
 
 async def test_get_date_returns_device_date():

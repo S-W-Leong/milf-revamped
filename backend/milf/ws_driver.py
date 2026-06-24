@@ -86,7 +86,19 @@ class WebSocketDriver(DeviceDriver):
         raise TypeError("screenshot action returned non-bytes payload")
 
     async def get_ui_tree(self) -> dict[str, Any]:
-        return await self._send_supported("get_ui_tree", {})
+        payload = await self._send_supported("get_ui_tree", {})
+        if not isinstance(payload, dict):
+            raise RuntimeError("get_ui_tree action returned non-object payload")
+        missing = [
+            key
+            for key in ("a11y_tree", "phone_state", "device_context")
+            if key not in payload
+        ]
+        if missing:
+            raise RuntimeError(
+                f"get_ui_tree action missing MobileRun state keys: {', '.join(missing)}"
+            )
+        return payload
 
     async def press_key_code(self, key_code: int) -> None:
         raise NotImplementedError

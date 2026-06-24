@@ -1,5 +1,7 @@
+import asyncio
 import base64
 import json
+import logging
 
 import pytest
 import websockets
@@ -87,3 +89,15 @@ async def test_dispatch_first_frame_rejects_unknown_message():
 
     with pytest.raises(TypeError, match="first frame must be Audio or TextGoal"):
         await _dispatch_first_frame(conn, json.loads("{}"))
+
+
+async def test_server_ignores_setup_check_close(caplog):
+    caplog.set_level(logging.ERROR)
+
+    server, port = await _serve_once()
+    async with server:
+        async with websockets.connect(f"ws://127.0.0.1:{port}") as ws:
+            await ws.close(code=1000, reason="setup check")
+        await asyncio.sleep(0)
+
+    assert "connection handler failed" not in caplog.text
