@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MILF — Brand Kit</title>
+<style>
+  :root {
+    --obsidian: #0A0A0A;
+    --dark-surface: #141414;
+    --card-surface: #1C1C1C;
+    --border: rgba(255,255,255,0.08);
+    --border-subtle: rgba(255,255,255,0.05);
+    --text-primary: #F5F5F5;
+    --text-secondary: #A0A0A0;
+    --text-muted: #555;
+    --sage: #A8C5B5;
+    --sage-dim: rgba(168,197,181,0.15);
+    --sage-glow: rgba(168,197,181,0.08);
+    --confirm-sage: #7FB5A0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--obsidian);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 56px 24px 80px; }
+
+  /* Header */
+  .masthead { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+  .logo-badge {
+    width: 52px; height: 52px; border-radius: 12px; background: var(--dark-surface);
+    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  .logo-badge::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 70% 30%, var(--sage-glow) 0%, transparent 70%);
+  }
+  h1 { font-size: 26px; font-weight: 500; letter-spacing: -0.03em; }
+  .masthead-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .tagline-lead { font-size: 17px; color: var(--text-secondary); max-width: 560px; margin: 24px 0 8px; line-height: 1.7; letter-spacing: -0.01em; }
+  .thesis { font-size: 15px; color: var(--sage); font-style: italic; opacity: 0.85; }
+
+  /* Section */
+  section { margin-top: 72px; }
+  .eyebrow {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-muted); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::after { content: ''; flex: 1; height: 1px; background: var(--border-subtle); }
+  h2 { font-size: 20px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .section-note { font-size: 14px; color: var(--text-secondary); max-width: 600px; margin-bottom: 28px; line-height: 1.7; }
+
+  /* Swatches */
+  .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .swatch { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; transition: transform 0.15s, border-color 0.15s; }
+  .swatch:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.18); }
+  .swatch-color { height: 88px; display: flex; align-items: flex-end; padding: 10px 14px; }
+  .swatch-hex { font-size: 11px; font-family: 'SF Mono', Menlo, monospace; opacity: 0.85; }
+  .swatch-meta { padding: 12px 14px; background: var(--card-surface); }
+  .swatch-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .swatch-role { font-size: 11px; color: var(--text-muted); }
+  .copy-hint { font-size: 10px; color: var(--text-muted); margin-top: 14px; }
+
+  /* Voice arc card */
+  .arc-card {
+    margin-top: 24px; padding: 24px 28px; background: var(--card-surface);
+    border: 1px solid var(--border); border-radius: 14px;
+    display: flex; align-items: center; gap: 24px;
+  }
+  .arc-card h3 { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .arc-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* Logo variants */
+  .logo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .logo-cell {
+    border-radius: 14px; padding: 30px 26px; display: flex; align-items: center; gap: 16px;
+    border: 1px solid var(--border);
+  }
+  .logo-name { font-size: 20px; font-weight: 500; letter-spacing: -0.03em; }
+  .logo-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+  .icon-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  .icon-cell {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    padding: 24px; background: var(--card-surface); border: 1px solid var(--border); border-radius: 12px;
+  }
+  .icon-size { font-size: 11px; color: var(--text-muted); }
+
+  /* Type specimens */
+  .type-spec { padding: 30px 28px; border: 1px solid var(--border); border-radius: 14px; margin-bottom: 12px; position: relative; overflow: hidden; }
+  .type-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 16px; }
+  .display-text { font-size: 34px; font-weight: 500; line-height: 1.15; letter-spacing: -0.03em; }
+  .headline-text { font-size: 20px; font-weight: 400; line-height: 1.4; letter-spacing: -0.015em; max-width: 400px; color: var(--text-primary); }
+  .body-text { font-size: 16px; font-weight: 400; line-height: 1.75; color: var(--text-secondary); }
+  .type-glow { position: absolute; top: 0; right: 0; width: 220px; height: 220px; background: radial-gradient(circle, var(--sage-glow) 0%, transparent 70%); pointer-events: none; }
+
+  /* State pills */
+  .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .pill { font-size: 11px; font-weight: 500; letter-spacing: 0.05em; padding: 6px 14px; border-radius: 7px; }
+  .pill-neutral { background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--border); }
+  .pill-muted { background: rgba(255,255,255,0.03); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+  .pill-sage { background: var(--sage-dim); color: var(--sage); border: 1px solid rgba(168,197,181,0.25); }
+  .pill-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border-subtle); }
+
+  /* App mockups */
+  .app-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 680px) { .app-grid { grid-template-columns: 1fr; } }
+  .mock-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 12px; }
+  .phone {
+    background: var(--obsidian); border-radius: 30px; border: 6px solid #0A0A0A;
+    outline: 1px solid rgba(255,255,255,0.08); overflow: hidden; min-height: 400px;
+  }
+  .phone-status { background: #050505; padding: 11px 24px 9px; display: flex; justify-content: space-between; }
+  .phone-status span { font-size: 10px; color: var(--text-muted); }
+  .phone-body { padding: 24px 24px 0; }
+  .phone-header { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; }
+  .phone-logo-tag { font-size: 11px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .screen { text-align: center; }
+  .mic-ring {
+    width: 76px; height: 76px; border-radius: 38px; background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border); margin: 0 auto 22px; display: flex; align-items: center; justify-content: center;
+  }
+  .mic-dot { width: 30px; height: 30px; border-radius: 15px; background: rgba(255,255,255,0.08); }
+  .screen-title { font-size: 21px; font-weight: 400; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .screen-hint { font-size: 12px; color: var(--text-muted); margin-top: 12px; }
+  .confirm-ring {
+    width: 66px; height: 66px; border-radius: 33px; background: var(--sage-dim);
+    border: 1px solid rgba(168,197,181,0.3); margin: 0 auto 20px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .confirm-q { font-size: 18px; font-weight: 400; color: var(--sage); margin-bottom: 24px; }
+  .confirm-btns { display: flex; gap: 8px; }
+  .btn-yes { flex: 1; padding: 12px 0; background: var(--sage-dim); border: 1px solid rgba(168,197,181,0.3); border-radius: 11px; color: var(--sage); font-size: 15px; font-weight: 500; cursor: pointer; font-family: inherit; }
+  .btn-no { flex: 1; padding: 12px 0; background: transparent; border: 1px solid var(--border); border-radius: 11px; color: var(--text-muted); font-size: 15px; cursor: pointer; font-family: inherit; }
+  .phone-dots { display: flex; justify-content: center; gap: 6px; margin-top: 36px; padding: 18px 0 22px; border-top: 1px solid var(--border-subtle); }
+  .dot { width: 6px; height: 6px; border-radius: 3px; background: var(--text-muted); border: none; cursor: pointer; transition: all 0.2s; padding: 0; }
+  .dot.active { width: 18px; background: var(--text-secondary); }
+  .dot.active-sage { width: 18px; background: var(--sage); }
+  .phone-caption { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 10px; }
+
+  /* Setup card */
+  .setup-card { background: var(--dark-surface); border-radius: 22px; border: 1px solid var(--border); overflow: hidden; }
+  .setup-head { padding: 22px 20px 18px; border-bottom: 1px solid var(--border-subtle); }
+  .setup-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .setup-title { font-size: 13px; font-weight: 500; }
+  .setup-sub { font-size: 12px; color: var(--text-muted); }
+  .setup-body { padding: 16px; }
+  .setup-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 12px; }
+  .contact { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-subtle); }
+  .contact-avatar { width: 32px; height: 32px; border-radius: 16px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: var(--text-secondary); flex-shrink: 0; }
+  .contact-name { font-size: 13px; }
+  .contact-label { font-size: 11px; color: var(--text-muted); }
+  .contact-dot { width: 5px; height: 5px; border-radius: 3px; background: var(--sage); }
+  .setup-note { margin-top: 16px; padding: 12px 14px; background: var(--sage-dim); border-radius: 9px; border: 1px solid rgba(168,197,181,0.15); display: flex; gap: 10px; align-items: flex-start; }
+  .setup-note span { font-size: 12px; color: var(--sage); line-height: 1.5; opacity: 0.88; }
+
+  /* Slides */
+  .slide { border-radius: 16px; padding: 44px 48px; margin-bottom: 12px; position: relative; overflow: hidden; border: 1px solid var(--border); }
+  .slide-1 { background: var(--obsidian); }
+  .slide-glow { position: absolute; top: -60px; right: -60px; width: 300px; height: 300px; border-radius: 150px; background: radial-gradient(circle, var(--sage-glow) 0%, transparent 70%); }
+  .slide-eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 22px; position: relative; }
+  .slide-title { font-size: 34px; font-weight: 400; line-height: 1.15; letter-spacing: -0.03em; margin-bottom: 26px; max-width: 400px; position: relative; }
+  .slide-foot { margin-top: 26px; display: flex; align-items: center; gap: 12px; position: relative; }
+  .slide-2 { background: var(--dark-surface); }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .stat-num { font-size: 38px; font-weight: 300; letter-spacing: -0.04em; line-height: 1; }
+  .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.5; }
+  .slide-3 { background: var(--dark-surface); }
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .vs-cell { padding: 22px; border-radius: 11px; }
+  .vs-gemini { background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); }
+  .vs-milf { background: var(--sage-dim); border: 1px solid rgba(168,197,181,0.2); }
+  .vs-label { font-size: 11px; margin-bottom: 10px; }
+  .vs-text { font-size: 17px; font-weight: 400; line-height: 1.4; }
+
+  /* Voice & tone */
+  .voice-quotes { display: flex; flex-direction: column; gap: 10px; }
+  .voice-q { padding: 16px 20px; background: var(--card-surface); border-left: 2px solid var(--sage); border-radius: 0 10px 10px 0; font-size: 15px; color: var(--text-primary); font-style: italic; line-height: 1.6; }
+  .dodont { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  @media (max-width: 600px) { .dodont { grid-template-columns: 1fr; } .stats-grid { gap: 16px; } .slide { padding: 32px 28px; } }
+  .dd-card { border-radius: 12px; padding: 20px 22px; }
+  .dd-do { background: var(--sage-dim); border: 1px solid rgba(168,197,181,0.2); }
+  .dd-dont { background: var(--card-surface); border: 1px solid var(--border); }
+  .dd-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .dd-do .dd-label { color: var(--sage); }
+  .dd-dont .dd-label { color: var(--text-muted); }
+  .dd-item { font-size: 13px; color: var(--text-secondary); line-height: 1.85; }
+
+  footer { margin-top: 80px; padding-top: 28px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: center; gap: 12px; }
+  footer span { font-size: 12px; color: var(--text-muted); }
+
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--card-surface); border: 1px solid var(--border); color: var(--text-primary); font-size: 13px; padding: 10px 18px; border-radius: 10px; opacity: 0; transition: all 0.25s; pointer-events: none; }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Masthead -->
+  <div class="masthead">
+    <div class="logo-badge">
+      <svg viewBox="0 0 28 20" width="29" height="21" fill="none">
+        <path d="M2 14 Q7 4 14 10 Q21 16 26 6" stroke="#A8C5B5" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.9"/>
+        <circle cx="2" cy="14" r="1.5" fill="#555"/>
+        <circle cx="26" cy="6" r="2" fill="#A8C5B5"/>
+      </svg>
+    </div>
+    <div>
+      <h1>MILF Brand Kit</h1>
+      <div class="masthead-sub">Visual identity system · June 2026</div>
+    </div>
+  </div>
+  <p class="tagline-lead">Near-black base, glass surfaces, one earned accent. Minimal, confident, and unmistakably not another orange AI wrapper.</p>
+  <p class="thesis">"Seniors shouldn't have to learn the phone's mental model. The agent holds it for them."</p>
+
+  <!-- Palette -->
+  <section>
+    <div class="eyebrow">01 — Palette</div>
+    <h2>Colour</h2>
+    <p class="section-note">Dark, quiet surfaces. Sage-pearl is the only chromatic colour, and it appears only when something has been confirmed or completed. Click any swatch to copy its value.</p>
+    <div class="swatch-grid" id="swatchGrid"></div>
+    <p class="copy-hint">Tap a swatch to copy the hex / value.</p>
+
+    <div class="arc-card">
+      <svg viewBox="0 0 120 40" width="130" height="42" fill="none">
+        <path d="M8 30 Q30 6 60 20 Q90 34 112 10" stroke="url(#arcG)" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <defs><linearGradient id="arcG" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#555"/><stop offset="60%" stop-color="#A8C5B5"/><stop offset="100%" stop-color="#7FB5A0"/></linearGradient></defs>
+        <circle cx="8" cy="30" r="3" fill="#555"/><circle cx="112" cy="10" r="3.5" fill="#A8C5B5"/>
+      </svg>
+      <div>
+        <h3>The voice arc — grey to sage</h3>
+        <p>Voice begins as ambient grey (raw human intent) and resolves into sage when the task completes. The signature motif: restraint, then resolution.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Logo -->
+  <section>
+    <div class="eyebrow">02 — Logo</div>
+    <h2>The mark</h2>
+    <p class="section-note">A minimal waveform — one breath, two endpoints — on a dark, square-radius badge. Premium on any home screen. The sage dot is the only colour: a full stop that means "done."</p>
+    <div class="logo-grid" id="logoGrid"></div>
+    <div class="icon-row" id="iconRow"></div>
+  </section>
+
+  <!-- Typography -->
+  <section>
+    <div class="eyebrow">03 — Typography</div>
+    <h2>Type</h2>
+    <p class="section-note">Geometric sans in the Inter / Geist family — clean and precise, never a serif, never condensed. Large body text reads as confidence, not accommodation.</p>
+
+    <div class="type-spec" style="background: var(--dark-surface);">
+      <div class="type-label">Display · 500 · −3% tracking</div>
+      <div class="display-text">She just wanted<br>to see her grandson.</div>
+    </div>
+    <div class="type-spec" style="background: var(--card-surface);">
+      <div class="type-glow"></div>
+      <div class="type-label">Headline · 400</div>
+      <div class="headline-text">The AI companion that gives SEA seniors their phone back — and gives their children peace of mind.</div>
+    </div>
+    <div class="type-spec" style="background: var(--dark-surface);">
+      <div class="type-label">Body · 400 · 1.75 line-height</div>
+      <div class="body-text">MILF holds the phone's entire mental model, so grandma doesn't have to. She says what she wants. The agent navigates, narrates, and confirms before acting.</div>
+    </div>
+    <div class="type-spec" style="background: var(--card-surface);">
+      <div class="type-label">UI states</div>
+      <div class="pill-row">
+        <span class="pill pill-neutral">Listening</span>
+        <span class="pill pill-muted">Navigating</span>
+        <span class="pill pill-sage">Confirmed ✓</span>
+        <span class="pill pill-ghost">Done</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- App UI -->
+  <section>
+    <div class="eyebrow">04 — Product UI</div>
+    <h2>In the app</h2>
+    <p class="section-note">Near-black screen, white type, sage only at the confirmation gate. No colour until the moment that matters. Step through the hero flow below.</p>
+    <div class="app-grid">
+      <div>
+        <div class="mock-label">Grandma's screen</div>
+        <div class="phone">
+          <div class="phone-status"><span>9:41</span><span>● ● ●</span></div>
+          <div class="phone-body">
+            <div class="phone-header">
+              <div class="logo-badge" style="width:28px;height:28px;border-radius:7px;">
+                <svg viewBox="0 0 28 20" width="16" height="11" fill="none"><path d="M2 14 Q7 4 14 10 Q21 16 26 6" stroke="#A8C5B5" stroke-width="2.5" stroke-linecap="round" fill="none"/><circle cx="2" cy="14" r="2" fill="#555"/><circle cx="26" cy="6" r="2.5" fill="#A8C5B5"/></svg>
+              </div>
+              <span class="phone-logo-tag">MILF</span>
+            </div>
+            <div id="screenStage"></div>
+          </div>
+          <div class="phone-dots" id="phoneDots"></div>
+        </div>
+        <div class="phone-caption">Tap dots to step through the hero flow</div>
+      </div>
+
+      <div>
+        <div class="mock-label">Adult child setup</div>
+        <div class="setup-card">
+          <div class="setup-head">
+            <div class="setup-title-row">
+              <div class="logo-badge" style="width:26px;height:26px;border-radius:7px;">
+                <svg viewBox="0 0 28 20" width="15" height="11" fill="none"><path d="M2 14 Q7 4 14 10 Q21 16 26 6" stroke="#A8C5B5" stroke-width="2.5" stroke-linecap="round" fill="none"/><circle cx="2" cy="14" r="2" fill="#555"/><circle cx="26" cy="6" r="2.5" fill="#A8C5B5"/></svg>
+              </div>
+              <span class="setup-title">MILF Setup</span>
+            </div>
+            <div class="setup-sub">Set up once. Mum handles the rest.</div>
+          </div>
+          <div class="setup-body">
+            <div class="setup-section-label">Trusted contacts</div>
+            <div class="contact"><div class="contact-avatar">W</div><div style="flex:1"><div class="contact-name">Wei (You)</div><div class="contact-label">Son</div></div><div class="contact-dot"></div></div>
+            <div class="contact"><div class="contact-avatar">M</div><div style="flex:1"><div class="contact-name">Mei Ling</div><div class="contact-label">Daughter</div></div><div class="contact-dot"></div></div>
+            <div class="contact"><div class="contact-avatar">T</div><div style="flex:1"><div class="contact-name">Dr. Tan</div><div class="contact-label">Doctor</div></div><div class="contact-dot"></div></div>
+            <div class="setup-note">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="margin-top:2px;flex-shrink:0"><path d="M5 12l5 5L20 7" stroke="#A8C5B5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>MILF confirms aloud before any call. Mum stays in control.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Voice & tone -->
+  <section>
+    <div class="eyebrow">05 — Voice & tone</div>
+    <h2>How it speaks</h2>
+    <p class="section-note">Confident and specific. Never "empowering," never "easy to use," never "designed for seniors." Written for the busy adult child who loves their parent.</p>
+    <div class="voice-quotes">
+      <div class="voice-q">"She didn't know which app. She didn't tap through menus. She expressed a human wish and her phone answered it."</div>
+      <div class="voice-q">"Gemini gives Android superpowers. MILF teaches grandma to fly."</div>
+      <div class="voice-q">"Not a tutorial. Not a workaround. MILF."</div>
+    </div>
+    <div class="dodont">
+      <div class="dd-card dd-do">
+        <div class="dd-label">Direction</div>
+        <div class="dd-item">Dark, glass, minimal surfaces</div>
+        <div class="dd-item">Sage reserved for confirmation</div>
+        <div class="dd-item">Big confident type, lots of space</div>
+        <div class="dd-item">Grandma as the protagonist</div>
+        <div class="dd-item">Voice waveform as recurring motif</div>
+      </div>
+      <div class="dd-card dd-dont">
+        <div class="dd-label">Avoid</div>
+        <div class="dd-item">Orange (reads as Claude / Anthropic)</div>
+        <div class="dd-item">Blue or purple (reads as Gemini)</div>
+        <div class="dd-item">"Elderly" language anywhere</div>
+        <div class="dd-item">Thick rounded "accessible" buttons</div>
+        <div class="dd-item">Clinical / medical-device white</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pitch slides -->
+  <section>
+    <div class="eyebrow">06 — Pitch deck</div>
+    <h2>On stage</h2>
+    <p class="section-note">Dark, minimal, confident. Big type, generous space, one moment of sage per slide.</p>
+
+    <div class="slide slide-1">
+      <div class="slide-glow"></div>
+      <div class="slide-eyebrow">TheFirst Spark · C4 Accessibility · June 2026</div>
+      <div class="slide-title">She just wanted<br>to see her grandson.</div>
+      <svg viewBox="0 0 120 40" width="100" height="33" fill="none" style="position:relative"><path d="M8 30 Q30 6 60 20 Q90 34 112 10" stroke="url(#arcS)" stroke-width="2" stroke-linecap="round" fill="none"/><defs><linearGradient id="arcS" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#555"/><stop offset="100%" stop-color="#A8C5B5"/></linearGradient></defs><circle cx="8" cy="30" r="3" fill="#555"/><circle cx="112" cy="10" r="3.5" fill="#A8C5B5"/></svg>
+      <div class="slide-foot">
+        <div class="logo-badge" style="width:34px;height:34px;border-radius:9px;">
+          <svg viewBox="0 0 28 20" width="19" height="14" fill="none"><path d="M2 14 Q7 4 14 10 Q21 16 26 6" stroke="#A8C5B5" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="2" cy="14" r="1.5" fill="#555"/><circle cx="26" cy="6" r="2" fill="#A8C5B5"/></svg>
+        </div>
+        <div><div style="font-size:16px;font-weight:500;letter-spacing:-0.02em">MILF</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Make Interfaces Less Frustrating</div></div>
+      </div>
+    </div>
+
+    <div class="slide slide-2">
+      <div class="slide-eyebrow">The scale</div>
+      <div class="stats-grid">
+        <div><div class="stat-num">722M</div><div class="stat-label">seniors in Asia-Pacific</div></div>
+        <div><div class="stat-num">89%</div><div class="stat-label">own a smartphone</div></div>
+        <div><div class="stat-num" style="color:var(--sage)">≈0%</div><div class="stat-label">use it independently</div></div>
+      </div>
+    </div>
+
+    <div class="slide slide-3">
+      <div class="slide-eyebrow">vs. Gemini Intelligence</div>
+      <div class="versus">
+        <div class="vs-cell vs-gemini"><div class="vs-label" style="color:var(--text-muted)">Gemini</div><div class="vs-text" style="color:var(--text-secondary)">Gives Android superpowers.</div></div>
+        <div class="vs-cell vs-milf"><div class="vs-label" style="color:var(--sage);opacity:0.7">MILF</div><div class="vs-text" style="color:var(--text-primary)">Teaches grandma to fly.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <svg viewBox="0 0 120 40" width="70" height="23" fill="none"><path d="M8 30 Q30 6 60 20 Q90 34 112 10" stroke="url(#arcF)" stroke-width="2" stroke-linecap="round" fill="none"/><defs><linearGradient id="arcF" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#555"/><stop offset="100%" stop-color="#A8C5B5"/></linearGradient></defs><circle cx="8" cy="30" r="3" fill="#555"/><circle cx="112" cy="10" r="3.5" fill="#A8C5B5"/></svg>
+    <span>Intent in. Action out.</span>
+  </footer>
+</div>
+
+<div class="toast" id="toast">Copied</div>
+
+<script>
+  const swatches = [
+    { name: "Obsidian", hex: "#0A0A0A", text: "#777", role: "Page background" },
+    { name: "Dark Surface", hex: "#141414", text: "#888", role: "Cards, panels" },
+    { name: "Glass Surface", hex: "rgba(255,255,255,0.04)", display: "#1E1E1E", text: "#999", role: "Overlay layers" },
+    { name: "Sage Pearl", hex: "#A8C5B5", text: "#0A0A0A", role: "Primary accent" },
+    { name: "Confirm Sage", hex: "#7FB5A0", text: "#0A0A0A", role: "Active confirmation" },
+    { name: "Sage Dim", hex: "rgba(168,197,181,0.15)", display: "#243028", text: "#A8C5B5", role: "Tinted fills" },
+    { name: "Off-White", hex: "#F5F5F5", text: "#141414", role: "Primary text" },
+    { name: "Stone", hex: "#A0A0A0", text: "#141414", role: "Secondary text" },
+    { name: "Muted", hex: "#555555", text: "#F5F5F5", role: "Tertiary text, borders" },
+  ];
+  const grid = document.getElementById('swatchGrid');
+  swatches.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'swatch';
+    el.innerHTML = `<div class="swatch-color" style="background:${s.display||s.hex}"><span class="swatch-hex" style="color:${s.text}">${s.hex}</span></div><div class="swatch-meta"><div class="swatch-name">${s.name}</div><div class="swatch-role">${s.role}</div></div>`;
+    el.onclick = () => copy(s.hex);
+    grid.appendChild(el);
+  });
+
+  const wave = (sw, c1, c2, c3) => `<svg viewBox="0 0 28 20" width="${sw}" height="${sw*0.71}" fill="none"><path d="M2 14 Q7 4 14 10 Q21 16 26 6" stroke="${c2}" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.9"/><circle cx="2" cy="14" r="1.5" fill="${c1}"/><circle cx="26" cy="6" r="2" fill="${c3}"/></svg>`;
+  const badge = (size, bg, border) => `<div class="logo-badge" style="width:${size}px;height:${size}px;border-radius:${size*0.22}px;background:${bg};border-color:${border}">${wave(size*0.55,'#555','#A8C5B5','#A8C5B5')}</div>`;
+
+  const variants = [
+    { bg: "#0A0A0A", label: "Default dark", border: "rgba(255,255,255,0.08)", nameC: "#F5F5F5", tagC: "#555" },
+    { bg: "#F5F5F5", label: "Light", border: "rgba(0,0,0,0.08)", nameC: "#0A0A0A", tagC: "#888" },
+    { bg: "#1C1C1C", label: "Surfaced", border: "rgba(255,255,255,0.08)", nameC: "#F5F5F5", tagC: "#555" },
+    { bg: "#141414", label: "Subtle dark", border: "rgba(255,255,255,0.08)", nameC: "#F5F5F5", tagC: "#555" },
+  ];
+  const lg = document.getElementById('logoGrid');
+  variants.forEach(v => {
+    const el = document.createElement('div');
+    el.className = 'logo-cell';
+    el.style.background = v.bg; el.style.borderColor = v.border;
+    el.innerHTML = `${badge(42, v.bg==='#F5F5F5'?'#141414':'#141414', 'rgba(255,255,255,0.08)')}<div><div class="logo-name" style="color:${v.nameC}">MILF</div><div class="logo-tag" style="color:${v.tagC}">Make Interfaces Less Frustrating</div></div>`;
+    lg.appendChild(el);
+  });
+
+  const ir = document.getElementById('iconRow');
+  [40, 56, 80].forEach(sz => {
+    const el = document.createElement('div');
+    el.className = 'icon-cell';
+    el.innerHTML = `${badge(sz,'#141414','rgba(255,255,255,0.08)')}<span class="icon-size">${sz}px</span>`;
+    ir.appendChild(el);
+  });
+
+  // Phone flow
+  const screens = [
+    `<div class="screen"><div class="mic-ring"><div class="mic-dot"></div></div><div class="screen-title">Listening…</div><svg viewBox="0 0 120 40" width="110" height="36" fill="none"><path d="M8 30 Q30 6 60 20 Q90 34 112 10" stroke="url(#aw0)" stroke-width="2" stroke-linecap="round" fill="none"/><defs><linearGradient id="aw0" x1="0%" x2="100%"><stop offset="0%" stop-color="#555"/><stop offset="100%" stop-color="#A8C5B5"/></linearGradient></defs><circle cx="8" cy="30" r="3" fill="#555"/><circle cx="112" cy="10" r="3.5" fill="#A8C5B5"/></svg><div class="screen-hint">Say anything. I'm here.</div></div>`,
+    `<div class="screen"><div class="screen-title" style="font-size:18px">Opening WhatsApp…</div><div class="screen-hint" style="margin-bottom:20px">Finding Wei in contacts</div><div style="height:1px;background:rgba(255,255,255,0.06);border-radius:1px;overflow:hidden"><div style="width:55%;height:100%;background:linear-gradient(90deg,rgba(168,197,181,0.3),#A8C5B5)"></div></div></div>`,
+    `<div class="screen"><div class="confirm-ring"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="#A8C5B5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="screen-title" style="font-size:17px;margin-bottom:4px">Video calling Wei —</div><div class="confirm-q">is that right?</div><div class="confirm-btns"><button class="btn-yes" onclick="setStep(3)">Yes</button><button class="btn-no" onclick="setStep(0)">No</button></div></div>`,
+    `<div class="screen"><div class="screen-title" style="font-size:17px;color:#A8C5B5;margin-bottom:6px">Calling Wei…</div><div class="screen-hint" style="margin-top:0;margin-bottom:12px">Video call connected</div><svg viewBox="0 0 120 40" width="110" height="36" fill="none"><path d="M8 30 Q30 6 60 20 Q90 34 112 10" stroke="url(#aw3)" stroke-width="2" stroke-linecap="round" fill="none"/><defs><linearGradient id="aw3" x1="0%" x2="100%"><stop offset="0%" stop-color="#555"/><stop offset="100%" stop-color="#A8C5B5"/></linearGradient></defs><circle cx="8" cy="30" r="3" fill="#555"/><circle cx="112" cy="10" r="3.5" fill="#A8C5B5"/></svg></div>`
+  ];
+  let step = 0;
+  const stage = document.getElementById('screenStage');
+  const dotsWrap = document.getElementById('phoneDots');
+  function setStep(i) {
+    step = i;
+    stage.innerHTML = screens[i];
+    dotsWrap.innerHTML = '';
+    [0,1,2,3].forEach(d => {
+      const b = document.createElement('button');
+      b.className = 'dot' + (d===step ? (step>=2 ? ' active-sage' : ' active') : '');
+      b.onclick = () => setStep(d);
+      dotsWrap.appendChild(b);
+    });
+  }
+  window.setStep = setStep;
+  setStep(0);
+
+  // Copy
+  let toastTimer;
+  function copy(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      const t = document.getElementById('toast');
+      t.textContent = 'Copied ' + text;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+    });
+  }
+</script>
+</body>
+</html>
