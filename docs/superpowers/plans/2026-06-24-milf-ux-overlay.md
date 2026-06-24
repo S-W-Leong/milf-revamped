@@ -1933,7 +1933,7 @@ private fun FailureOverlay(state: SeniorUiState, onRetry: () -> Unit, onCallBuye
             colors = ButtonDefaults.buttonColors(containerColor = MilfColors.YesGreen)
         ) {
             Icon(Icons.Default.Call, contentDescription = null)
-            Text("YES, call daughter", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text("Cancel", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(12.dp))
         OutlinedButton(
@@ -2417,7 +2417,7 @@ git commit -m "feat: add persistent senior overlay"
 
 ### Task 7: Buyer Setup, Permissions, and Rescue Call
 
-Turn `MainActivity` into the buyer-only setup surface and wire State F's "call daughter" path.
+Turn `MainActivity` into the buyer-only setup surface and wire State F's failure recovery path.
 
 **Files:**
 - Modify: `android/app/src/main/java/ai/milf/client/MainActivity.kt`
@@ -2781,7 +2781,7 @@ NO
 YES
 Working
 Done.
-YES, call daughter
+Cancel
 Try again
 ```
 
@@ -2809,7 +2809,7 @@ In `docs/android-demo-runbook.md`, add:
 6. Turn on Demo watch mode for judges; leave it off for senior-mode testing.
 7. Tap Start helper. The floating bubble should appear over any app.
 8. Hero flow: tap bubble or invoke assistant, say "I want to see my grandson", wait for WhatsApp navigation, approve "Calling Wei, your grandson?", and verify the video-call screen opens.
-9. Failure flow: stop the backend, repeat the hero request, and verify the failure screen says it is having trouble and offers to call daughter.
+9. Failure flow: stop the backend, repeat the hero request, and verify the failure screen shows the safe failure copy with Try again and Cancel.
 
 ## Device matrix
 
@@ -2857,7 +2857,7 @@ Verify the UX state machine against the spec and capture device-specific risks b
 - D Working senior mode: overlay collapses to bubble with narration.
 - D Working demo mode: watch view remains visible.
 - E Success: calm completion copy is spoken and visible.
-- F Failure: safe copy is spoken and visible; "YES, call daughter" opens call/dialer; "Try again" returns to listening.
+- F Failure: safe copy is spoken and visible; "Cancel" dismisses; "Try again" returns to listening.
 - Invocation layer 1: assist entry works or device-specific failure is recorded.
 - Invocation layer 2: bubble works from inside another app.
 
@@ -2931,7 +2931,7 @@ On device:
 
 Expected:
 - Failure screen says: "I'm having a little trouble with that. Please try again."
-- "YES, call daughter" opens the call or dialer intent for the configured buyer number.
+- "Cancel" dismisses the failure screen.
 - "Try again" returns to Listening.
 
 - [ ] **Step 6: Record device matrix**

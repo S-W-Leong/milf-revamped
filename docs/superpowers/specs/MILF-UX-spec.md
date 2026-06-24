@@ -75,7 +75,7 @@ The whole senior-facing UX is a single state machine living in an overlay. Five 
 ### State F — Failure (the real product) ⚠️
 - **Rule:** Never "you did it wrong." Never a raw error. Never a dead end.
 - **Visual + voice:** *"I'm having a little trouble with that. Please try again."*
-- **Controls:** Big **YES (call daughter)** / big **Try again**.
+- **Controls:** Big **Try again** / big **Cancel**.
 - **Escape hatch:** "Call my daughter/son" connects the senior to the **buyer** — ties failure recovery directly to the relationship Gemini structurally lacks.
 - **Telemetry:** Every failure silently logs to the buyer's ambient health view (see §5), so repeated failures surface to the person who can fix them.
 
@@ -183,7 +183,7 @@ These legitimately diverge — design both deliberately; don't let the demo vers
 |---|---|---|
 | Execution view | **Visible** live navigation (agent working is the wow) | **Calm bubble** + narration by default |
 | Confirmation | Can show the face-confirm as a trust beat | Same — it's a feature to show off |
-| Failure | Show the "call your daughter" recovery (differentiator) | Same — it's the product |
+| Failure | Show the safe failure recovery (differentiator) | Same — it's the product |
 | Speech | Show multilingual/dialect input handling | Same |
 
 The hero demo flow (locked): *"I want to see my grandson"* → navigate WhatsApp → find contact → spoken confirmation → connect video call, no tapping.

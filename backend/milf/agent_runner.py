@@ -14,7 +14,7 @@ from milf.stt import STTAdapter
 from milf.ws_driver import WebSocketDriver
 
 SAFE_FAILURE_COPY = (
-    "I'm having a little trouble doing that. Want me to call your daughter to help?"
+    "I'm having a little trouble with that. Please try again."
 )
 APP_CARDS_DIR = Path(__file__).resolve().parents[2] / "config" / "app_cards"
 logger = logging.getLogger(__name__)

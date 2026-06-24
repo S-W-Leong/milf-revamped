@@ -670,7 +670,7 @@ class MilfSessionController(
 
     private companion object {
         const val DEFAULT_BACKEND_URL = "ws://10.0.2.2:8765"
-        const val SAFE_FAILURE = "I'm having a little trouble doing that. Want me to call your daughter to help?"
+        const val SAFE_FAILURE = "I'm having a little trouble with that. Please try again."
     }
 }
 
