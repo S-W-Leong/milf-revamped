@@ -1,4 +1,5 @@
 from milf.context import (
+    AGENT_OVERLAY_INTERACTION,
     WHATSAPP_APP_CARD,
     acknowledgment,
     build_goal,
@@ -37,6 +38,14 @@ def test_build_goal_includes_contact_card_and_confirmation():
     assert "Preferred channel: WhatsApp video." in goal
     assert "confirm_action" in goal
     assert WHATSAPP_APP_CARD.strip()[:10] in goal
+
+
+def test_build_goal_warns_agent_about_overlay_swallowed_taps():
+    goal = build_goal("I want to see my grandson")
+
+    assert AGENT_OVERLAY_INTERACTION in goal
+    assert "first tap outside the bar only collapses MILF" in goal
+    assert "does not reach the underlying app" in goal
 
 
 def test_escape_contact_returns_configured_contact():
