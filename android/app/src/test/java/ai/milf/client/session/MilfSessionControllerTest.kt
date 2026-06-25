@@ -1118,7 +1118,7 @@ private fun testDependencies(
     clients: List<FakeClient>,
     recorder: FakeRecorder = FakeRecorder(),
     narrator: FakeNarrator = FakeNarrator(),
-    initialBackendUrl: String = "ws://10.0.2.2:8765",
+    initialBackendUrl: String = DEFAULT_BACKEND_URL,
     initialAgentMemory: String = "",
     saveBackendUrl: (String) -> Unit = {},
     saveSpeechInputMode: (SpeechInputMode) -> Unit = {},

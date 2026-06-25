@@ -5,7 +5,9 @@ import logging
 
 import pytest
 import websockets
+import milf.server as server_module
 from websockets.datastructures import Headers
+from websockets.exceptions import InvalidMessage
 from websockets.http11 import Request
 
 from milf.agent_runner import SAFE_FAILURE_COPY
@@ -67,6 +69,9 @@ def test_configure_logging_suppresses_websocket_connection_noise(monkeypatch):
     captured = {}
 
     class FakeLogger:
+        def addFilter(self, log_filter):
+            captured["filter"] = log_filter
+
         def setLevel(self, level):
             captured["level"] = level
 
@@ -86,7 +91,37 @@ def test_configure_logging_suppresses_websocket_connection_noise(monkeypatch):
     assert captured == {
         "name": "websockets.server",
         "level": logging.WARNING,
+        "filter": captured["filter"],
     }
+    assert isinstance(captured["filter"], server_module._NoisyHandshakeFilter)
+
+
+def test_noisy_handshake_filter_suppresses_empty_probe_errors():
+    record = logging.LogRecord(
+        "websockets.server",
+        logging.ERROR,
+        __file__,
+        1,
+        "opening handshake failed",
+        (),
+        (InvalidMessage, InvalidMessage("did not receive a valid HTTP request"), None),
+    )
+
+    assert server_module._NoisyHandshakeFilter().filter(record) is False
+
+
+def test_noisy_handshake_filter_keeps_other_websocket_errors():
+    record = logging.LogRecord(
+        "websockets.server",
+        logging.ERROR,
+        __file__,
+        1,
+        "opening handshake failed",
+        (),
+        (InvalidMessage, InvalidMessage("bad upgrade header"), None),
+    )
+
+    assert server_module._NoisyHandshakeFilter().filter(record) is True
 
 
 async def test_serve_allows_large_phone_state_frames(monkeypatch):

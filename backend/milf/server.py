@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 import websockets
 from websockets.datastructures import Headers
+from websockets.exceptions import InvalidMessage
 from websockets.http11 import Response
 
 from milf.agent_runner import SAFE_FAILURE_COPY, run_intent, run_task
@@ -150,6 +151,19 @@ def _process_request(_connection, request):
     )
 
 
+class _NoisyHandshakeFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.getMessage() != "opening handshake failed":
+            return True
+        if not record.exc_info:
+            return True
+        error = record.exc_info[1]
+        return not (
+            isinstance(error, InvalidMessage)
+            and str(error) == "did not receive a valid HTTP request"
+        )
+
+
 async def _call_with_optional_context(
     fn: Callable[..., Any],
     *args: Any,
@@ -203,7 +217,9 @@ def _configure_logging() -> None:
         level=level,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    logging.getLogger("websockets.server").setLevel(logging.WARNING)
+    websocket_logger = logging.getLogger("websockets.server")
+    websocket_logger.setLevel(logging.WARNING)
+    websocket_logger.addFilter(_NoisyHandshakeFilter())
 
 
 def main() -> None:

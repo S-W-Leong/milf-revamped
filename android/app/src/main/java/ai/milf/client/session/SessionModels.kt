@@ -60,6 +60,8 @@ data class FailureState(
     val lang: String
 )
 
+const val DEFAULT_BACKEND_URL = "wss://milf-revamped.onrender.com/"
+
 data class SetupStatus(
     val microphoneGranted: Boolean = false,
     val callPhoneGranted: Boolean = false,
@@ -69,7 +71,7 @@ data class SetupStatus(
 )
 
 data class SeniorUiState(
-    val backendUrl: String = "ws://10.0.2.2:8765",
+    val backendUrl: String = DEFAULT_BACKEND_URL,
     val lang: String = "en",
     val screen: SeniorUxScreen = SeniorUxScreen.Idle,
     val isRecording: Boolean = false,

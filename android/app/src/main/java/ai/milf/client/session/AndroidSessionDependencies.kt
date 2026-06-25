@@ -68,7 +68,6 @@ fun androidSessionDependencies(application: Application): MilfSessionController.
         }
     )
 
-private const val DEFAULT_BACKEND_URL = "ws://10.0.2.2:8765"
 private const val PREFS_NAME = "milf_setup"
 private const val KEY_BACKEND_URL = "backend_url"
 private const val KEY_SPEECH_INPUT_MODE = "speech_input_mode"
