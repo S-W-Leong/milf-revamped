@@ -63,6 +63,28 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun approveConfirmationShrinksOverlayBeforeSendingResponse() = runTest {
+        var stateWhenResponseSent: SeniorUiState? = null
+        lateinit var controller: MilfSessionController
+        val client = FakeClient(
+            onSendConfirm = {
+                stateWhenResponseSent = controller.uiState.value
+            }
+        )
+        controller = fakeController(client = client)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        controller.showConfirmationForTest("c1", "Send WhatsApp message?", "en")
+        controller.approveConfirmation()
+
+        val state = stateWhenResponseSent
+        assertEquals(SeniorUxScreen.Acting, state?.screen)
+        assertEquals(null, state?.confirmation)
+        assertEquals(true, state?.isCollapsed)
+    }
+
+    @Test
     fun denyConfirmationInvalidatesAndClosesActiveSession() = runTest {
         val sent = mutableListOf<ConfirmResponse>()
         val client = FakeClient(onSendConfirm = { sent += it })

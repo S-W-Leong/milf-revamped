@@ -30,6 +30,7 @@ class SeniorOverlayService : Service() {
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private var window: OverlayWindowController? = null
     private var foregroundStarted = false
+    private var shutdownStarted = false
 
     override fun onCreate() {
         super.onCreate()
@@ -92,20 +93,33 @@ class SeniorOverlayService : Service() {
                 return START_NOT_STICKY
             }
         }
-        return START_STICKY
+        return OverlayServiceLifecyclePolicy.validStartMode
     }
 
     override fun onDestroy() {
-        val controller = (application as MilfApplication).sessionController
-        controller.cancelActiveSession()
-        controller.setOverlayEnabled(false)
+        shutdownOverlay()
         scope.cancel()
-        window?.remove()
-        window = null
         super.onDestroy()
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        shutdownOverlay()
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun shutdownOverlay() {
+        if (shutdownStarted) return
+        shutdownStarted = true
+        val controller = (application as MilfApplication).sessionController
+        controller.cancelActiveSession()
+        controller.setOverlayEnabled(false)
+        window?.remove()
+        window = null
+        stopForegroundIfNeeded()
+    }
 
     private fun beginListeningSafely(controller: MilfSessionController): Boolean {
         if (!ensureMicrophoneForegroundReady()) return false
@@ -171,6 +185,17 @@ class SeniorOverlayService : Service() {
         }
     }
 
+    private fun stopForegroundIfNeeded() {
+        if (!foregroundStarted) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
+        foregroundStarted = false
+    }
+
     private fun overlayNotification(): Notification {
         val setupIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
@@ -211,4 +236,8 @@ class SeniorOverlayService : Service() {
             context.stopService(Intent(context, SeniorOverlayService::class.java))
         }
     }
+}
+
+internal object OverlayServiceLifecyclePolicy {
+    val validStartMode: Int = Service.START_NOT_STICKY
 }

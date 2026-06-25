@@ -542,18 +542,31 @@ class MilfSessionController(
 
     private fun respondToConfirmation(approved: Boolean) {
         val pending = _uiState.value.confirmation ?: return
-        dependencies.activeClient?.send(ConfirmResponse(pending.id, approved))
-        if (!approved) {
-            nextSessionId()
-            closeActiveClient()
+        if (approved) {
+            _uiState.update {
+                it.copy(
+                    confirmation = null,
+                    screen = SeniorUxScreen.Acting,
+                    isRunning = true,
+                    captions = ACTING_PROMPT,
+                    actionTarget = it.actionTarget,
+                    isCollapsed = true
+                )
+            }
+            dependencies.activeClient?.send(ConfirmResponse(pending.id, approved = true))
+            return
         }
+
+        dependencies.activeClient?.send(ConfirmResponse(pending.id, approved))
+        nextSessionId()
+        closeActiveClient()
         _uiState.update {
             it.copy(
                 confirmation = null,
-                screen = if (approved) SeniorUxScreen.Acting else SeniorUxScreen.Idle,
-                isRunning = approved,
-                captions = if (approved) ACTING_PROMPT else READY_PROMPT,
-                actionTarget = if (approved) it.actionTarget else null
+                screen = SeniorUxScreen.Idle,
+                isRunning = false,
+                captions = READY_PROMPT,
+                actionTarget = null
             )
         }
     }
