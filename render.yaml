@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: milf-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: PYTHONPATH=. MILF_WS_HOST=0.0.0.0 MILF_WS_PORT=$PORT python -m milf.server
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.2
+      - key: MILF_STT_BACKEND
+        value: router
+      - key: MILF_MOCK_TRANSCRIPT
+        value: I want to see my grandson
+      - key: ILMU_API_KEY
+        sync: false
+      - key: ILMU_API_URL
+        sync: false
+      - key: MERALION_API_KEY
+        sync: false
+      - key: MERALION_API_URL
+        sync: false
+      - key: MILF_LOG_LEVEL
+        value: INFO
