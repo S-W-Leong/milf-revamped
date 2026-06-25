@@ -171,7 +171,6 @@ cd android
 8. Wait for narration and WhatsApp navigation.
 9. Approve the confirmation prompt before the call connects.
 
-For rehearsal notes, device matrix, and backup-demo guidance, see `docs/android-demo-runbook.md`.
 
 ## Development Notes
 
