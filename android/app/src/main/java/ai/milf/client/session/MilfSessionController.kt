@@ -34,7 +34,8 @@ class MilfSessionController(
         SeniorUiState(
             backendUrl = dependencies.initialBackendUrl,
             speechInputMode = dependencies.speechInputMode,
-            agentMemory = dependencies.initialAgentMemory
+            agentMemory = dependencies.initialAgentMemory,
+            savedAgentMemory = dependencies.initialAgentMemory
         )
     )
     val uiState: StateFlow<SeniorUiState> = _uiState.asStateFlow()
@@ -106,9 +107,37 @@ class MilfSessionController(
         _uiState.update { it.copy(speechInputMode = mode) }
     }
 
-    fun setAgentMemory(memory: String) {
-        dependencies.saveAgentMemory(memory)
-        _uiState.update { it.copy(agentMemory = memory) }
+    fun setAgentMemoryDraft(memory: String) {
+        _uiState.update {
+            it.copy(
+                agentMemory = memory,
+                agentMemorySaveStatus = if (memory == it.savedAgentMemory) {
+                    AgentMemorySaveStatus.Saved
+                } else {
+                    AgentMemorySaveStatus.Unsaved
+                }
+            )
+        }
+    }
+
+    fun saveAgentMemory() {
+        val memory = _uiState.value.agentMemory
+        val status = runCatching {
+            dependencies.saveAgentMemory(memory)
+        }.fold(
+            onSuccess = { AgentMemorySaveStatus.Saved },
+            onFailure = { AgentMemorySaveStatus.Failed }
+        )
+        _uiState.update {
+            if (status == AgentMemorySaveStatus.Saved) {
+                it.copy(
+                    savedAgentMemory = memory,
+                    agentMemorySaveStatus = status
+                )
+            } else {
+                it.copy(agentMemorySaveStatus = status)
+            }
+        }
     }
 
     fun setCommandText(text: String) {
@@ -258,7 +287,7 @@ class MilfSessionController(
                 state.lang,
                 callbacks(callbackSessionId, client),
                 backendSessionId = backendSessionId,
-                memory = state.agentMemory
+                memory = state.savedAgentMemory
             )
         } catch (exception: RuntimeException) {
             moveLocalSessionToFailure(expectedClient = client)
@@ -301,7 +330,7 @@ class MilfSessionController(
                 state.lang,
                 callbacks(callbackSessionId, client),
                 backendSessionId = backendSessionId,
-                memory = state.agentMemory
+                memory = state.savedAgentMemory
             )
         } catch (exception: RuntimeException) {
             moveLocalSessionToFailure(expectedClient = client)
@@ -568,7 +597,7 @@ class MilfSessionController(
                 state.lang,
                 callbacks(callbackSessionId, client),
                 backendSessionId = backendSessionId,
-                memory = state.agentMemory
+                memory = state.savedAgentMemory
             )
         } catch (exception: RuntimeException) {
             moveLocalSessionToFailure(expectedClient = client)

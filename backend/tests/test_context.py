@@ -8,6 +8,7 @@ def test_build_goal_uses_memory_instead_of_injected_contacts():
     )
 
     assert "Agent memory:" in goal
+    assert "Use Agent memory to resolve relationship references" in goal
     assert "Wei is my grandson. Use WhatsApp video." in goal
     assert "Contact id:" not in goal
     assert "Intended contact:" not in goal

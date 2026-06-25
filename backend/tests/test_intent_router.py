@@ -167,7 +167,12 @@ async def test_intent_model_receives_user_memory_without_known_contact_injection
         (
             "call my grandson",
             "en",
-            "No prior MILF session context.\nAgent memory: Wei is my grandson.",
+            "No prior MILF session context.\n"
+            "Agent memory:\n"
+            "Use Agent memory to resolve relationship references, nicknames, "
+            "preferred apps, and other user-specific details before deciding "
+            "whether the request is missing information.\n"
+            "Wei is my grandson.",
         )
     ]
     assert "buyer-daughter" not in INTENT_AGENT_PROMPT

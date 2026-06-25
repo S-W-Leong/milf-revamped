@@ -5,6 +5,7 @@ import os
 from inspect import Parameter, signature
 from typing import Any, Literal, Protocol
 
+from milf.context import format_agent_memory
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -48,8 +49,10 @@ Classify the user's utterance into one route:
 Rules:
 - For execute, write normalized_intent as a clear, concrete phone task.
 - Use the optional Agent memory below for user-provided names, preferences, and
-  context. Do not assume relationships or contacts that are not present in
-  the current utterance, session context, or Agent memory.
+  context. Resolve relationship references, nicknames, and preferred apps from
+  Agent memory before deciding whether the request is missing information. Do
+  not assume relationships or contacts that are not present in the current
+  utterance, session context, or Agent memory.
 - Leave contact_id unset unless an explicit integration provides one.
 - Use requires_confirmation for calls, sends, payments, location/media sharing, or other consequential actions.
 - For clarify, reply with one short question.
@@ -109,9 +112,9 @@ async def route_intent_with_agent(
         session_context = "No prior MILF session context."
     else:
         session_context = session.context_for_intent_router()
-    memory = memory.strip()
-    if memory:
-        session_context = f"{session_context}\nAgent memory: {memory}"
+    memory_section = format_agent_memory(memory)
+    if memory_section:
+        session_context = f"{session_context}\n{memory_section}"
     decision = await _call_intent_agent(agent, intent, lang, session_context)
     logger.info(
         "MILF intent model decision.",

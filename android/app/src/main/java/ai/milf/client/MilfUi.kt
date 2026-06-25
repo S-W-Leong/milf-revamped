@@ -1,6 +1,7 @@
 package ai.milf.client
 
 import ai.milf.client.session.AppScreen
+import ai.milf.client.session.AgentMemorySaveStatus
 import ai.milf.client.session.BackendConnectionStatus
 import ai.milf.client.session.ConfigTab
 import ai.milf.client.session.SeniorUiState
@@ -48,13 +49,13 @@ fun MilfUi(
     onLangChange: (String) -> Unit,
     onSpeechInputModeChange: (SpeechInputMode) -> Unit,
     onAgentMemoryChange: (String) -> Unit,
+    onAgentMemorySave: () -> Unit,
     onOpenAccessibility: () -> Unit,
     onOpenOverlayPermission: () -> Unit,
     onOpenAssistSettings: () -> Unit,
     onRequestAudioPermission: () -> Unit,
     onRequestCallPermission: () -> Unit,
     onStartOverlay: () -> Unit,
-    onStopOverlay: () -> Unit,
     onSetAppScreen: (AppScreen) -> Unit,
     onConfigTabChange: (ConfigTab) -> Unit
 ) {
@@ -78,13 +79,12 @@ fun MilfUi(
                     onLangChange = onLangChange,
                     onSpeechInputModeChange = onSpeechInputModeChange,
                     onAgentMemoryChange = onAgentMemoryChange,
+                    onAgentMemorySave = onAgentMemorySave,
                     onOpenAccessibility = onOpenAccessibility,
                     onOpenOverlayPermission = onOpenOverlayPermission,
                     onOpenAssistSettings = onOpenAssistSettings,
                     onRequestAudioPermission = onRequestAudioPermission,
                     onRequestCallPermission = onRequestCallPermission,
-                    onStartOverlay = onStartOverlay,
-                    onStopOverlay = onStopOverlay,
                     onSetAppScreen = onSetAppScreen,
                     onConfigTabChange = onConfigTabChange
                 )
@@ -176,13 +176,12 @@ private fun ConfigScreen(
     onLangChange: (String) -> Unit,
     onSpeechInputModeChange: (SpeechInputMode) -> Unit,
     onAgentMemoryChange: (String) -> Unit,
+    onAgentMemorySave: () -> Unit,
     onOpenAccessibility: () -> Unit,
     onOpenOverlayPermission: () -> Unit,
     onOpenAssistSettings: () -> Unit,
     onRequestAudioPermission: () -> Unit,
     onRequestCallPermission: () -> Unit,
-    onStartOverlay: () -> Unit,
-    onStopOverlay: () -> Unit,
     onSetAppScreen: (AppScreen) -> Unit,
     onConfigTabChange: (ConfigTab) -> Unit
 ) {
@@ -252,8 +251,7 @@ private fun ConfigScreen(
                 onLangChange = onLangChange,
                 onSpeechInputModeChange = onSpeechInputModeChange,
                 onAgentMemoryChange = onAgentMemoryChange,
-                onStartOverlay = onStartOverlay,
-                onStopOverlay = onStopOverlay
+                onAgentMemorySave = onAgentMemorySave
             )
 
             ConfigTab.Logs -> LogsTab(state)
@@ -347,8 +345,7 @@ private fun AgentTab(
     onLangChange: (String) -> Unit,
     onSpeechInputModeChange: (SpeechInputMode) -> Unit,
     onAgentMemoryChange: (String) -> Unit,
-    onStartOverlay: () -> Unit,
-    onStopOverlay: () -> Unit
+    onAgentMemorySave: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LanguageRow(state.lang, onLangChange)
@@ -369,34 +366,35 @@ private fun AgentTab(
                 cursorColor = MilfColors.Sage
             )
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = onStartOverlay,
-                enabled = state.canStartHelper,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MilfColors.SageDim,
-                    contentColor = MilfColors.Sage,
-                    disabledContainerColor = MilfColors.CardSurface,
-                    disabledContentColor = MilfColors.TextMuted
-                )
-            ) {
-                Text("Start")
-            }
-            OutlinedButton(
-                onClick = onStopOverlay,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, MilfColors.BorderStrong),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MilfColors.TextPrimary)
-            ) {
-                Text("Stop")
-            }
+        Text(
+            text = when (state.agentMemorySaveStatus) {
+                AgentMemorySaveStatus.Unsaved -> "Unsaved"
+                AgentMemorySaveStatus.Saved -> "Saved"
+                AgentMemorySaveStatus.Failed -> "Save failed"
+            },
+            color = when (state.agentMemorySaveStatus) {
+                AgentMemorySaveStatus.Unsaved -> MilfColors.TextSecondary
+                AgentMemorySaveStatus.Saved -> MilfColors.Sage
+                AgentMemorySaveStatus.Failed -> MilfColors.NoRed
+            },
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Button(
+            onClick = onAgentMemorySave,
+            enabled = state.agentMemorySaveStatus != AgentMemorySaveStatus.Saved,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MilfColors.SageDim,
+                contentColor = MilfColors.Sage,
+                disabledContainerColor = MilfColors.CardSurface,
+                disabledContentColor = MilfColors.TextMuted
+            )
+        ) {
+            Text("Save memory")
         }
     }
 }

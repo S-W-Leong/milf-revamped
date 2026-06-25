@@ -29,13 +29,26 @@ MILF overlay interaction rule:
 - Do not tap Collapse MILF unless you intentionally need the rail out of the way.
 """
 
+AGENT_MEMORY_RULE = (
+    "Use Agent memory to resolve relationship references, nicknames, preferred "
+    "apps, and other user-specific details before deciding whether the request "
+    "is missing information."
+)
+
+
+def format_agent_memory(memory: str) -> str:
+    memory = memory.strip()
+    if not memory:
+        return ""
+    return f"Agent memory:\n{AGENT_MEMORY_RULE}\n{memory}"
+
 
 def build_goal(intent: str, memory: str = "") -> str:
     parts = [f"Spoken intent: {intent!r}."]
 
-    memory = memory.strip()
-    if memory:
-        parts.append(f"Agent memory:\n{memory}")
+    memory_section = format_agent_memory(memory)
+    if memory_section:
+        parts.append(memory_section)
 
     parts.append(AGENT_OVERLAY_INTERACTION.strip())
     parts.append(CLARIFICATION_RULE)

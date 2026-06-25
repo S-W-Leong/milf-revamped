@@ -29,6 +29,12 @@ enum class ConfigTab {
     Logs
 }
 
+enum class AgentMemorySaveStatus {
+    Unsaved,
+    Saved,
+    Failed
+}
+
 data class ActionTarget(
     val x: Int,
     val y: Int,
@@ -86,6 +92,8 @@ data class SeniorUiState(
     val isCollapsed: Boolean = false,
     val speechInputMode: SpeechInputMode = SpeechInputMode.Native,
     val agentMemory: String = "",
+    val savedAgentMemory: String = "",
+    val agentMemorySaveStatus: AgentMemorySaveStatus = AgentMemorySaveStatus.Saved,
     val appScreen: AppScreen = AppScreen.Main,
     val selectedConfigTab: ConfigTab = ConfigTab.Permissions
 )

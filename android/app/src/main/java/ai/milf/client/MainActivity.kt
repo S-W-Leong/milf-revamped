@@ -49,7 +49,8 @@ class MainActivity : ComponentActivity() {
                 onDisconnectBackend = viewModel::disconnectBackend,
                 onLangChange = viewModel::setLang,
                 onSpeechInputModeChange = viewModel::setSpeechInputMode,
-                onAgentMemoryChange = viewModel::setAgentMemory,
+                onAgentMemoryChange = viewModel::setAgentMemoryDraft,
+                onAgentMemorySave = viewModel::saveAgentMemory,
                 onOpenAccessibility = {
                     startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 },
@@ -78,9 +79,6 @@ class MainActivity : ComponentActivity() {
                             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         startActivity(homeIntent)
                     }
-                },
-                onStopOverlay = {
-                    SeniorOverlayService.stop(this)
                 },
                 onSetAppScreen = viewModel::setAppScreen,
                 onConfigTabChange = viewModel::setConfigTab

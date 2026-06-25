@@ -489,7 +489,8 @@ class MilfSessionControllerTest {
 
         assertEquals(SpeechInputMode.Native, controller.uiState.value.speechInputMode)
         controller.setSpeechInputMode(SpeechInputMode.BackendAudio)
-        controller.setAgentMemory("Wei is my grandson.")
+        controller.setAgentMemoryDraft("Wei is my grandson.")
+        controller.saveAgentMemory()
         controller.beginListening()
         controller.finishListeningAndRun()
 
@@ -518,7 +519,7 @@ class MilfSessionControllerTest {
     }
 
     @Test
-    fun setAgentMemoryPersistsChoice() = runTest {
+    fun setAgentMemoryDraftMarksMemoryUnsaved() = runTest {
         val saved = mutableListOf<String>()
         val controller = MilfSessionController(
             dependencies = testDependencies(
@@ -530,10 +531,70 @@ class MilfSessionControllerTest {
 
         assertEquals("Existing memory", controller.uiState.value.agentMemory)
 
-        controller.setAgentMemory("Wei is my grandson.")
+        controller.setAgentMemoryDraft("Wei is my grandson.")
+
+        assertEquals(emptyList<String>(), saved)
+        assertEquals("Wei is my grandson.", controller.uiState.value.agentMemory)
+        assertEquals(AgentMemorySaveStatus.Unsaved, controller.uiState.value.agentMemorySaveStatus)
+    }
+
+    @Test
+    fun saveAgentMemoryPersistsDraftAndMarksSaved() = runTest {
+        val saved = mutableListOf<String>()
+        val controller = MilfSessionController(
+            dependencies = testDependencies(
+                clients = listOf(FakeClient()),
+                saveAgentMemory = { saved += it }
+            )
+        )
+
+        controller.setAgentMemoryDraft("Wei is my grandson.")
+        controller.saveAgentMemory()
 
         assertEquals(listOf("Wei is my grandson."), saved)
+        assertEquals(AgentMemorySaveStatus.Saved, controller.uiState.value.agentMemorySaveStatus)
+    }
+
+    @Test
+    fun saveAgentMemoryShowsFailureWhenPersistenceFails() = runTest {
+        val controller = MilfSessionController(
+            dependencies = testDependencies(
+                clients = listOf(FakeClient()),
+                saveAgentMemory = { error("disk full") }
+            )
+        )
+
+        controller.setAgentMemoryDraft("Wei is my grandson.")
+        controller.saveAgentMemory()
+
         assertEquals("Wei is my grandson.", controller.uiState.value.agentMemory)
+        assertEquals(AgentMemorySaveStatus.Failed, controller.uiState.value.agentMemorySaveStatus)
+    }
+
+    @Test
+    fun unsavedAgentMemoryDraftIsNotSentToBackend() = runTest {
+        val client = FakeClient()
+        val controller = fakeController(client = client)
+
+        controller.setAgentMemoryDraft("Unsaved memory")
+        controller.setCommandText("call Wei")
+        controller.submitTextCommand()
+
+        assertEquals("", client.startedMemory)
+        assertEquals(AgentMemorySaveStatus.Unsaved, controller.uiState.value.agentMemorySaveStatus)
+    }
+
+    @Test
+    fun savedAgentMemoryIsSentToBackend() = runTest {
+        val client = FakeClient()
+        val controller = fakeController(client = client)
+
+        controller.setAgentMemoryDraft("Wei is my grandson.")
+        controller.saveAgentMemory()
+        controller.setCommandText("call Wei")
+        controller.submitTextCommand()
+
+        assertEquals("Wei is my grandson.", client.startedMemory)
     }
 
     @Test
@@ -577,7 +638,8 @@ class MilfSessionControllerTest {
         val client = FakeClient()
         val controller = fakeController(client = client)
 
-        controller.setAgentMemory("Wei is my grandson.")
+        controller.setAgentMemoryDraft("Wei is my grandson.")
+        controller.saveAgentMemory()
         controller.setCommandText("  I want to see my grandson  ")
         controller.submitTextCommand()
 
