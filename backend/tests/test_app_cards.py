@@ -17,6 +17,13 @@ def test_whatsapp_app_card_is_registered_for_mobilerun():
     assert mapping["com.whatsapp"] == "social/whatsapp.md"
 
 
+def test_youtube_music_app_card_is_registered_for_mobilerun():
+    mapping_path = APP_CARDS_DIR / "app_cards.json"
+    mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+
+    assert mapping["com.google.android.apps.youtube.music"] == "media/youtube_music.md"
+
+
 def test_whatsapp_app_card_is_general_purpose_not_demo_overfit():
     card = (APP_CARDS_DIR / "social" / "whatsapp.md").read_text(encoding="utf-8")
     normalized = card.casefold()
@@ -37,6 +44,19 @@ async def test_local_app_card_provider_loads_whatsapp_card():
 
     assert "WhatsApp App Guide" in card
     assert "Voice and Video Calls" in card
+
+
+async def test_local_app_card_provider_loads_youtube_music_card():
+    provider = LocalAppCardProvider(app_cards_dir=str(APP_CARDS_DIR))
+
+    card = await provider.load_app_card(
+        "com.google.android.apps.youtube.music",
+        "Play a YouTube Music playlist",
+    )
+
+    assert "YouTube Music App Guide" in card
+    assert "Playback" in card
+    assert "Search" in card
 
 
 def test_mobile_config_points_at_repo_app_cards_dir():
