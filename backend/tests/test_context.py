@@ -33,7 +33,6 @@ def test_build_goal_tells_agent_clarification_must_be_first_plan_item():
 
     assert "make request_clarification the first and only plan item" in goal
     assert "do not put phone actions before the clarification request" in goal
-    assert "After request_clarification succeeds" in goal
 
 
 def test_build_goal_omits_memory_section_when_empty():

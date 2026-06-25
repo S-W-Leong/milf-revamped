@@ -1,5 +1,8 @@
 from types import SimpleNamespace
 
+import pytest
+
+from milf.clarification import ClarificationRequested
 from milf.narration import NarrationLine, NarrationPolicy, narration_for, narrate_events
 
 
@@ -58,10 +61,14 @@ class FakeHandler:
     def __init__(self, events, result):
         self._events = events
         self._result = result
+        self.cancelled = False
 
     async def stream_events(self):
         for e in self._events:
             yield e
+
+    async def cancel_run(self):
+        self.cancelled = True
 
     def __await__(self):
         async def _r():
@@ -106,3 +113,29 @@ async def test_narrate_events_suppresses_noise_and_duplicates():
 
     assert sent == [("I'm opening WhatsApp.", "en")]
     assert result.success is True
+
+
+async def test_narrate_events_stops_after_successful_clarification_tool():
+    class Conn:
+        async def send_narration(self, text, lang):
+            raise AssertionError("tool event should not produce progress narration")
+
+    handler = FakeHandler(
+        [
+            _named(
+                "ToolExecutionEvent",
+                tool_name="request_clarification",
+                success=True,
+                tool_args={"question": "Which contact?"},
+                summary="Clarification requested.",
+            ),
+            _named("ExecutorActionEvent", description="Waiting for user"),
+        ],
+        SimpleNamespace(success=True, reason="done"),
+    )
+
+    with pytest.raises(ClarificationRequested) as error:
+        await narrate_events(handler, Conn(), "en")
+
+    assert error.value.question == "Which contact?"
+    assert handler.cancelled is True

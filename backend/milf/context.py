@@ -11,9 +11,7 @@ CLARIFICATION_RULE = (
     "request_clarification with one short question and stop. Do not wait in a loop "
     "and do not choose between ambiguous contacts. If clarification is needed, "
     "make request_clarification the first and only plan item; do not put phone "
-    "actions before the clarification request. After request_clarification succeeds, "
-    "the task is paused until the user answers; use request_accomplished "
-    'success="false" and do not call request_clarification again.'
+    "actions before the clarification request."
 )
 
 POST_SEND_COMPLETION_RULE = (

@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from milf.clarification import ClarificationRequested
+
 
 logger = logging.getLogger(__name__)
 
@@ -114,11 +116,44 @@ def narration_for(event: object) -> str | None:
 async def narrate_events(handler: Any, connection: Any, lang: str) -> Any:
     policy = NarrationPolicy()
     async for event in handler.stream_events():
+        clarification_question = _successful_clarification_question(event)
+        if clarification_question is not None:
+            await _cancel_handler(handler)
+            raise ClarificationRequested(clarification_question)
+
         line = policy.render(event)
         if line is not None:
             await connection.send_narration(line.text, lang)
 
     return await handler
+
+
+def _successful_clarification_question(event: object) -> str | None:
+    if event.__class__.__name__ != "ToolExecutionEvent":
+        return None
+    if getattr(event, "tool_name", None) != "request_clarification":
+        return None
+    if getattr(event, "success", False) is not True:
+        return None
+
+    tool_args = getattr(event, "tool_args", None)
+    if isinstance(tool_args, dict):
+        question = tool_args.get("question")
+        if isinstance(question, str) and question.strip():
+            return question
+    return "Which option should I use?"
+
+
+async def _cancel_handler(handler: Any) -> None:
+    cancel_run = getattr(handler, "cancel_run", None)
+    if cancel_run is None:
+        return
+    try:
+        await cancel_run(timeout=0.1)
+    except TypeError:
+        await cancel_run()
+    except Exception:
+        logger.debug("MILF handler cancellation failed.", exc_info=True)
 
 
 def _friendly_progress_text(description: str) -> str | None:
