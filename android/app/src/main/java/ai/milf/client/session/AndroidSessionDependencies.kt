@@ -30,13 +30,20 @@ fun androidSessionDependencies(application: Application): MilfSessionController.
             ?: "",
         narrator = AndroidNarrator(TtsNarrator(application)),
         clientFactory = { MilfWebSocketClient(it) },
-        initialBackendUrl = application.backendPrefs()
-            .getString(KEY_BACKEND_URL, DEFAULT_BACKEND_URL)
-            ?: DEFAULT_BACKEND_URL,
+        initialBackendTarget = application.savedBackendTarget(),
+        initialCustomBackendUrl = application.backendPrefs()
+            .getString(KEY_BACKEND_URL, DEFAULT_CUSTOM_BACKEND_URL)
+            ?: DEFAULT_CUSTOM_BACKEND_URL,
         saveBackendUrl = { url ->
             application.backendPrefs()
                 .edit()
                 .putString(KEY_BACKEND_URL, url)
+                .apply()
+        },
+        saveBackendTarget = { target ->
+            application.backendPrefs()
+                .edit()
+                .putString(KEY_BACKEND_TARGET, target.name)
                 .apply()
         },
         saveSpeechInputMode = { mode ->
@@ -70,6 +77,7 @@ fun androidSessionDependencies(application: Application): MilfSessionController.
 
 private const val PREFS_NAME = "milf_setup"
 private const val KEY_BACKEND_URL = "backend_url"
+private const val KEY_BACKEND_TARGET = "backend_target"
 private const val KEY_SPEECH_INPUT_MODE = "speech_input_mode"
 private const val KEY_AGENT_MEMORY = "agent_memory"
 
@@ -82,6 +90,11 @@ private fun Context.hasPermission(permission: String): Boolean =
 private fun Context.savedSpeechInputMode(): SpeechInputMode {
     val value = backendPrefs().getString(KEY_SPEECH_INPUT_MODE, null) ?: return SpeechInputMode.Native
     return runCatching { SpeechInputMode.valueOf(value) }.getOrDefault(SpeechInputMode.Native)
+}
+
+private fun Context.savedBackendTarget(): BackendTarget {
+    val value = backendPrefs().getString(KEY_BACKEND_TARGET, null) ?: return BackendTarget.Deployed
+    return runCatching { BackendTarget.valueOf(value) }.getOrDefault(BackendTarget.Deployed)
 }
 
 private fun Context.isMilfAssistantSelected(): Boolean {

@@ -3,6 +3,7 @@ package ai.milf.client
 import ai.milf.client.protocol.ConfirmResponse
 import ai.milf.client.protocol.MilfMessage
 import ai.milf.client.session.AppScreen
+import ai.milf.client.session.BackendTarget
 import ai.milf.client.session.ConfigTab
 import ai.milf.client.session.MilfSessionController
 import ai.milf.client.session.SeniorUiState
@@ -36,6 +37,7 @@ class MainViewModel(
     val uiState: StateFlow<SeniorUiState> = controller.uiState
 
     fun setBackendUrl(url: String) = controller.setBackendUrl(url)
+    fun setBackendTarget(target: BackendTarget) = controller.setBackendTarget(target)
     fun setLang(lang: String) = controller.setLang(lang)
     fun setSpeechInputMode(mode: SpeechInputMode) = controller.setSpeechInputMode(mode)
     fun setAgentMemoryDraft(memory: String) = controller.setAgentMemoryDraft(memory)

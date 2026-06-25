@@ -3,6 +3,7 @@ package ai.milf.client
 import ai.milf.client.session.AppScreen
 import ai.milf.client.session.AgentMemorySaveStatus
 import ai.milf.client.session.BackendConnectionStatus
+import ai.milf.client.session.BackendTarget
 import ai.milf.client.session.ConfigTab
 import ai.milf.client.session.SeniorUiState
 import ai.milf.client.session.SpeechInputMode
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.sp
 fun MilfUi(
     state: SeniorUiState,
     onBackendUrlChange: (String) -> Unit,
+    onBackendTargetChange: (BackendTarget) -> Unit,
     onConnectBackend: () -> Unit,
     onDisconnectBackend: () -> Unit,
     onLangChange: (String) -> Unit,
@@ -74,6 +76,7 @@ fun MilfUi(
                 ConfigScreen(
                     state = state,
                     onBackendUrlChange = onBackendUrlChange,
+                    onBackendTargetChange = onBackendTargetChange,
                     onConnectBackend = onConnectBackend,
                     onDisconnectBackend = onDisconnectBackend,
                     onLangChange = onLangChange,
@@ -171,6 +174,7 @@ private fun MainScreen(
 private fun ConfigScreen(
     state: SeniorUiState,
     onBackendUrlChange: (String) -> Unit,
+    onBackendTargetChange: (BackendTarget) -> Unit,
     onConnectBackend: () -> Unit,
     onDisconnectBackend: () -> Unit,
     onLangChange: (String) -> Unit,
@@ -242,6 +246,7 @@ private fun ConfigScreen(
             ConfigTab.Backend -> BackendTab(
                 state = state,
                 onBackendUrlChange = onBackendUrlChange,
+                onBackendTargetChange = onBackendTargetChange,
                 onConnectBackend = onConnectBackend,
                 onDisconnectBackend = onDisconnectBackend
             )
@@ -290,6 +295,7 @@ private fun PermissionsTab(
 private fun BackendTab(
     state: SeniorUiState,
     onBackendUrlChange: (String) -> Unit,
+    onBackendTargetChange: (BackendTarget) -> Unit,
     onConnectBackend: () -> Unit,
     onDisconnectBackend: () -> Unit
 ) {
@@ -297,21 +303,33 @@ private fun BackendTab(
         state.backendConnectionStatus in setOf(
             BackendConnectionStatus.Checking,
             BackendConnectionStatus.Connected
-        )
+    )
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BackendTargetRow(
+            selected = state.backendTarget,
+            onChange = onBackendTargetChange
+        )
         OutlinedTextField(
-            value = state.backendUrl,
+            value = if (state.backendTarget == BackendTarget.Custom) {
+                state.customBackendUrl
+            } else {
+                state.backendUrl
+            },
             onValueChange = onBackendUrlChange,
+            enabled = state.backendTarget == BackendTarget.Custom,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             label = { Text("Backend websocket") },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = MilfColors.TextPrimary,
                 unfocusedTextColor = MilfColors.TextPrimary,
+                disabledTextColor = MilfColors.TextSecondary,
                 focusedBorderColor = MilfColors.Sage,
                 unfocusedBorderColor = MilfColors.BorderStrong,
+                disabledBorderColor = MilfColors.BorderStrong,
                 focusedLabelColor = MilfColors.Sage,
                 unfocusedLabelColor = MilfColors.TextSecondary,
+                disabledLabelColor = MilfColors.TextSecondary,
                 cursorColor = MilfColors.Sage
             )
         )
@@ -336,6 +354,64 @@ private fun BackendTab(
                 missingText = backendStatusText(state.backendConnectionStatus)
             )
         )
+    }
+}
+
+@Composable
+private fun BackendTargetRow(
+    selected: BackendTarget,
+    onChange: (BackendTarget) -> Unit
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        BackendTargetButton(
+            label = "Deployed",
+            selected = selected == BackendTarget.Deployed,
+            onClick = { onChange(BackendTarget.Deployed) },
+            modifier = Modifier.weight(1f)
+        )
+        BackendTargetButton(
+            label = "Custom",
+            selected = selected == BackendTarget.Custom,
+            onClick = { onChange(BackendTarget.Custom) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun BackendTargetButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (selected) {
+        Button(
+            onClick = onClick,
+            modifier = modifier.height(44.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MilfColors.SageDim,
+                contentColor = MilfColors.Sage
+            )
+        ) {
+            Text(label)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier.height(44.dp),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, MilfColors.BorderStrong),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MilfColors.TextSecondary
+            )
+        ) {
+            Text(label)
+        }
     }
 }
 

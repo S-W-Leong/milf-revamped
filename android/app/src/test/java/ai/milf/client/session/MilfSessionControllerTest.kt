@@ -727,19 +727,39 @@ class MilfSessionControllerTest {
     }
 
     @Test
-    fun startsWithPersistedBackendUrl() = runTest {
+    fun startsWithDeployedBackendTargetEvenWhenCustomUrlExists() = runTest {
         val controller = MilfSessionController(
             dependencies = testDependencies(
                 clients = listOf(FakeClient()),
-                initialBackendUrl = "ws://192.168.1.20:8765"
+                initialCustomBackendUrl = "ws://192.168.1.20:8765"
             )
         )
 
-        assertEquals("ws://192.168.1.20:8765", controller.uiState.value.backendUrl)
+        assertEquals(BackendTarget.Deployed, controller.uiState.value.backendTarget)
+        assertEquals(DEFAULT_BACKEND_URL, controller.uiState.value.backendUrl)
+        assertEquals("ws://192.168.1.20:8765", controller.uiState.value.customBackendUrl)
     }
 
     @Test
-    fun setBackendUrlPersistsTrimmedValue() = runTest {
+    fun switchingToCustomBackendUsesSavedCustomUrlAndPersistsTarget() = runTest {
+        val savedTargets = mutableListOf<BackendTarget>()
+        val controller = MilfSessionController(
+            dependencies = testDependencies(
+                clients = listOf(FakeClient()),
+                initialCustomBackendUrl = "ws://192.168.1.20:8765",
+                saveBackendTarget = { savedTargets += it }
+            )
+        )
+
+        controller.setBackendTarget(BackendTarget.Custom)
+
+        assertEquals(BackendTarget.Custom, controller.uiState.value.backendTarget)
+        assertEquals("ws://192.168.1.20:8765", controller.uiState.value.backendUrl)
+        assertEquals(listOf(BackendTarget.Custom), savedTargets)
+    }
+
+    @Test
+    fun setBackendUrlPersistsCustomValueWithoutChangingActiveDeployedUrl() = runTest {
         val saved = mutableListOf<String>()
         val controller = MilfSessionController(
             dependencies = testDependencies(
@@ -750,7 +770,9 @@ class MilfSessionControllerTest {
 
         controller.setBackendUrl("  ws://192.168.1.20:8765  ")
 
-        assertEquals("ws://192.168.1.20:8765", controller.uiState.value.backendUrl)
+        assertEquals(BackendTarget.Deployed, controller.uiState.value.backendTarget)
+        assertEquals(DEFAULT_BACKEND_URL, controller.uiState.value.backendUrl)
+        assertEquals("ws://192.168.1.20:8765", controller.uiState.value.customBackendUrl)
         assertEquals(listOf("ws://192.168.1.20:8765"), saved)
     }
 
@@ -817,6 +839,7 @@ class MilfSessionControllerTest {
 
         readyController.setBackendConnectionStatus(BackendConnectionStatus.Connected)
         assertEquals(true, readyController.refreshSetupStatus().canStartHelper)
+        readyController.setBackendTarget(BackendTarget.Custom)
         readyController.setBackendUrl(" ")
         assertEquals(false, readyController.uiState.value.canStartHelper)
     }
@@ -884,7 +907,10 @@ class MilfSessionControllerTest {
     @Test
     fun editingBackendUrlResetsBackendConnectionStatus() = runTest {
         val controller = MilfSessionController(
-            dependencies = testDependencies(clients = listOf(FakeClient()))
+            dependencies = testDependencies(
+                clients = listOf(FakeClient()),
+                initialBackendTarget = BackendTarget.Custom
+            )
         )
         controller.setBackendConnectionStatus(BackendConnectionStatus.Connected)
 
@@ -1118,9 +1144,11 @@ private fun testDependencies(
     clients: List<FakeClient>,
     recorder: FakeRecorder = FakeRecorder(),
     narrator: FakeNarrator = FakeNarrator(),
-    initialBackendUrl: String = DEFAULT_BACKEND_URL,
+    initialBackendTarget: BackendTarget = BackendTarget.Deployed,
+    initialCustomBackendUrl: String = DEFAULT_CUSTOM_BACKEND_URL,
     initialAgentMemory: String = "",
     saveBackendUrl: (String) -> Unit = {},
+    saveBackendTarget: (BackendTarget) -> Unit = {},
     saveSpeechInputMode: (SpeechInputMode) -> Unit = {},
     saveAgentMemory: (String) -> Unit = {},
     checkBackendConnection: (String, (BackendConnectionStatus) -> Unit) -> Unit = { _, callback ->
@@ -1147,9 +1175,11 @@ private fun testDependencies(
         clientFactory = {
             clients.getOrElse(nextClient++) { clients.last() }
         },
-        initialBackendUrl = initialBackendUrl,
+        initialBackendTarget = initialBackendTarget,
+        initialCustomBackendUrl = initialCustomBackendUrl,
         initialAgentMemory = initialAgentMemory,
         saveBackendUrl = saveBackendUrl,
+        saveBackendTarget = saveBackendTarget,
         saveSpeechInputMode = saveSpeechInputMode,
         saveAgentMemory = saveAgentMemory,
         checkBackendConnection = checkBackendConnection,

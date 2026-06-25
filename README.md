@@ -2,11 +2,11 @@
 
 MILF is a voice-first Android accessibility agent for SEA seniors. A senior speaks a goal in natural language, the backend agent turns that intent into mobile actions, and the Android client executes those actions through Accessibility APIs while narrating progress and asking for confirmation before irreversible steps.
 
-The current hero flow is:
+One reference flow is:
 
 > "I want to see my grandson."
 
-MILF records the request, routes it to the backend, navigates the phone toward the WhatsApp video-call flow, asks for confirmation, and only proceeds after approval.
+MILF records the request, routes it to the backend, navigates the phone toward the WhatsApp video-call flow, asks for confirmation, and only proceeds after approval. The same interaction model is meant for broader natural phone requests such as finding contacts, opening apps, sending messages, and playing media.
 
 ## Repository Structure
 
@@ -22,7 +22,7 @@ MILF records the request, routes it to the backend, navigates the phone toward t
 Key docs:
 
 - `docs/VISION.md` - product narrative, positioning, demo strategy, and build priorities.
-- `docs/android-demo-runbook.md` - device setup and live demo checklist.
+- `docs/tester-usage-guide.md` - judge/tester setup, APK usage, emulator notes, and release guidance.
 - `docs/mobilerun_contract.md` - recorded MobileRun driver contract.
 - `docs/superpowers/plans/` - implementation plans for backend, Android, and UX overlay work.
 
@@ -82,10 +82,11 @@ Required secret:
 OPENAI_API_KEY
 ```
 
-The deployed Android websocket URL should use `wss`:
+The deployed Android websocket URL should use `wss`. The current judge demo
+backend is:
 
 ```text
-wss://<your-render-service>.onrender.com/
+wss://milf-revamped.onrender.com/
 ```
 
 ### Backend Environment Variables
@@ -167,27 +168,39 @@ cd android
 
 ## Demo Flow
 
-1. Start the backend:
+For a judge-facing walkthrough with Android phone and emulator setup, see
+`docs/tester-usage-guide.md`.
 
-   ```bash
-   cd backend
-   PYTHONPATH=. python -m milf.server
-   ```
+For local development, start the backend:
 
-2. Install the Android app:
+```bash
+cd backend
+PYTHONPATH=. python -m milf.server
+```
 
-   ```bash
-   cd android
-   ./gradlew :app:installDebug
-   ```
+For the deployed judge demo, use the Render backend configured in the app:
 
-3. On the Android device, enable the accessibility service and open MILF.
-4. Select English, Chinese, or Cantonese.
-5. Tap Speak.
-6. Say: `I want to see my grandson.`
-7. Tap Stop.
-8. Wait for narration and WhatsApp navigation.
-9. Approve the confirmation prompt before the call connects.
+```text
+wss://milf-revamped.onrender.com/
+```
+
+Then install or open the Android app:
+
+```bash
+cd android
+./gradlew :app:installDebug
+```
+
+On the Android device:
+
+1. Open MILF and complete `Config`.
+2. Confirm all permissions are ready and the backend is connected.
+3. Tap `Start Agent`.
+4. Tap the floating helper microphone.
+5. Say a natural phone request, for example: `I want to see my grandson.`
+6. Tap the microphone again to stop listening if needed.
+7. Wait for narration and app navigation.
+8. Approve any confirmation prompt only if the action target is correct.
 
 
 ## Development Notes

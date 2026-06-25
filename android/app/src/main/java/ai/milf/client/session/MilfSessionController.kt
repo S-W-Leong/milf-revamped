@@ -32,7 +32,12 @@ class MilfSessionController(
 ) {
     private val _uiState = MutableStateFlow(
         SeniorUiState(
-            backendUrl = dependencies.initialBackendUrl,
+            backendUrl = backendUrlFor(
+                dependencies.initialBackendTarget,
+                dependencies.initialCustomBackendUrl
+            ),
+            backendTarget = dependencies.initialBackendTarget,
+            customBackendUrl = dependencies.initialCustomBackendUrl,
             speechInputMode = dependencies.speechInputMode,
             agentMemory = dependencies.initialAgentMemory,
             savedAgentMemory = dependencies.initialAgentMemory
@@ -46,8 +51,25 @@ class MilfSessionController(
         val trimmed = url.trim()
         dependencies.saveBackendUrl(trimmed)
         _uiState.update {
+            if (it.backendTarget == BackendTarget.Custom) {
+                it.copy(
+                    customBackendUrl = trimmed,
+                    backendUrl = trimmed,
+                    backendConnectionStatus = BackendConnectionStatus.Unknown,
+                    backendConnectionRequested = true
+                )
+            } else {
+                it.copy(customBackendUrl = trimmed)
+            }
+        }
+    }
+
+    fun setBackendTarget(target: BackendTarget) {
+        dependencies.saveBackendTarget(target)
+        _uiState.update {
             it.copy(
-                backendUrl = trimmed,
+                backendTarget = target,
+                backendUrl = backendUrlFor(target, it.customBackendUrl),
                 backendConnectionStatus = BackendConnectionStatus.Unknown,
                 backendConnectionRequested = true
             )
@@ -730,8 +752,10 @@ class MilfSessionController(
         val initialAgentMemory: String = "",
         val narrator: NarratorLike,
         val clientFactory: (String) -> SessionSocketClient,
-        val initialBackendUrl: String = DEFAULT_BACKEND_URL,
+        val initialBackendTarget: BackendTarget = BackendTarget.Deployed,
+        val initialCustomBackendUrl: String = DEFAULT_CUSTOM_BACKEND_URL,
         val saveBackendUrl: (String) -> Unit = {},
+        val saveBackendTarget: (BackendTarget) -> Unit = {},
         val saveSpeechInputMode: (SpeechInputMode) -> Unit = {},
         val saveAgentMemory: (String) -> Unit = {},
         val checkBackendConnection: (String, (BackendConnectionStatus) -> Unit) -> Unit = { _, callback ->
@@ -786,6 +810,12 @@ class MilfSessionController(
         const val NO_SPEECH_PROMPT = "I didn't hear anything. Please try again."
     }
 }
+
+private fun backendUrlFor(target: BackendTarget, customBackendUrl: String): String =
+    when (target) {
+        BackendTarget.Deployed -> DEFAULT_BACKEND_URL
+        BackendTarget.Custom -> customBackendUrl
+    }
 
 private fun ActionTarget.Companion.from(action: Action): ActionTarget? = when (action.name) {
     "tap" -> {

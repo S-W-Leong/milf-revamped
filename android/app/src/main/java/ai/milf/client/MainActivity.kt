@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
             MilfUi(
                 state = state,
                 onBackendUrlChange = viewModel::setBackendUrl,
+                onBackendTargetChange = viewModel::setBackendTarget,
                 onConnectBackend = viewModel::connectBackend,
                 onDisconnectBackend = viewModel::disconnectBackend,
                 onLangChange = viewModel::setLang,

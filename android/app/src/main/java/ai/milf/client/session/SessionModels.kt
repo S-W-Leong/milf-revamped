@@ -17,6 +17,11 @@ enum class BackendConnectionStatus {
     Failed
 }
 
+enum class BackendTarget {
+    Deployed,
+    Custom
+}
+
 enum class AppScreen {
     Main,
     Config
@@ -61,6 +66,7 @@ data class FailureState(
 )
 
 const val DEFAULT_BACKEND_URL = "wss://milf-revamped.onrender.com/"
+const val DEFAULT_CUSTOM_BACKEND_URL = "ws://10.0.2.2:8765"
 
 data class SetupStatus(
     val microphoneGranted: Boolean = false,
@@ -72,6 +78,8 @@ data class SetupStatus(
 
 data class SeniorUiState(
     val backendUrl: String = DEFAULT_BACKEND_URL,
+    val backendTarget: BackendTarget = BackendTarget.Deployed,
+    val customBackendUrl: String = DEFAULT_CUSTOM_BACKEND_URL,
     val lang: String = "en",
     val screen: SeniorUxScreen = SeniorUxScreen.Idle,
     val isRecording: Boolean = false,
