@@ -6,6 +6,8 @@ from inspect import Parameter, signature
 from typing import Any, Callable
 
 import websockets
+from websockets.datastructures import Headers
+from websockets.http11 import Response
 
 from milf.agent_runner import SAFE_FAILURE_COPY, run_intent, run_task
 from milf.connection import AppConnection
@@ -117,10 +119,35 @@ async def _handler(ws):
 
 async def serve(host=None, port=None):
     host = host or os.environ.get("MILF_WS_HOST", "0.0.0.0")
-    port = port or int(os.environ.get("MILF_WS_PORT", "8765"))
+    port = port or int(os.environ.get("MILF_WS_PORT") or os.environ.get("PORT", "8765"))
     max_size = int(os.environ.get("MILF_WS_MAX_SIZE", DEFAULT_WS_MAX_SIZE))
-    async with websockets.serve(_handler, host, port, max_size=max_size):
+    async with websockets.serve(
+        _handler,
+        host,
+        port,
+        max_size=max_size,
+        process_request=_process_request,
+    ):
         await asyncio.Future()
+
+
+def _process_request(_connection, request):
+    if request.headers.get("Upgrade", "").lower() == "websocket":
+        return None
+    if request.path not in {"/", "/healthz"}:
+        return None
+    body = b"ok\n"
+    return Response(
+        200,
+        "OK",
+        Headers(
+            [
+                ("Content-Type", "text/plain; charset=utf-8"),
+                ("Content-Length", str(len(body))),
+            ]
+        ),
+        body,
+    )
 
 
 async def _call_with_optional_context(

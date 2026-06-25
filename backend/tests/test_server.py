@@ -5,6 +5,8 @@ import logging
 
 import pytest
 import websockets
+from websockets.datastructures import Headers
+from websockets.http11 import Request
 
 from milf.agent_runner import SAFE_FAILURE_COPY
 from milf.intent_router import IntentAgentDecision
@@ -17,7 +19,13 @@ from milf.protocol import (
     decode,
     encode,
 )
-from milf.server import _configure_logging, _dispatch_first_frame, _handler, serve
+from milf.server import (
+    _configure_logging,
+    _dispatch_first_frame,
+    _handler,
+    _process_request,
+    serve,
+)
 from milf.stt import MockSTT
 
 
@@ -123,6 +131,60 @@ async def test_serve_allows_large_phone_state_frames(monkeypatch):
     assert captured["host"] == "127.0.0.1"
     assert captured["port"] == 9999
     assert captured["max_size"] >= 4 * 1024 * 1024
+    assert captured["process_request"] is _process_request
+
+
+async def test_serve_uses_render_port_when_ws_port_unset(monkeypatch):
+    captured = {}
+
+    class StopServe(Exception):
+        pass
+
+    class FakeServer:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class StopFuture:
+        def __await__(self):
+            async def stop():
+                raise StopServe()
+
+            return stop().__await__()
+
+    def fake_serve(handler, host, port, **kwargs):
+        captured.update({"handler": handler, "host": host, "port": port, **kwargs})
+        return FakeServer()
+
+    monkeypatch.delenv("MILF_WS_PORT", raising=False)
+    monkeypatch.setenv("PORT", "10000")
+    monkeypatch.setattr("milf.server.websockets.serve", fake_serve)
+    monkeypatch.setattr("milf.server.asyncio.Future", StopFuture)
+
+    with pytest.raises(StopServe):
+        await serve()
+
+    assert captured["host"] == "0.0.0.0"
+    assert captured["port"] == 10000
+
+
+def test_process_request_returns_health_response_for_render_probe():
+    response = _process_request(None, Request("/healthz", Headers()))
+
+    assert response.status_code == 200
+    assert response.body == b"ok\n"
+    assert response.headers["Content-Type"] == "text/plain; charset=utf-8"
+
+
+def test_process_request_allows_websocket_handshake_on_root():
+    response = _process_request(
+        None,
+        Request("/", Headers([("Upgrade", "websocket")])),
+    )
+
+    assert response is None
 
 
 async def test_server_sends_safe_failure_when_make_stt_fails(monkeypatch):

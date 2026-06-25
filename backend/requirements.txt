@@ -1,0 +1,5 @@
+mobilerun
+llama-index-llms-openai
+websockets
+pydantic>=2
+httpx

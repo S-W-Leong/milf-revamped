@@ -70,6 +70,24 @@ ws://10.0.2.2:8765
 
 Use `10.0.2.2` for Android emulator runs.
 
+### Render Deployment
+
+The backend can deploy to Render from `render.yaml` at the repository root.
+Render uses `backend/` as the service root, installs `backend/requirements.txt`,
+and starts the websocket server with the platform-provided `$PORT`.
+
+Required secret:
+
+```text
+OPENAI_API_KEY
+```
+
+The deployed Android websocket URL should use `wss`:
+
+```text
+wss://<your-render-service>.onrender.com/
+```
+
 ### Backend Environment Variables
 
 ```text
