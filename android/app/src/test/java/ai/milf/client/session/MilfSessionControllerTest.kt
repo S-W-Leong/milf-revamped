@@ -847,6 +847,19 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun assistEntryCanStartBeforeBackendConnectionIsPrechecked() = runTest {
+        val controller = MilfSessionController(
+            dependencies = testDependencies(clients = listOf(FakeClient()))
+        )
+
+        controller.refreshSetupStatus()
+
+        assertEquals(BackendConnectionStatus.Unknown, controller.uiState.value.backendConnectionStatus)
+        assertEquals(false, controller.uiState.value.canStartHelper)
+        assertEquals(true, controller.uiState.value.canStartAssistEntry)
+    }
+
+    @Test
     fun editingBackendUrlResetsBackendConnectionStatus() = runTest {
         val controller = MilfSessionController(
             dependencies = testDependencies(clients = listOf(FakeClient()))

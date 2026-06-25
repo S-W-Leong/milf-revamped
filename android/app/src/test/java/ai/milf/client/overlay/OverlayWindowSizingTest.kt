@@ -24,7 +24,7 @@ class OverlayWindowSizingTest {
     @Test
     fun confirmationAndFailureWindowsLeaveRoomAboveRail() {
         assertEquals(
-            206,
+            238,
             OverlayWindowSizing.expandedHeightPx(
                 SeniorUiState(screen = SeniorUxScreen.Confirming, isCollapsed = false),
                 density = 1f

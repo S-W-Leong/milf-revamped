@@ -22,6 +22,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -488,39 +489,57 @@ private fun ConfirmationCard(
                 lineHeight = 22.sp,
                 textAlign = TextAlign.Center
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 val deny = confirmationButtonVisuals(ConfirmationChoice.Deny)
                 val approve = confirmationButtonVisuals(ConfirmationChoice.Approve)
                 Button(
                     onClick = onDeny,
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp),
+                        .height(64.dp),
                     shape = RoundedCornerShape(13.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MilfColors.NoRed)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MilfColors.NoRed,
+                        contentColor = Color.White
+                    ),
+                    contentPadding = PaddingValues(horizontal = 14.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = deny.contentDescription,
-                        tint = Color.White
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = deny.contentDescription
+                        )
+                        Text(deny.textLabel.orEmpty(), fontSize = 18.sp)
+                    }
                 }
                 Button(
                     onClick = onApprove,
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp),
+                        .height(64.dp),
                     shape = RoundedCornerShape(13.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MilfColors.SageDim,
-                        contentColor = MilfColors.Sage
-                    )
+                        containerColor = MilfColors.ConfirmSage,
+                        contentColor = MilfColors.Obsidian
+                    ),
+                    contentPadding = PaddingValues(horizontal = 14.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = approve.contentDescription,
-                        tint = MilfColors.Sage
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = approve.contentDescription
+                        )
+                        Text(approve.textLabel.orEmpty(), fontSize = 18.sp)
+                    }
                 }
             }
         }
@@ -548,13 +567,13 @@ internal fun confirmationButtonVisuals(choice: ConfirmationChoice): Confirmation
         ConfirmationChoice.Deny -> ConfirmationButtonVisuals(
             icon = ConfirmationIcon.Cross,
             contentDescription = "Deny",
-            textLabel = null
+            textLabel = "No"
         )
 
         ConfirmationChoice.Approve -> ConfirmationButtonVisuals(
             icon = ConfirmationIcon.Tick,
             contentDescription = "Approve",
-            textLabel = null
+            textLabel = "Yes"
         )
     }
 

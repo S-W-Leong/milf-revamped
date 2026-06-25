@@ -4,6 +4,7 @@ import ai.milf.client.MainActivity
 import ai.milf.client.MilfApplication
 import ai.milf.client.R
 import ai.milf.client.session.MilfSessionController
+import ai.milf.client.session.canStartAssistEntry
 import ai.milf.client.session.canStartHelper
 import android.Manifest
 import android.app.Notification
@@ -72,13 +73,19 @@ class SeniorOverlayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val controller = (application as MilfApplication).sessionController
+        val startListening = intent?.getBooleanExtra(EXTRA_START_LISTENING, false) == true
         val setupState = controller.refreshSetupStatus()
-        if (!setupState.canStartHelper) {
+        val canStart = if (startListening) {
+            setupState.canStartAssistEntry
+        } else {
+            setupState.canStartHelper
+        }
+        if (!canStart) {
             openSetupActivity()
             stopSelf()
             return START_NOT_STICKY
         }
-        if (intent?.getBooleanExtra(EXTRA_START_LISTENING, false) == true) {
+        if (startListening) {
             controller.expandOverlay()
             if (!beginListeningSafely(controller)) {
                 stopSelf()

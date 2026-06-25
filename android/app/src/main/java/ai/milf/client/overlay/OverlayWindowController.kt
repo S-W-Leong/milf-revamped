@@ -40,7 +40,7 @@ internal object OverlayWindowSizing {
 
     private fun expandedHeightDp(state: SeniorUiState): Int =
         when (state.screen) {
-            SeniorUxScreen.Confirming,
+            SeniorUxScreen.Confirming -> 238
             SeniorUxScreen.Failure -> 206
 
             else -> 62
