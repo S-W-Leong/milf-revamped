@@ -1,6 +1,8 @@
 import asyncio
 import json
 
+import pytest
+
 from milf.connection import AppConnection
 from milf.protocol import ActionResult, ConfirmResponse, decode, encode
 
@@ -117,3 +119,29 @@ async def test_wrong_response_type_does_not_resolve_pending_action():
 
     conn.on_message(encode(ActionResult(id=action.id, ok=True, result="done")))
     assert (await task).result == "done"
+
+
+async def test_send_action_times_out_without_result():
+    sent = []
+    conn = AppConnection(
+        send=lambda raw: sent.append(raw) or asyncio.sleep(0),
+        response_timeout_s=0.01,
+    )
+
+    with pytest.raises(TimeoutError, match="Timed out waiting for action tap"):
+        await conn.send_action("tap", {"x": 1, "y": 2})
+
+    assert decode(sent[0]).name == "tap"
+
+
+async def test_request_confirmation_times_out_without_response():
+    sent = []
+    conn = AppConnection(
+        send=lambda raw: sent.append(raw) or asyncio.sleep(0),
+        response_timeout_s=0.01,
+    )
+
+    with pytest.raises(TimeoutError, match="Timed out waiting for confirmation"):
+        await conn.request_confirmation("Send WhatsApp message?", "en")
+
+    assert json.loads(sent[0])["type"] == "ConfirmRequest"

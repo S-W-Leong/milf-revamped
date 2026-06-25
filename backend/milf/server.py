@@ -14,6 +14,7 @@ from milf.session import MILFSession
 from milf.stt import make_stt
 
 PROTOCOL_ERROR = 1002
+DEFAULT_WS_MAX_SIZE = 8 * 1024 * 1024
 logger = logging.getLogger(__name__)
 _sessions: dict[str, MILFSession] = {}
 
@@ -117,7 +118,8 @@ async def _handler(ws):
 async def serve(host=None, port=None):
     host = host or os.environ.get("MILF_WS_HOST", "0.0.0.0")
     port = port or int(os.environ.get("MILF_WS_PORT", "8765"))
-    async with websockets.serve(_handler, host, port):
+    max_size = int(os.environ.get("MILF_WS_MAX_SIZE", DEFAULT_WS_MAX_SIZE))
+    async with websockets.serve(_handler, host, port, max_size=max_size):
         await asyncio.Future()
 
 
@@ -174,6 +176,7 @@ def _configure_logging() -> None:
         level=level,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    logging.getLogger("websockets.server").setLevel(logging.WARNING)
 
 
 def main() -> None:

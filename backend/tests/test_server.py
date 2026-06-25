@@ -17,7 +17,7 @@ from milf.protocol import (
     decode,
     encode,
 )
-from milf.server import _configure_logging, _dispatch_first_frame, _handler
+from milf.server import _configure_logging, _dispatch_first_frame, _handler, serve
 from milf.stt import MockSTT
 
 
@@ -53,6 +53,76 @@ def test_configure_logging_defaults_to_info(monkeypatch):
     _configure_logging()
 
     assert captured["level"] == logging.INFO
+
+
+def test_configure_logging_suppresses_websocket_connection_noise(monkeypatch):
+    captured = {}
+
+    class FakeLogger:
+        def setLevel(self, level):
+            captured["level"] = level
+
+    real_get_logger = logging.getLogger
+
+    def fake_get_logger(name=None):
+        if name is None:
+            return real_get_logger()
+        captured["name"] = name
+        return FakeLogger()
+
+    monkeypatch.setattr("logging.basicConfig", lambda **_: None)
+    monkeypatch.setattr("logging.getLogger", fake_get_logger)
+
+    _configure_logging()
+
+    assert captured == {
+        "name": "websockets.server",
+        "level": logging.WARNING,
+    }
+
+
+async def test_serve_allows_large_phone_state_frames(monkeypatch):
+    captured = {}
+
+    class StopServe(Exception):
+        pass
+
+    class FakeServer:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class StopFuture:
+        def __await__(self):
+            async def stop():
+                raise StopServe()
+
+            return stop().__await__()
+
+    def fake_serve(handler, host, port, **kwargs):
+        captured.update(
+            {
+                "handler": handler,
+                "host": host,
+                "port": port,
+                **kwargs,
+            }
+        )
+        return FakeServer()
+
+    monkeypatch.delenv("MILF_WS_MAX_SIZE", raising=False)
+    monkeypatch.setattr("milf.server.websockets.serve", fake_serve)
+    monkeypatch.setattr("milf.server.asyncio.Future", StopFuture)
+
+    with pytest.raises(StopServe):
+        await serve(host="127.0.0.1", port=9999)
+
+    assert captured["handler"] is _handler
+    assert captured["host"] == "127.0.0.1"
+    assert captured["port"] == 9999
+    assert captured["max_size"] >= 4 * 1024 * 1024
 
 
 async def test_server_sends_safe_failure_when_make_stt_fails(monkeypatch):

@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+from mobilerun.agent.action_result import ActionResult
+
 from milf.connection import AppConnection
 
 
@@ -11,11 +15,30 @@ class ClarificationRequested(Exception):
         self.question = question
 
 
-def build_clarification_tool(connection: AppConnection, lang: str) -> dict:
-    async def request_clarification(question: str, *, ctx=None, **kwargs) -> str:
+@dataclass
+class ClarificationState:
+    question: str | None = None
+
+
+def build_clarification_tool(
+    connection: AppConnection,
+    lang: str,
+    state: ClarificationState | None = None,
+) -> dict:
+    state = state or ClarificationState()
+
+    async def request_clarification(
+        question: str, *, ctx=None, **kwargs
+    ) -> ActionResult:
+        state.question = question
         await connection.send_narration(question, lang)
-        await connection.send_task_complete(question, lang)
-        raise ClarificationRequested(question)
+        return ActionResult(
+            success=True,
+            summary=(
+                "Clarification requested. Stop now and mark the request as "
+                "not complete until the user answers."
+            ),
+        )
 
     return {
         "request_clarification": {

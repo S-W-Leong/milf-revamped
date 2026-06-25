@@ -1,6 +1,8 @@
 import logging
 from types import SimpleNamespace
 
+from websockets.exceptions import ConnectionClosedOK
+
 from milf.agent_runner import build_mobile_config, run_intent, run_task
 from milf.intent_router import IntentRoute
 from milf.session import MILFSession
@@ -492,6 +494,18 @@ class FailingHandler:
         return _r().__await__()
 
 
+class CleanClientCloseHandler:
+    async def stream_events(self):
+        if False:
+            yield None
+
+    def __await__(self):
+        async def _r():
+            raise Exception("Failed to get state") from ConnectionClosedOK(None, None)
+
+        return _r().__await__()
+
+
 class ConfirmingHandler:
     def __init__(self, custom_tools):
         self.custom_tools = custom_tools
@@ -551,6 +565,29 @@ async def test_run_task_sends_safe_failure_on_agent_error():
             "en",
         )
     ]
+
+
+async def test_run_task_treats_clean_client_close_as_closed_session(caplog):
+    caplog.set_level(logging.INFO, logger="milf.agent_runner")
+
+    def fake_factory(goal, driver, custom_tools):
+        return SimpleNamespace(run=lambda: CleanClientCloseHandler())
+
+    conn = FakeConn()
+
+    result = await run_task(
+        connection=conn,
+        audio=b"x",
+        lang="en",
+        stt=MockSTT("I want to see my grandson"),
+        agent_factory=fake_factory,
+        intent_router=wei_router,
+    )
+
+    assert result.success is False
+    assert result.reason == "client_closed"
+    assert conn.failures == []
+    assert _find_log(caplog.records, "Mobile client closed during agent run.")
 
 
 async def test_run_task_surfaces_mobile_run_clarification_and_stops():

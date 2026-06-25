@@ -7,7 +7,13 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable
 
-from milf.clarification import ClarificationRequested, build_clarification_tool
+from websockets.exceptions import ConnectionClosedOK
+
+from milf.clarification import (
+    ClarificationRequested,
+    ClarificationState,
+    build_clarification_tool,
+)
 from milf.confirmation import ConfirmationDeclined, build_confirmation_tool
 from milf.connection import AppConnection
 from milf.context import (
@@ -130,8 +136,9 @@ async def run_intent(
 
     goal = build_goal(routed_intent, memory=memory)
     driver = WebSocketDriver(connection)
+    clarification_state = ClarificationState()
     custom_tools = build_confirmation_tool(connection, lang)
-    custom_tools.update(build_clarification_tool(connection, lang))
+    custom_tools.update(build_clarification_tool(connection, lang, clarification_state))
     logger.info(
         "MILF starting MobileRun.",
         extra={
@@ -159,6 +166,7 @@ async def run_intent(
                 "lang": lang,
             },
         )
+        await connection.send_task_complete(error.question, lang)
         return SimpleNamespace(success=False, reason="clarify")
     except ConfirmationDeclined:
         logger.info("Confirmation declined during agent run.", exc_info=True)
@@ -177,7 +185,31 @@ async def run_intent(
         )
         await connection.send_task_failure(SAFE_FAILURE_COPY, lang)
         return SimpleNamespace(success=False, reason="confirmation_declined")
-    except Exception:
+    except Exception as error:
+        if _caused_by_clean_client_close(error):
+            logger.info(
+                "Mobile client closed during agent run.",
+                extra={
+                    "session_id": session.session_id,
+                    "contact_id": route.contact_id,
+                    "lang": lang,
+                },
+            )
+            session.record_mobile_run_result(
+                route, status="failed", reason="client_closed"
+            )
+            logger.info(
+                "MILF MobileRun finished.",
+                extra={
+                    "session_id": session.session_id,
+                    "mobile_run_status": "failed",
+                    "reason": "client_closed",
+                    "contact_id": route.contact_id,
+                    "lang": lang,
+                },
+            )
+            return SimpleNamespace(success=False, reason="client_closed")
+
         logger.exception("Agent run failed.")
         session.record_mobile_run_result(route, status="agent_error", reason="agent_error")
         logger.info(
@@ -192,6 +224,23 @@ async def run_intent(
         )
         await connection.send_task_failure(SAFE_FAILURE_COPY, lang)
         return SimpleNamespace(success=False, reason="agent_error")
+
+    if clarification_state.question is not None:
+        session.record_mobile_run_clarification(
+            route, clarification_state.question, routed_intent
+        )
+        logger.info(
+            "MILF MobileRun finished.",
+            extra={
+                "session_id": session.session_id,
+                "mobile_run_status": "clarification_requested",
+                "reason": "clarify",
+                "contact_id": route.contact_id,
+                "lang": lang,
+            },
+        )
+        await connection.send_task_complete(clarification_state.question, lang)
+        return SimpleNamespace(success=False, reason="clarify")
 
     session.record_mobile_run_result(result=result, route=route)
     logger.info(
@@ -269,3 +318,14 @@ async def _call_intent_router(
     if accepts_session_positionally:
         return await intent_router(intent, lang, session)
     return await intent_router(intent, lang)
+
+
+def _caused_by_clean_client_close(error: BaseException) -> bool:
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        if isinstance(current, ConnectionClosedOK):
+            return True
+        seen.add(id(current))
+        current = current.__cause__ or current.__context__
+    return False
