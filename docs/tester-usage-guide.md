@@ -17,50 +17,122 @@ one pass:
 
 ## Quick Start
 
-Use this path if you already have the APK.
+Use this path for the published judge build.
 
-1. Install the APK on an Android phone or emulator.
-2. Open the MILF app.
-3. Tap `Config`.
-4. In `Permissions`, grant every required setup item:
-  - `Microphone`
-  - `Phone calls`
-  - `Overlay`
-  - `Accessibility`
-  - `Assistant app`
-5. In `Backend`, keep `Deployed` selected and wait for `Backend` to show
-  `Connected`.
-6. In `Agent`, keep speech input on `Native`.
-7. Add memory hints if needed. Memory is where you can tell MILF about contacts,
-  relationships, nicknames, and preferred apps:
-8. Tap `Save memory`.
-9. Return to `Main`.
-10. Tap `Start Agent`.
-11. Open the app you want to test, or leave the phone on the home screen.
-12. Tap the floating MILF control, tap the microphone, and say a natural request,
-  for example:
-13. Tap the microphone again to stop listening if it does not stop
-  automatically.
-14. Watch MILF navigate and listen for narration.
-15. When MILF asks for confirmation, approve only if the contact and action are
-  correct.
+1. Open the latest GitHub release:
+
+   ```text
+   https://github.com/S-W-Leong/milf-revamped/releases/tag/milf-v0.1.0
+   ```
+
+2. Download the APK asset:
+
+   ```text
+   milf-v0.1.0.apk
+   ```
+
+3. Install the APK on an Android phone or emulator.
+4. Open MILF and complete `Config`.
+5. Confirm all permissions are `Ready` and the backend is `Connected`.
+6. Tap `Start Agent`.
+7. Tap the floating MILF control, tap the microphone, and say a natural request,
+   for example:
+
+   ```text
+   I want to see my grandson.
+   ```
+
+8. Tap the microphone again to stop listening if it does not stop automatically.
+9. Watch MILF navigate and listen for narration.
+10. When MILF asks for confirmation, approve only if the contact and action are
+   correct.
+
+## Installing The APK
+
+### Android Phone
+
+1. Download `milf-v0.1.0.apk` from the GitHub release on the phone, or transfer
+   it to the phone after downloading it on a computer.
+2. Open the APK from the browser downloads screen or Files app.
+3. If Android blocks the install, allow installs from that source when prompted.
+4. Finish the install and open `MILF`.
+
+Android may call this setting `Install unknown apps`, `Allow from this source`,
+or `Unknown app installs`, depending on the device.
+
+### Android Emulator
+
+Download the release APK on your computer, then install it with `adb`:
+
+```bash
+adb install -r milf-v0.1.0.apk
+```
+
+If `adb` cannot find a device, start the emulator first and run:
+
+```bash
+adb devices
+```
+
+You can also drag the APK onto many Android Emulator windows to install it.
+
+## First Run Setup
+
+After installation:
+
+1. Open the MILF app.
+2. Tap `Config`.
+3. In `Permissions`, grant every required setup item:
+   - `Microphone`
+   - `Phone calls`
+   - `Overlay`
+   - `Accessibility`
+4. In `Backend`, keep `Deployed` selected and wait for `Backend` to show
+   `Connected`.
+5. In `Agent`, keep speech input on `Native`.
+6. Add memory hints if needed. Memory is where you can tell MILF about contacts,
+   relationships, nicknames, and preferred apps:
+
+   ```text
+   Wei is my grandson. Use WhatsApp video calls for Wei.
+   My daughter is Mei. Use WhatsApp for family messages.
+   ```
+
+7. Tap `Save memory`.
+8. Return to `Main`.
+9. Tap `Start Agent`.
+10. Open the app you want to test, or leave the phone on the home screen.
+11. Tap the floating MILF control, tap the microphone, and say a natural request,
+    for example:
+
+    ```text
+    I want to see my grandson.
+    ```
+
+12. Tap the microphone again to stop listening if it does not stop
+    automatically.
+13. Watch MILF navigate and listen for narration.
+14. When MILF asks for confirmation, approve only if the contact and action are
+    correct.
 
 ## What Judges Should Observe
 
 - The senior-facing control is simple: a floating helper, microphone, typed
-fallback, and clear confirmation buttons.
+  fallback, and clear confirmation buttons.
 - The agent is not limited to a single scripted demo command. It should accept
-natural requests and either act, ask a clarification question, or fail safely.
+  natural requests and either act, ask a clarification question, or fail safely.
 - The app uses Android speech recognition by default, so the main test path does
-not require cloud STT keys.
+  not require cloud STT keys.
 - The backend websocket is already deployed at:
+
   ```text
   wss://milf-revamped.onrender.com/
   ```
+
 - MILF narrates progress out loud instead of silently moving through the phone.
 - MILF blocks irreversible actions behind a confirmation gate.
 - If something fails, the app should show safe failure copy instead of raw
-websocket or agent errors.
+  websocket or agent errors.
 
 ## Android Phone Setup
 
@@ -73,7 +145,7 @@ Requirements:
 - Internet connection.
 - The provided APK installed.
 - The target apps for your test installed and logged in, for example WhatsApp or
-YouTube Music.
+  YouTube Music.
 - Reachable test contacts or media items for the requests you want to try.
 
 ## Android Emulator Setup
@@ -93,9 +165,11 @@ Recommended emulator path:
 2. Install the APK.
 3. Grant the same permissions as a physical device.
 4. If voice input is unreliable, type a request into the overlay text field:
-  ```text
+
+   ```text
    Play Teresa Teng in YouTube Music.
-  ```
+   ```
+
 5. Tap the send button in the overlay.
 
 ## Permissions Checklist
@@ -103,15 +177,18 @@ Recommended emulator path:
 The `Main` screen keeps `Start Agent` disabled until setup is ready. In
 `Config > Permissions`, every row should say `Ready`.
 
-
 | Permission    | Why it is needed                                           |
 | ------------- | ---------------------------------------------------------- |
 | Microphone    | Captures the senior's spoken goal.                         |
 | Phone calls   | Allows call-related Android intents and call flow support. |
 | Overlay       | Shows the floating MILF helper above other apps.           |
 | Accessibility | Lets MILF inspect the screen and perform taps/swipes.      |
-| Assistant app | Lets MILF be summoned as the phone helper where supported. |
 
+Optional shortcut:
+
+| Setup item         | Why it can help                                           |
+| ------------------ | --------------------------------------------------------- |
+| Assistant shortcut | Lets MILF be summoned as the phone helper where supported. |
 
 If a row still says `Missing` after granting it, return to the MILF app or reopen
 `Config` so the app can refresh setup status.
@@ -148,6 +225,7 @@ Recommended judge settings:
 - Language: `English`
 - Speech input: `Native`
 - Memory:
+
   ```text
   Wei is my grandson. Use WhatsApp video calls for Wei.
   Mei is my daughter. Use WhatsApp messages for Mei.
@@ -191,9 +269,11 @@ Use this script if you want a repeatable baseline after trying your own prompts.
 5. Tap the floating helper if it is collapsed.
 6. Tap the microphone.
 7. Say:
-  ```text
+
+   ```text
    I want to see my grandson.
-  ```
+   ```
+
 8. If needed, tap the microphone again to stop listening.
 9. Wait while MILF thinks and acts.
 10. Confirm the action only when the prompt names the right call target.
@@ -203,13 +283,14 @@ Typed fallback:
 
 1. Tap the floating helper.
 2. Type:
-  ```text
+
+   ```text
    Send Mei a WhatsApp message saying I reached home.
-  ```
+   ```
+
 3. Tap send.
 
 ## Expected States
-
 
 | State      | What testers should see                                                                            |
 | ---------- | -------------------------------------------------------------------------------------------------- |
@@ -220,7 +301,6 @@ Typed fallback:
 | Confirming | MILF asks for approval before a final call, send, account change, or similar consequential action. |
 | Failure    | MILF says it is having trouble and returns to a safe state.                                        |
 
-
 ## Troubleshooting
 
 ### `Start Agent` Is Disabled
@@ -229,7 +309,6 @@ Open `Config` and check:
 
 - All permission rows say `Ready`.
 - `Backend` says `Connected`.
-- `Assistant app` says `Ready`.
 - A language is selected in `Agent`.
 
 ### Backend Does Not Connect
@@ -239,7 +318,7 @@ Open `Config` and check:
 - Tap `Connect` again.
 - Confirm the device has internet access.
 - If testing local development, switch to `Custom` and use a `ws://` URL, not
-`wss://`.
+  `wss://`.
 
 ### Voice Input Does Not Capture Speech
 
@@ -267,7 +346,7 @@ Open `Config` and check:
 - Confirm the target app is installed and logged in.
 - Confirm the target contact, chat, media item, or control can be found manually.
 - Add or adjust the agent memory hint so the contact, nickname, or app preference
-is explicit.
+  is explicit.
 - Try the typed fallback to remove speech recognition as a variable.
 
 ## Optional Repository Commands
@@ -309,21 +388,22 @@ ws://0.0.0.0:8765
 
 Use `ws://10.0.2.2:8765` from an Android emulator.
 
-## Release Recommendation
+## Current Release
 
-For judging, a GitHub release is recommended. It gives testers one stable page
-with the APK, source snapshot, version, and release notes.
+The current published judge build is:
 
-Suggested first release:
+```text
+MILF v0.1.0 beta
+```
 
-- Tag: `v0.1.0`
-- Title: `MILF Android demo v0.1.0`
-- Asset: `android/app/build/outputs/apk/debug/app-debug.apk`
-- Notes should include:
-  - Render backend is live at `wss://milf-revamped.onrender.com/`.
-  - Use `docs/tester-usage-guide.md` for setup.
-  - Android phone recommended; emulator supported with limitations.
-  - Try natural phone requests; reference scenario: `I want to see my grandson.`
+Release page:
 
-Create the release only from the commit that contains the final guide and the
-intended Android APK state.
+```text
+https://github.com/S-W-Leong/milf-revamped/releases/tag/milf-v0.1.0
+```
+
+APK asset:
+
+```text
+milf-v0.1.0.apk
+```

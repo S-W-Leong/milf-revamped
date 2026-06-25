@@ -121,7 +121,8 @@ Front-loaded and event-driven. **Never live co-piloting** (that reads as surveil
 
 ### Job 1 — Setup (one-time, high-touch)
 The buyer does ALL of this; the senior never sees it:
-- Install MILF, grant **Accessibility Service** + **assist-app role** (for power-button) + **floating-window/overlay** permission.
+- Install MILF, grant **Accessibility Service**, **floating-window/overlay**, microphone, and phone-call permissions.
+- Optionally set the **assist-app role** for a phone-helper shortcut where supported.
 - (Optional, later) set MILF as **default launcher** for the calm home base.
 - Build the **relationship graph**: add contacts with **photos + relationships** ("Ah Xuan = grandson, WhatsApp"). This is the senior's confirmation faces AND the agent's intent-resolution map.
 - Set the **escape-hatch contact** (who "call my daughter" dials).
@@ -194,7 +195,7 @@ The hero demo flow (locked): *"I want to see my grandson"* → navigate WhatsApp
 
 In order. Reliability of the hero flow gates everything.
 
-1. **Invocation layers 1–2** (assist-app + floating bubble) — test power gesture on real SEA devices first.
+1. **Invocation layers 1–2** (floating bubble + optional assist-app shortcut) — test power gesture on real SEA devices first.
 2. **States B → C → D → E** for the single hero flow (WhatsApp video call to one hardcoded contact).
 3. **State C face-confirmation** wired to a (hardcoded if needed) relationship graph.
 4. **State F failure → call buyer** — do NOT ship without this; it's the most-travelled path.

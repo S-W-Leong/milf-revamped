@@ -1,58 +1,186 @@
 # MILF - Make Mobile Interfaces Less Frustrating
 
-MILF is a voice-first Android accessibility agent for SEA seniors. A senior speaks a goal in natural language, the backend agent turns that intent into mobile actions, and the Android client executes those actions through Accessibility APIs while narrating progress and asking for confirmation before irreversible steps.
+MILF is a voice-first Android accessibility agent for SEA seniors. Say what you
+want to do on the phone, and MILF tries to carry the phone's mental model for you:
+it reads the current screen, navigates apps through Android Accessibility APIs,
+narrates what it is doing, and asks for confirmation before consequential actions
+like calls or messages.
 
-One reference flow is:
+You can try natural phone requests such as:
 
-> "I want to see my grandson."
+```text
+I want to see my grandson.
+Call Wei on WhatsApp video.
+Send Mei a WhatsApp message saying I reached home.
+Open WhatsApp and find Wei.
+Play Teresa Teng in YouTube Music.
+```
 
-MILF records the request, routes it to the backend, navigates the phone toward the WhatsApp video-call flow, asks for confirmation, and only proceeds after approval. The same interaction model is meant for broader natural phone requests such as finding contacts, opening apps, sending messages, and playing media.
+The grandson video-call request is our reference scenario because it shows the
+full loop: relationship memory, app navigation, spoken narration, and the safety
+confirmation before starting the call.
 
-## Repository Structure
+## Try The APK
+
+The judge/tester build is published as a GitHub release:
+
+[MILF v0.1.0 beta](https://github.com/S-W-Leong/milf-revamped/releases/tag/milf-v0.1.0)
+
+Download this asset from the release:
+
+```text
+milf-v0.1.0.apk
+```
+
+Then install it on an Android phone or emulator. Android may ask you to allow
+installs from the browser or Files app. That setting is usually called
+`Install unknown apps`, `Allow from this source`, or `Unknown app installs`.
+
+For the full walkthrough, use [docs/tester-usage-guide.md](docs/tester-usage-guide.md).
+It covers phone installation, emulator installation, permissions, backend setup,
+sample prompts, expected behavior, and troubleshooting.
+
+## Tester Quick Start
+
+1. Install `milf-v0.1.0.apk`.
+2. Open `MILF`.
+3. Tap `Config`.
+4. Grant the required setup items:
+   - `Microphone`
+   - `Phone calls`
+   - `Overlay`
+   - `Accessibility`
+5. In `Backend`, keep `Deployed` selected.
+6. Wait for the backend status to show `Connected`.
+7. In `Agent`, keep speech input on `Native`.
+8. Add memory hints if you want relationship-based requests:
+
+   ```text
+   Wei is my grandson. Use WhatsApp video calls for Wei.
+   Mei is my daughter. Use WhatsApp messages for Mei.
+   ```
+
+9. Tap `Save memory`.
+10. Return to `Main` and tap `Start Agent`.
+11. Tap the floating MILF control, tap the microphone, and speak a request.
+12. Approve any confirmation prompt only if the action target is correct.
+
+`Assistant shortcut` setup is optional. It lets MILF be selected as a phone
+assistant where supported, but the floating helper works without it.
+
+The deployed backend is already live:
+
+```text
+wss://milf-revamped.onrender.com/
+```
+
+You do not need to run the backend locally for judge testing.
+
+## What To Look For
+
+- MILF accepts natural goal-level requests, not only one scripted phrase.
+- It can use voice input or the typed fallback in the floating overlay.
+- It narrates progress so the user is not left wondering what the phone is doing.
+- It asks for confirmation before final calls, sends, account changes, or similar
+  consequential actions.
+- If the request is ambiguous or something blocks the task, it should ask for
+  clarification or fail safely instead of showing raw backend errors.
+
+## Phone Or Emulator?
+
+A real Android phone is best for testing WhatsApp calls and real installed apps.
+Use Android 11 or newer, keep the phone unlocked, and make sure the target apps
+and contacts are available.
+
+An Android emulator works for setup, backend connection, overlay behavior, typed
+fallback, and general UI flow. Some emulator images may not support native speech
+recognition or real WhatsApp calling cleanly. If speech input is unreliable, type
+the request into the overlay instead.
+
+To install on an emulator from your computer:
+
+```bash
+adb install -r milf-v0.1.0.apk
+```
+
+## Repository Map
 
 ```text
 .
 |-- android/                  # Native Android client
 |-- assets/                   # Brand and demo assets
 |-- backend/                  # Python websocket backend and tests
-|-- docs/                     # Vision, plans, runbooks, and specs
+|-- config/app_cards/         # App-specific agent guidance
+|-- docs/                     # Vision, tester guide, architecture, specs, plans
 `-- AGENTS.md                 # Local agent and repository guidance
 ```
 
 Key docs:
 
-- `docs/VISION.md` - product narrative, positioning, demo strategy, and build priorities.
-- `docs/tester-usage-guide.md` - judge/tester setup, APK usage, emulator notes, and release guidance.
-- `docs/mobilerun_contract.md` - recorded MobileRun driver contract.
-- `docs/superpowers/plans/` - implementation plans for backend, Android, and UX overlay work.
+- [docs/tester-usage-guide.md](docs/tester-usage-guide.md) - tester setup and usage guide.
+- [docs/VISION.md](docs/VISION.md) - product narrative, positioning, and build priorities.
+- [docs/architecture.md](docs/architecture.md) - intent orchestration architecture.
+- [docs/mobilerun_contract.md](docs/mobilerun_contract.md) - recorded MobileRun driver contract.
 
-## Prerequisites
+## Developer Notes
 
-Backend:
+The rest of this README is for people building or modifying the project. Testers
+using the released APK can stop at the guide above.
 
-- Python 3.11
-- `uv`
-- Access to the `.venv/` virtual environment, or permission to create one
-- OpenAI API access for real agent runs
+### Android Build
 
-Android:
+Requirements:
 
 - JDK 17
 - Android SDK with API 35 installed
-- Android device or emulator for install/demo runs
-- Accessibility permission enabled for the MILF app on the target device
+- Android phone or emulator
 
-## Backend Setup
+Build and run Android tests:
 
-From the repository root:
+```bash
+cd android
+./gradlew :app:testDebugUnitTest :app:assembleDebug
+```
+
+Install a local debug build:
+
+```bash
+cd android
+./gradlew :app:installDebug
+```
+
+The debug APK is produced at:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+If your machine requires an explicit JDK path:
+
+```bash
+cd android
+./gradlew -Dorg.gradle.java.home=/opt/homebrew/Cellar/openjdk@17/17.0.18/libexec/openjdk.jdk/Contents/Home :app:assembleDebug
+```
+
+Adjust the JDK path for your machine.
+
+### Backend Development
+
+Requirements:
+
+- Python 3.11
+- `uv`
+- OpenAI API access for real agent runs
+
+Install dependencies:
 
 ```bash
 uv venv --python 3.11 .venv
 source .venv/bin/activate
-uv pip install mobilerun llama-index-llms-openai websockets "pydantic>=2" httpx pytest pytest-asyncio
+uv pip install -r backend/requirements.txt
 ```
 
-Run the backend for Android native-STT demos:
+Run the backend locally:
 
 ```bash
 cd backend
@@ -61,7 +189,7 @@ PYTHONPATH=. python -m milf.server
 
 By default, the websocket server listens on `0.0.0.0:8765`.
 
-Use these websocket URLs in the Android app:
+Use these websocket URLs in the Android app for local development:
 
 ```text
 ws://<Mac LAN IP>:8765
@@ -70,10 +198,18 @@ ws://10.0.2.2:8765
 
 Use `10.0.2.2` for Android emulator runs.
 
+Run backend tests:
+
+```bash
+source .venv/bin/activate
+cd backend
+PYTHONPATH=. pytest -v
+```
+
 ### Render Deployment
 
-The backend can deploy to Render from `render.yaml` at the repository root.
-Render uses `backend/` as the service root, installs `backend/requirements.txt`,
+The backend deploys to Render from [render.yaml](render.yaml). Render uses
+`backend/` as the service root, installs [backend/requirements.txt](backend/requirements.txt),
 and starts the websocket server with the platform-provided `$PORT`.
 
 Required secret:
@@ -82,14 +218,13 @@ Required secret:
 OPENAI_API_KEY
 ```
 
-The deployed Android websocket URL should use `wss`. The current judge demo
-backend is:
+Current deployed websocket:
 
 ```text
 wss://milf-revamped.onrender.com/
 ```
 
-### Backend Environment Variables
+Backend environment variables:
 
 ```text
 OPENAI_API_KEY
@@ -104,114 +239,17 @@ MERALION_API_KEY
 MERALION_API_URL
 ```
 
-The Android app uses native on-device speech recognition for the main mic flow and sends the transcript as a `TextGoal`, so ILMU/MERaLiON keys are not required for device demos. Backend audio STT defaults to `MILF_STT_BACKEND=router` for ILMU/MERaLiON. Set `MILF_STT_BACKEND=mock` only when you want local smoke tests or legacy audio-upload clients to use `MILF_MOCK_TRANSCRIPT`.
+The Android app uses native on-device speech recognition for the main mic flow
+and sends the transcript as a `TextGoal`, so ILMU/MERaLiON keys are not required
+for normal device demos. Backend audio STT is still available for the `Backend
+STT` input mode.
 
-The app's Agent config tab can switch the mic input between `Native` and `Backend STT`. `Native` uses Android speech recognition and sends text; `Backend STT` uploads audio and uses the backend STT setting above.
+## Security And Safety
 
-## Android Setup
+MILF is designed around explicit user intent and confirmation. The app should
+narrate important actions, and calls, sends, payments, account changes, or other
+irreversible operations must wait for a confirmation request and response before
+proceeding.
 
-Build and run tests from the Android project directory:
-
-```bash
-cd android
-./gradlew :app:testDebugUnitTest
-./gradlew :app:assembleDebug
-```
-
-Install the debug APK on a connected emulator or Android phone:
-
-```bash
-cd android
-./gradlew :app:installDebug
-```
-
-On the device:
-
-1. Open Android Accessibility settings.
-2. Enable `MILF phone control`.
-3. Grant microphone permission when prompted.
-4. Point the app at the backend websocket URL.
-5. Keep WhatsApp logged in and ready for the demo contact.
-
-If the local machine requires an explicit JDK path, use:
-
-```bash
-cd android
-./gradlew -Dorg.gradle.java.home=/opt/homebrew/Cellar/openjdk@17/17.0.18/libexec/openjdk.jdk/Contents/Home :app:assembleDebug
-```
-
-Adjust the JDK path for your machine.
-
-## Running Tests
-
-Backend:
-
-```bash
-source .venv/bin/activate
-cd backend
-PYTHONPATH=. pytest -v
-```
-
-Android:
-
-```bash
-cd android
-./gradlew :app:testDebugUnitTest
-```
-
-Full Android build check:
-
-```bash
-cd android
-./gradlew :app:testDebugUnitTest :app:assembleDebug
-```
-
-## Demo Flow
-
-For a judge-facing walkthrough with Android phone and emulator setup, see
-`docs/tester-usage-guide.md`.
-
-For local development, start the backend:
-
-```bash
-cd backend
-PYTHONPATH=. python -m milf.server
-```
-
-For the deployed judge demo, use the Render backend configured in the app:
-
-```text
-wss://milf-revamped.onrender.com/
-```
-
-Then install or open the Android app:
-
-```bash
-cd android
-./gradlew :app:installDebug
-```
-
-On the Android device:
-
-1. Open MILF and complete `Config`.
-2. Confirm all permissions are ready and the backend is connected.
-3. Tap `Start Agent`.
-4. Tap the floating helper microphone.
-5. Say a natural phone request, for example: `I want to see my grandson.`
-6. Tap the microphone again to stop listening if needed.
-7. Wait for narration and app navigation.
-8. Approve any confirmation prompt only if the action target is correct.
-
-
-## Development Notes
-
-- Backend code lives in `backend/milf/`.
-- Backend tests live in `backend/tests/`.
-- Android app code lives in `android/app/src/main/java/ai/milf/client/`.
-- Android unit tests live in `android/app/src/test/java/ai/milf/client/`.
-- Keep the websocket protocol aligned between `backend/milf/protocol.py` and `android/app/src/main/java/ai/milf/client/protocol/MilfProtocol.kt`.
-- Do not commit secrets, `.env`, `.venv/`, Android build outputs, or local SDK paths.
-
-## Security and Safety
-
-MILF is designed around explicit user intent and confirmation. The app should narrate important actions, and calls, sends, payments, or other irreversible operations must wait for a confirmation request and response before proceeding.
+Never commit secrets, `.env`, `.venv/`, Android build outputs, local SDK paths,
+or generated cache files.

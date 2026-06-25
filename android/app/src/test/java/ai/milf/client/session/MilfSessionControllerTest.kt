@@ -845,7 +845,7 @@ class MilfSessionControllerTest {
     }
 
     @Test
-    fun startGateRequiresAssistantAndLanguage() = runTest {
+    fun startGateAllowsMissingAssistantButStillRequiresLanguage() = runTest {
         val controller = MilfSessionController(
             dependencies = testDependencies(
                 clients = listOf(FakeClient()),
@@ -862,7 +862,8 @@ class MilfSessionControllerTest {
         )
 
         controller.setBackendConnectionStatus(BackendConnectionStatus.Connected)
-        assertEquals(false, controller.refreshSetupStatus().canStartHelper)
+        assertEquals(true, controller.refreshSetupStatus().canStartHelper)
+        assertEquals(true, controller.uiState.value.canStartAssistEntry)
 
         val readyController = fakeController(client = FakeClient())
         readyController.setBackendConnectionStatus(BackendConnectionStatus.Connected)

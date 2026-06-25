@@ -143,7 +143,7 @@ private fun MainScreen(
             fontWeight = FontWeight.SemiBold
         )
         Text(
-            "Start Agent unlocks once permissions, backend, voice, calls, language, and assistant settings are ready.",
+            "Start Agent unlocks once permissions, backend, voice, calls, and language are ready.",
             color = MilfColors.TextSecondary,
             fontSize = 15.sp,
             lineHeight = 21.sp
@@ -287,7 +287,7 @@ private fun PermissionsTab(
         ConfigAction("Phone calls", state.callPhonePermissionGranted, onRequestCallPermission)
         ConfigAction("Overlay", state.overlayPermissionGranted, onOpenOverlayPermission)
         ConfigAction("Accessibility", state.accessibilityEnabled, onOpenAccessibility)
-        ConfigAction("Assistant app", state.assistantSelected, onOpenAssistSettings)
+        ConfigAction("Assistant shortcut (optional)", state.assistantSelected, onOpenAssistSettings)
     }
 }
 
@@ -629,7 +629,6 @@ private fun SeniorUiState.readinessRows(): List<ReadinessRow> = listOf(
     ReadinessRow("Phone calls", callPhonePermissionGranted),
     ReadinessRow("Overlay", overlayPermissionGranted),
     ReadinessRow("Accessibility", accessibilityEnabled),
-    ReadinessRow("Assistant app", assistantSelected, readyText = "Selected", missingText = "Not selected"),
     ReadinessRow("Language", lang.isNotBlank(), readyText = lang.ifBlank { "Selected" }),
     ReadinessRow(
         "Backend",

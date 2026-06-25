@@ -39,9 +39,12 @@ Required readiness checks:
 - Display over other apps / overlay permission granted.
 - Microphone permission granted.
 - Backend websocket URL connected.
-- Default assistant app selected.
 - Phone call permission granted.
 - Language selected.
+
+Optional shortcut:
+
+- Default assistant app selected, where supported.
 
 When all checks are ready, Start Agent becomes enabled with sage confirmation styling.
 

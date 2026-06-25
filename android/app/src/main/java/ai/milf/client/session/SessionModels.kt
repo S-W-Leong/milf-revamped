@@ -116,8 +116,7 @@ val SeniorUiState.canStartHelper: Boolean
         microphonePermissionGranted &&
         callPhonePermissionGranted &&
         overlayPermissionGranted &&
-        accessibilityEnabled &&
-        assistantSelected
+        accessibilityEnabled
 
 val SeniorUiState.canStartAssistEntry: Boolean
     get() = backendUrl.isNotBlank() &&
@@ -125,8 +124,7 @@ val SeniorUiState.canStartAssistEntry: Boolean
         microphonePermissionGranted &&
         callPhonePermissionGranted &&
         overlayPermissionGranted &&
-        accessibilityEnabled &&
-        assistantSelected
+        accessibilityEnabled
 
 const val READY_PROMPT = "Ask MILF to do something"
 const val LISTENING_PROMPT = "Listening..."
