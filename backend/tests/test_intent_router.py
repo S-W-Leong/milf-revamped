@@ -1,6 +1,7 @@
 import logging
 
 from milf.intent_router import (
+    INTENT_AGENT_PROMPT,
     IntentAgentDecision,
     IntentRoute,
     build_default_intent_agent,
@@ -142,6 +143,35 @@ async def test_intent_model_receives_milf_session_context():
             "Clarifying original input: send hello",
         )
     ]
+
+
+async def test_intent_model_receives_user_memory_without_known_contact_injection():
+    agent = FakeIntentAgent(
+        IntentAgentDecision(
+            route="execute",
+            normalized_intent="Start a WhatsApp video call with Wei.",
+            requires_confirmation=True,
+            confidence=0.9,
+        )
+    )
+
+    route = await route_intent_with_agent(
+        "call my grandson",
+        "en",
+        agent,
+        memory="Wei is my grandson.",
+    )
+
+    assert route.kind == "execute"
+    assert agent.calls == [
+        (
+            "call my grandson",
+            "en",
+            "No prior MILF session context.\nAgent memory: Wei is my grandson.",
+        )
+    ]
+    assert "buyer-daughter" not in INTENT_AGENT_PROMPT
+    assert "wei-grandson" not in INTENT_AGENT_PROMPT
 
 
 async def test_intent_router_logs_model_decision(caplog):

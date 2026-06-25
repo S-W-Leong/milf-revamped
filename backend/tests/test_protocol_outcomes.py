@@ -26,31 +26,13 @@ def test_task_complete_roundtrips_contact_id():
     assert decoded == message
 
 
-def test_task_failure_roundtrips_recovery_contact_id():
-    message = TaskFailure(
-        message="Could not identify the recipient",
-        lang="en",
-        recovery_contact_id="buyer-daughter",
-    )
+def test_task_failure_has_no_recovery_contact_id():
+    message = TaskFailure(message="Could not identify the recipient", lang="en")
 
     raw = encode(message)
     payload = json.loads(raw)
     decoded = decode(raw)
 
     assert payload["type"] == "TaskFailure"
-    assert payload["data"]["recovery_contact_id"] == "buyer-daughter"
+    assert "recovery_contact_id" not in payload["data"]
     assert decoded == message
-
-
-def test_task_failure_roundtrips_null_recovery_contact_id():
-    message = TaskFailure(
-        message="Could not identify the recipient",
-        lang="en",
-        recovery_contact_id=None,
-    )
-
-    raw = encode(message)
-    payload = json.loads(raw)
-
-    assert payload["data"]["recovery_contact_id"] is None
-    assert decode(raw) == message

@@ -47,7 +47,7 @@ class MilfWebSocketClientTest {
                 ) = Unit
 
                 override suspend fun onTaskComplete(summary: String, lang: String, contactId: String?) = Unit
-                override suspend fun onTaskFailure(message: String, lang: String, recoveryContactId: String?) = Unit
+                override suspend fun onTaskFailure(message: String, lang: String) = Unit
                 override fun onClosed(reason: String?) = Unit
                 override fun onFailed(message: String) = Unit
             }
@@ -78,7 +78,8 @@ class MilfWebSocketClientTest {
             goalAudio = byteArrayOf(1, 2, 3),
             lang = "zh",
             callbacks = noOpCallbacks(),
-            backendSessionId = "session-123"
+            backendSessionId = "session-123",
+            memory = "Wei is my grandson."
         )
 
         val socket = factory.sockets.single()
@@ -89,6 +90,7 @@ class MilfWebSocketClientTest {
         assertEquals("AQID", audio.goalAudioB64)
         assertEquals("zh", audio.lang)
         assertEquals("session-123", audio.sessionId)
+        assertEquals("Wei is my grandson.", audio.memory)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -129,6 +131,7 @@ class MilfWebSocketClientTest {
             "en",
             noOpCallbacks(),
             backendSessionId = "session-123",
+            memory = "Wei is my grandson.",
         )
         factory.sockets.single().open()
 
@@ -137,6 +140,7 @@ class MilfWebSocketClientTest {
                 goalText = "I want to see my grandson",
                 lang = "en",
                 sessionId = "session-123",
+                memory = "Wei is my grandson.",
             ),
             MilfProtocol.decode(factory.sockets.single().sent.single())
         )
@@ -340,18 +344,18 @@ class MilfWebSocketClientTest {
             goalAudio = byteArrayOf(1),
             lang = "en",
             callbacks = noOpCallbacks(
-                onTaskFailure = { message, lang, recoveryContactId ->
-                    failed = TaskFailure(message, lang, recoveryContactId)
+                onTaskFailure = { message, lang ->
+                    failed = TaskFailure(message, lang)
                 }
             )
         )
 
         client.handleText(
-            MilfProtocol.encode(TaskFailure("Need help.", "en", "buyer-daughter"))
+            MilfProtocol.encode(TaskFailure("Need help.", "en"))
         )
         advanceUntilIdle()
 
-        assertEquals(TaskFailure("Need help.", "en", "buyer-daughter"), failed)
+        assertEquals(TaskFailure("Need help.", "en"), failed)
     }
 }
 
@@ -402,7 +406,7 @@ private fun noOpCallbacks(
     onNarration: suspend (String, String) -> Unit = { _, _ -> },
     onConfirmRequest: suspend (String, String, String, String?) -> Unit = { _, _, _, _ -> },
     onTaskComplete: suspend (String, String, String?) -> Unit = { _, _, _ -> },
-    onTaskFailure: suspend (String, String, String?) -> Unit = { _, _, _ -> },
+    onTaskFailure: suspend (String, String) -> Unit = { _, _ -> },
     onFailed: (String) -> Unit = {}
 ): MilfWebSocketClient.Callbacks =
     object : MilfWebSocketClient.Callbacks {
@@ -418,8 +422,8 @@ private fun noOpCallbacks(
         override suspend fun onTaskComplete(summary: String, lang: String, contactId: String?) =
             onTaskComplete(summary, lang, contactId)
 
-        override suspend fun onTaskFailure(message: String, lang: String, recoveryContactId: String?) =
-            onTaskFailure(message, lang, recoveryContactId)
+        override suspend fun onTaskFailure(message: String, lang: String) =
+            onTaskFailure(message, lang)
 
         override fun onClosed(reason: String?) = Unit
         override fun onFailed(message: String) = onFailed(message)

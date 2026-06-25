@@ -43,20 +43,21 @@ data class TaskComplete(
 
 data class TaskFailure(
     val message: String,
-    val lang: String,
-    val recoveryContactId: String? = null
+    val lang: String
 ) : MilfMessage
 
 data class Audio(
     val goalAudioB64: String,
     val lang: String,
-    val sessionId: String? = null
+    val sessionId: String? = null,
+    val memory: String = ""
 ) : MilfMessage
 
 data class TextGoal(
     val goalText: String,
     val lang: String,
-    val sessionId: String? = null
+    val sessionId: String? = null,
+    val memory: String = ""
 ) : MilfMessage
 
 object MilfProtocol {
@@ -95,17 +96,18 @@ object MilfProtocol {
             is TaskFailure -> JSONObject()
                 .put("message", message.message)
                 .put("lang", message.lang)
-                .putNullable("recovery_contact_id", message.recoveryContactId)
 
             is Audio -> JSONObject()
                 .put("goal_audio_b64", message.goalAudioB64)
                 .put("lang", message.lang)
                 .putNullable("session_id", message.sessionId)
+                .put("memory", message.memory)
 
             is TextGoal -> JSONObject()
                 .put("goal_text", message.goalText)
                 .put("lang", message.lang)
                 .putNullable("session_id", message.sessionId)
+                .put("memory", message.memory)
         }
         return JSONObject()
             .put("type", typeName(message))
@@ -156,20 +158,21 @@ object MilfProtocol {
 
             "TaskFailure" -> TaskFailure(
                 message = data.getString("message"),
-                lang = data.getString("lang"),
-                recoveryContactId = data.optStringOrNull("recovery_contact_id")
+                lang = data.getString("lang")
             )
 
             "Audio" -> Audio(
                 goalAudioB64 = data.getString("goal_audio_b64"),
                 lang = data.getString("lang"),
-                sessionId = data.optStringOrNull("session_id")
+                sessionId = data.optStringOrNull("session_id"),
+                memory = data.optStringOrNull("memory") ?: ""
             )
 
             "TextGoal" -> TextGoal(
                 goalText = data.getString("goal_text"),
                 lang = data.getString("lang"),
-                sessionId = data.optStringOrNull("session_id")
+                sessionId = data.optStringOrNull("session_id"),
+                memory = data.optStringOrNull("memory") ?: ""
             )
 
             else -> throw IllegalArgumentException("Unknown message type: $type")

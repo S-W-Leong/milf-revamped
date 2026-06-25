@@ -2,7 +2,6 @@ package ai.milf.client
 
 import ai.milf.client.protocol.ConfirmResponse
 import ai.milf.client.protocol.MilfMessage
-import ai.milf.client.relationship.RelationshipGraph
 import ai.milf.client.session.AppScreen
 import ai.milf.client.session.ConfigTab
 import ai.milf.client.session.MilfSessionController
@@ -29,8 +28,7 @@ class MainViewModel(
 ) : ViewModel() {
     constructor(dependencies: Dependencies) : this(
         MilfSessionController(
-            dependencies = dependencies.sessionDependencies,
-            graph = RelationshipGraph.demo()
+            dependencies = dependencies.sessionDependencies
         ),
         ownsController = true
     )
@@ -40,6 +38,7 @@ class MainViewModel(
     fun setBackendUrl(url: String) = controller.setBackendUrl(url)
     fun setLang(lang: String) = controller.setLang(lang)
     fun setSpeechInputMode(mode: SpeechInputMode) = controller.setSpeechInputMode(mode)
+    fun setAgentMemory(memory: String) = controller.setAgentMemory(memory)
     fun setWatchMode(enabled: Boolean) = controller.setWatchMode(enabled)
     fun setDemoMode(enabled: Boolean) = controller.setDemoMode(enabled)
     fun setCommandText(text: String) = controller.setCommandText(text)
@@ -61,7 +60,7 @@ class MainViewModel(
     fun denyConfirmation() = controller.denyConfirmation()
     fun onConfirmationSpeech(text: String) = controller.onConfirmationSpeech(text)
     fun showConfirmationForTest(id: String, summary: String, lang: String) =
-        controller.showConfirmationForTest(id, summary, lang, "wei-grandson")
+        controller.showConfirmationForTest(id, summary, lang)
 
     override fun onCleared() {
         if (ownsController) {
@@ -83,14 +82,16 @@ class MainViewModel(
                         goalAudio: ByteArray,
                         lang: String,
                         callbacks: MilfWebSocketClient.Callbacks,
-                        backendSessionId: String?
+                        backendSessionId: String?,
+                        memory: String
                     ) = Unit
 
                     override fun startText(
                         goalText: String,
                         lang: String,
                         callbacks: MilfWebSocketClient.Callbacks,
-                        backendSessionId: String?
+                        backendSessionId: String?,
+                        memory: String
                     ) = Unit
 
                     override fun send(message: MilfMessage): Boolean {

@@ -26,12 +26,25 @@ async def _dispatch_first_frame(
     if isinstance(first, Audio):
         stt = make_stt()
         audio = base64.b64decode(first.goal_audio_b64, validate=True)
-        await _call_with_optional_session(run_task, conn, audio, first.lang, stt, session)
+        await _call_with_optional_context(
+            run_task,
+            conn,
+            audio,
+            first.lang,
+            stt,
+            session=session,
+            memory=first.memory,
+        )
         return
 
     if isinstance(first, TextGoal):
-        await _call_with_optional_session(
-            run_intent, conn, first.goal_text, first.lang, session
+        await _call_with_optional_context(
+            run_intent,
+            conn,
+            first.goal_text,
+            first.lang,
+            session=session,
+            memory=first.memory,
         )
         return
 
@@ -87,7 +100,6 @@ async def _handler(ws):
                     await conn.send_task_failure(
                         SAFE_FAILURE_COPY,
                         lang,
-                        recovery_contact_id="buyer-daughter",
                     )
                 except websockets.ConnectionClosed:
                     logger.debug("Websocket closed before task failure could be sent.")
@@ -109,12 +121,12 @@ async def serve(host=None, port=None):
         await asyncio.Future()
 
 
-async def _call_with_optional_session(
+async def _call_with_optional_context(
     fn: Callable[..., Any],
     *args: Any,
+    session: MILFSession | None,
+    memory: str,
 ) -> Any:
-    session = args[-1]
-    call_args = args[:-1]
     fn_signature = signature(fn)
     parameters = list(fn_signature.parameters.values())
     accepts_session_keyword = any(
@@ -122,15 +134,25 @@ async def _call_with_optional_session(
         or parameter.name == "session"
         for parameter in parameters
     )
+    accepts_memory_keyword = any(
+        parameter.kind == Parameter.VAR_KEYWORD
+        or parameter.name == "memory"
+        for parameter in parameters
+    )
     accepts_session_positionally = any(
         parameter.kind == Parameter.VAR_POSITIONAL for parameter in parameters
-    ) or len(parameters) > len(call_args)
+    ) or len(parameters) > len(args)
 
-    if accepts_session_keyword:
-        return await fn(*call_args, session=session)
+    if accepts_session_keyword or accepts_memory_keyword:
+        kwargs = {}
+        if accepts_session_keyword:
+            kwargs["session"] = session
+        if accepts_memory_keyword:
+            kwargs["memory"] = memory
+        return await fn(*args, **kwargs)
     if accepts_session_positionally:
-        return await fn(*call_args, session)
-    return await fn(*call_args)
+        return await fn(*args, session)
+    return await fn(*args)
 
 
 def _session_for_goal(goal: Audio | TextGoal) -> MILFSession | None:

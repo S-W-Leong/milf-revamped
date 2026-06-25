@@ -76,7 +76,6 @@ class MILFSession(BaseModel):
 
         if route.kind == "execute":
             self.pending_clarification = None
-            self.last_contact_id = route.contact_id or self.last_contact_id
             self.last_normalized_intent = (
                 route.normalized_intent or self.last_normalized_intent
             )

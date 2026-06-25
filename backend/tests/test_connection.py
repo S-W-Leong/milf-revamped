@@ -69,7 +69,6 @@ async def test_send_task_outcomes():
     await conn.send_task_failure(
         "I'm having a little trouble with that. Please try again.",
         "en",
-        "buyer-daughter",
     )
 
     assert sent[0] == {
@@ -85,7 +84,6 @@ async def test_send_task_outcomes():
         "data": {
             "message": "I'm having a little trouble with that. Please try again.",
             "lang": "en",
-            "recovery_contact_id": "buyer-daughter",
         },
     }
 

@@ -6,7 +6,6 @@ import ai.milf.client.audio.ConfirmationVoiceParser
 import ai.milf.client.protocol.Action
 import ai.milf.client.protocol.ActionResult
 import ai.milf.client.protocol.ConfirmResponse
-import ai.milf.client.relationship.RelationshipGraph
 import ai.milf.client.ws.MilfWebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,13 +28,13 @@ interface NativeSpeechRecognizerLike {
 }
 
 class MilfSessionController(
-    private val dependencies: Dependencies,
-    private val graph: RelationshipGraph = RelationshipGraph.demo()
+    private val dependencies: Dependencies
 ) {
     private val _uiState = MutableStateFlow(
         SeniorUiState(
             backendUrl = dependencies.initialBackendUrl,
-            speechInputMode = dependencies.speechInputMode
+            speechInputMode = dependencies.speechInputMode,
+            agentMemory = dependencies.initialAgentMemory
         )
     )
     val uiState: StateFlow<SeniorUiState> = _uiState.asStateFlow()
@@ -105,6 +104,11 @@ class MilfSessionController(
     fun setSpeechInputMode(mode: SpeechInputMode) {
         dependencies.saveSpeechInputMode(mode)
         _uiState.update { it.copy(speechInputMode = mode) }
+    }
+
+    fun setAgentMemory(memory: String) {
+        dependencies.saveAgentMemory(memory)
+        _uiState.update { it.copy(agentMemory = memory) }
     }
 
     fun setCommandText(text: String) {
@@ -253,7 +257,8 @@ class MilfSessionController(
                 bytes,
                 state.lang,
                 callbacks(callbackSessionId, client),
-                backendSessionId = backendSessionId
+                backendSessionId = backendSessionId,
+                memory = state.agentMemory
             )
         } catch (exception: RuntimeException) {
             moveLocalSessionToFailure(expectedClient = client)
@@ -295,7 +300,8 @@ class MilfSessionController(
                 goal,
                 state.lang,
                 callbacks(callbackSessionId, client),
-                backendSessionId = backendSessionId
+                backendSessionId = backendSessionId,
+                memory = state.agentMemory
             )
         } catch (exception: RuntimeException) {
             moveLocalSessionToFailure(expectedClient = client)
@@ -321,8 +327,6 @@ class MilfSessionController(
     fun retry() {
         beginListening()
     }
-
-    fun callBuyer() = Unit
 
     fun stopActiveRun() {
         cancelActiveSession()
@@ -373,13 +377,13 @@ class MilfSessionController(
         }
     }
 
-    fun showConfirmationForTest(id: String, summary: String, lang: String, contactId: String?) {
+    fun showConfirmationForTest(id: String, summary: String, lang: String) {
         _uiState.update {
             it.copy(
                 screen = SeniorUxScreen.Confirming,
                 isRunning = true,
                 captions = summary,
-                confirmation = PendingConfirmation(id, summary, lang, graph.contact(contactId)),
+                confirmation = PendingConfirmation(id, summary, lang),
                 isCollapsed = false
             )
         }
@@ -448,7 +452,7 @@ class MilfSessionController(
                             screen = SeniorUxScreen.Confirming,
                             isRunning = true,
                             captions = summary,
-                            confirmation = PendingConfirmation(id, summary, lang, graph.contact(contactId)),
+                            confirmation = PendingConfirmation(id, summary, lang),
                             isCollapsed = false
                         )
                     }
@@ -460,7 +464,9 @@ class MilfSessionController(
 
             override suspend fun onTaskComplete(summary: String, lang: String, contactId: String?) {
                 if (!claimCurrentSession(callbackSessionId)) return
+                var shouldSpeak = false
                 _uiState.update {
+                    shouldSpeak = summary.isNotBlank() && summary != it.lastNarration
                     it.copy(
                         screen = SeniorUxScreen.Idle,
                         isRecording = false,
@@ -473,9 +479,12 @@ class MilfSessionController(
                     )
                 }
                 closeActiveClient(client)
+                if (shouldSpeak) {
+                    dependencies.narrator.speak(summary, lang)
+                }
             }
 
-            override suspend fun onTaskFailure(message: String, lang: String, recoveryContactId: String?) {
+            override suspend fun onTaskFailure(message: String, lang: String) {
                 if (!claimCurrentSession(callbackSessionId)) return
                 _uiState.update {
                     it.copy(
@@ -485,7 +494,7 @@ class MilfSessionController(
                         captions = message,
                         confirmation = null,
                         success = null,
-                        failure = FailureState(message, lang, graph.contact(recoveryContactId)),
+                        failure = FailureState(message, lang),
                         actionTarget = null
                     )
                 }
@@ -558,7 +567,8 @@ class MilfSessionController(
                 goal,
                 state.lang,
                 callbacks(callbackSessionId, client),
-                backendSessionId = backendSessionId
+                backendSessionId = backendSessionId,
+                memory = state.agentMemory
             )
         } catch (exception: RuntimeException) {
             moveLocalSessionToFailure(expectedClient = client)
@@ -635,7 +645,7 @@ class MilfSessionController(
                         captions = safe,
                         confirmation = null,
                         success = null,
-                        failure = FailureState(safe, lang, graph.escapeContact),
+                        failure = FailureState(safe, lang),
                         actionTarget = null
                     )
                 }
@@ -664,7 +674,7 @@ class MilfSessionController(
                 captions = safe,
                 confirmation = null,
                 success = null,
-                failure = FailureState(safe, lang, graph.escapeContact),
+                failure = FailureState(safe, lang),
                 actionTarget = null
             )
         }
@@ -675,11 +685,13 @@ class MilfSessionController(
         val recorder: AudioRecorderLike,
         val speechRecognizer: NativeSpeechRecognizerLike,
         val speechInputMode: SpeechInputMode = SpeechInputMode.BackendAudio,
+        val initialAgentMemory: String = "",
         val narrator: NarratorLike,
         val clientFactory: (String) -> SessionSocketClient,
         val initialBackendUrl: String = DEFAULT_BACKEND_URL,
         val saveBackendUrl: (String) -> Unit = {},
         val saveSpeechInputMode: (SpeechInputMode) -> Unit = {},
+        val saveAgentMemory: (String) -> Unit = {},
         val checkBackendConnection: (String, (BackendConnectionStatus) -> Unit) -> Unit = { _, callback ->
             callback(BackendConnectionStatus.Connected)
         },

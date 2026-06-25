@@ -78,7 +78,7 @@ async def test_server_sends_safe_failure_when_make_stt_fails(monkeypatch):
     assert isinstance(failure, TaskFailure)
     assert failure.message == SAFE_FAILURE_COPY
     assert failure.lang == "en"
-    assert failure.recovery_contact_id == "buyer-daughter"
+    assert not hasattr(failure, "recovery_contact_id")
 
 
 async def test_server_sends_safe_failure_for_invalid_audio_base64(monkeypatch):
@@ -100,7 +100,7 @@ async def test_server_sends_safe_failure_for_invalid_audio_base64(monkeypatch):
 
     assert isinstance(failure, TaskFailure)
     assert failure.message == SAFE_FAILURE_COPY
-    assert failure.recovery_contact_id == "buyer-daughter"
+    assert not hasattr(failure, "recovery_contact_id")
     assert called is False
 
 
@@ -112,14 +112,17 @@ async def test_dispatch_first_frame_routes_text_goal(monkeypatch):
     conn = DispatchConnection()
     called = []
 
-    async def fake_run_intent(connection, intent, lang, session=None):
-        called.append((connection, intent, lang, session))
+    async def fake_run_intent(connection, intent, lang, session=None, memory=""):
+        called.append((connection, intent, lang, session, memory))
 
     monkeypatch.setattr("milf.server.run_intent", fake_run_intent)
 
-    await _dispatch_first_frame(conn, TextGoal(goal_text="call Wei", lang="en"))
+    await _dispatch_first_frame(
+        conn,
+        TextGoal(goal_text="call Wei", lang="en", memory="Wei is my grandson."),
+    )
 
-    assert called == [(conn, "call Wei", "en", None)]
+    assert called == [(conn, "call Wei", "en", None, "Wei is my grandson.")]
 
 
 async def test_server_reuses_session_for_multiple_text_goals(monkeypatch):

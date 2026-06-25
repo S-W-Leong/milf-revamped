@@ -62,15 +62,12 @@ class AppConnection:
             encode(TaskComplete(summary=summary, lang=lang, contact_id=contact_id))
         )
 
-    async def send_task_failure(
-        self, message: str, lang: str, recovery_contact_id: str | None = None
-    ) -> None:
+    async def send_task_failure(self, message: str, lang: str) -> None:
         await self._send(
             encode(
                 TaskFailure(
                     message=message,
                     lang=lang,
-                    recovery_contact_id=recovery_contact_id,
                 )
             )
         )

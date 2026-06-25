@@ -36,7 +36,7 @@ class MilfWebSocketClient(
         suspend fun onNarration(text: String, lang: String)
         suspend fun onConfirmRequest(id: String, summary: String, lang: String, contactId: String?)
         suspend fun onTaskComplete(summary: String, lang: String, contactId: String?)
-        suspend fun onTaskFailure(message: String, lang: String, recoveryContactId: String?)
+        suspend fun onTaskFailure(message: String, lang: String)
         fun onClosed(reason: String?)
         fun onFailed(message: String)
     }
@@ -67,7 +67,8 @@ class MilfWebSocketClient(
         goalAudio: ByteArray,
         lang: String,
         callbacks: Callbacks,
-        backendSessionId: String?
+        backendSessionId: String?,
+        memory: String
     ) {
         startSession(callbacks) { sessionId ->
             val encodedAudio = audioEncoder(goalAudio)
@@ -77,6 +78,7 @@ class MilfWebSocketClient(
                     goalAudioB64 = encodedAudio,
                     lang = lang,
                     sessionId = backendSessionId,
+                    memory = memory,
                 )
             )
         }
@@ -86,7 +88,8 @@ class MilfWebSocketClient(
         goalText: String,
         lang: String,
         callbacks: Callbacks,
-        backendSessionId: String?
+        backendSessionId: String?,
+        memory: String
     ) {
         startSession(callbacks) { sessionId ->
             send(
@@ -95,6 +98,7 @@ class MilfWebSocketClient(
                     goalText = goalText,
                     lang = lang,
                     sessionId = backendSessionId,
+                    memory = memory,
                 )
             )
         }
@@ -210,7 +214,7 @@ class MilfWebSocketClient(
             is TaskFailure -> scope.launch {
                 if (!isActive(messageSessionId)) return@launch
                 runCatching {
-                    activeCallbacks.onTaskFailure(message.message, message.lang, message.recoveryContactId)
+                    activeCallbacks.onTaskFailure(message.message, message.lang)
                 }.onFailure { reportFailure(messageSessionId, it.failureMessage()) }
             }
 

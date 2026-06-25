@@ -39,29 +39,51 @@ class MilfProtocolTest {
     }
 
     @Test
-    fun textGoalRoundTripsSessionId() {
+    fun textGoalRoundTripsSessionIdAndMemory() {
         val raw = MilfProtocol.encode(
-            TextGoal(goalText = "search movie", lang = "en", sessionId = "session-123")
+            TextGoal(
+                goalText = "search movie",
+                lang = "en",
+                sessionId = "session-123",
+                memory = "Wei is my grandson."
+            )
         )
         val data = JSONObject(raw).getJSONObject("data")
 
         assertEquals("session-123", data.getString("session_id"))
+        assertEquals("Wei is my grandson.", data.getString("memory"))
         assertEquals(
-            TextGoal(goalText = "search movie", lang = "en", sessionId = "session-123"),
+            TextGoal(
+                goalText = "search movie",
+                lang = "en",
+                sessionId = "session-123",
+                memory = "Wei is my grandson."
+            ),
             MilfProtocol.decode(raw)
         )
     }
 
     @Test
-    fun audioRoundTripsSessionId() {
+    fun audioRoundTripsSessionIdAndMemory() {
         val raw = MilfProtocol.encode(
-            Audio(goalAudioB64 = "AQID", lang = "en", sessionId = "session-123")
+            Audio(
+                goalAudioB64 = "AQID",
+                lang = "en",
+                sessionId = "session-123",
+                memory = "Use WhatsApp video for Wei."
+            )
         )
         val data = JSONObject(raw).getJSONObject("data")
 
         assertEquals("session-123", data.getString("session_id"))
+        assertEquals("Use WhatsApp video for Wei.", data.getString("memory"))
         assertEquals(
-            Audio(goalAudioB64 = "AQID", lang = "en", sessionId = "session-123"),
+            Audio(
+                goalAudioB64 = "AQID",
+                lang = "en",
+                sessionId = "session-123",
+                memory = "Use WhatsApp video for Wei."
+            ),
             MilfProtocol.decode(raw)
         )
     }
@@ -93,31 +115,13 @@ class MilfProtocolTest {
     }
 
     @Test
-    fun taskFailureRoundTripsRecoveryContactId() {
-        val message = TaskFailure(
-            message = "Could not identify the recipient",
-            lang = "en",
-            recoveryContactId = "buyer-daughter"
-        )
+    fun taskFailureHasNoRecoveryContactId() {
+        val message = TaskFailure(message = "Could not identify the recipient", lang = "en")
         val raw = MilfProtocol.encode(message)
         val envelope = JSONObject(raw)
 
         assertEquals("TaskFailure", envelope.getString("type"))
-        assertEquals("buyer-daughter", envelope.getJSONObject("data").getString("recovery_contact_id"))
-        assertEquals(message, MilfProtocol.decode(raw))
-    }
-
-    @Test
-    fun taskFailureRoundTripsNullRecoveryContactId() {
-        val message = TaskFailure(
-            message = "Could not identify the recipient",
-            lang = "en",
-            recoveryContactId = null
-        )
-        val raw = MilfProtocol.encode(message)
-        val envelope = JSONObject(raw)
-
-        assertTrue(envelope.getJSONObject("data").isNull("recovery_contact_id"))
+        assertEquals(false, envelope.getJSONObject("data").has("recovery_contact_id"))
         assertEquals(message, MilfProtocol.decode(raw))
     }
 

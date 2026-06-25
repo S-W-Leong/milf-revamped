@@ -25,6 +25,9 @@ fun androidSessionDependencies(application: Application): MilfSessionController.
         recorder = AndroidAudioRecorder(AudioRecorder(application)),
         speechRecognizer = AndroidNativeSpeechRecognizer(GoalSpeechRecognizer(application)),
         speechInputMode = application.savedSpeechInputMode(),
+        initialAgentMemory = application.backendPrefs()
+            .getString(KEY_AGENT_MEMORY, "")
+            ?: "",
         narrator = AndroidNarrator(TtsNarrator(application)),
         clientFactory = { MilfWebSocketClient(it) },
         initialBackendUrl = application.backendPrefs()
@@ -40,6 +43,12 @@ fun androidSessionDependencies(application: Application): MilfSessionController.
             application.backendPrefs()
                 .edit()
                 .putString(KEY_SPEECH_INPUT_MODE, mode.name)
+                .apply()
+        },
+        saveAgentMemory = { memory ->
+            application.backendPrefs()
+                .edit()
+                .putString(KEY_AGENT_MEMORY, memory)
                 .apply()
         },
         checkBackendConnection = { url, callback ->
@@ -63,6 +72,7 @@ private const val DEFAULT_BACKEND_URL = "ws://10.0.2.2:8765"
 private const val PREFS_NAME = "milf_setup"
 private const val KEY_BACKEND_URL = "backend_url"
 private const val KEY_SPEECH_INPUT_MODE = "speech_input_mode"
+private const val KEY_AGENT_MEMORY = "agent_memory"
 
 private fun Context.backendPrefs() =
     getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

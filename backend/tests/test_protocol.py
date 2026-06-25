@@ -29,6 +29,7 @@ def test_text_goal_round_trips_session_id():
             goal_text="search movie",
             lang="en",
             session_id="session-123",
+            memory="Wei is my grandson.",
         )
     )
 
@@ -36,16 +37,25 @@ def test_text_goal_round_trips_session_id():
         goal_text="search movie",
         lang="en",
         session_id="session-123",
+        memory="Wei is my grandson.",
     )
 
 
-def test_audio_round_trips_session_id():
-    raw = encode(Audio(goal_audio_b64="AQID", lang="en", session_id="session-123"))
+def test_audio_round_trips_session_id_and_memory():
+    raw = encode(
+        Audio(
+            goal_audio_b64="AQID",
+            lang="en",
+            session_id="session-123",
+            memory="Use WhatsApp for Wei.",
+        )
+    )
 
     assert decode(raw) == Audio(
         goal_audio_b64="AQID",
         lang="en",
         session_id="session-123",
+        memory="Use WhatsApp for Wei.",
     )
 
 

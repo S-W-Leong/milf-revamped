@@ -47,6 +47,7 @@ fun MilfUi(
     onDisconnectBackend: () -> Unit,
     onLangChange: (String) -> Unit,
     onSpeechInputModeChange: (SpeechInputMode) -> Unit,
+    onAgentMemoryChange: (String) -> Unit,
     onOpenAccessibility: () -> Unit,
     onOpenOverlayPermission: () -> Unit,
     onOpenAssistSettings: () -> Unit,
@@ -76,6 +77,7 @@ fun MilfUi(
                     onDisconnectBackend = onDisconnectBackend,
                     onLangChange = onLangChange,
                     onSpeechInputModeChange = onSpeechInputModeChange,
+                    onAgentMemoryChange = onAgentMemoryChange,
                     onOpenAccessibility = onOpenAccessibility,
                     onOpenOverlayPermission = onOpenOverlayPermission,
                     onOpenAssistSettings = onOpenAssistSettings,
@@ -173,6 +175,7 @@ private fun ConfigScreen(
     onDisconnectBackend: () -> Unit,
     onLangChange: (String) -> Unit,
     onSpeechInputModeChange: (SpeechInputMode) -> Unit,
+    onAgentMemoryChange: (String) -> Unit,
     onOpenAccessibility: () -> Unit,
     onOpenOverlayPermission: () -> Unit,
     onOpenAssistSettings: () -> Unit,
@@ -248,6 +251,7 @@ private fun ConfigScreen(
                 state = state,
                 onLangChange = onLangChange,
                 onSpeechInputModeChange = onSpeechInputModeChange,
+                onAgentMemoryChange = onAgentMemoryChange,
                 onStartOverlay = onStartOverlay,
                 onStopOverlay = onStopOverlay
             )
@@ -342,12 +346,29 @@ private fun AgentTab(
     state: SeniorUiState,
     onLangChange: (String) -> Unit,
     onSpeechInputModeChange: (SpeechInputMode) -> Unit,
+    onAgentMemoryChange: (String) -> Unit,
     onStartOverlay: () -> Unit,
     onStopOverlay: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LanguageRow(state.lang, onLangChange)
         SpeechInputModeRow(state.speechInputMode, onSpeechInputModeChange)
+        OutlinedTextField(
+            value = state.agentMemory,
+            onValueChange = onAgentMemoryChange,
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 4,
+            label = { Text("Memory") },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MilfColors.TextPrimary,
+                unfocusedTextColor = MilfColors.TextPrimary,
+                focusedBorderColor = MilfColors.Sage,
+                unfocusedBorderColor = MilfColors.BorderStrong,
+                focusedLabelColor = MilfColors.Sage,
+                unfocusedLabelColor = MilfColors.TextSecondary,
+                cursorColor = MilfColors.Sage
+            )
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             Button(
                 onClick = onStartOverlay,

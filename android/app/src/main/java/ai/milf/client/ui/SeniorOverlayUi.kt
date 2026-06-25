@@ -335,6 +335,7 @@ private fun MicButton(isRecording: Boolean, onMicTap: () -> Unit) {
         modifier = Modifier
             .size(42.dp)
             .background(visuals.containerColor, CircleShape)
+            .border(1.dp, visuals.borderColor, CircleShape)
     ) {
         Icon(
             Icons.Default.Mic,
@@ -347,20 +348,23 @@ private fun MicButton(isRecording: Boolean, onMicTap: () -> Unit) {
 internal data class MicButtonVisuals(
     val containerColor: Color,
     val iconColor: Color,
+    val borderColor: Color,
     val contentDescription: String
 )
 
 internal fun micButtonVisuals(isRecording: Boolean): MicButtonVisuals =
     if (isRecording) {
         MicButtonVisuals(
-            containerColor = MilfColors.SageDim,
-            iconColor = MilfColors.Sage,
+            containerColor = MilfColors.CardSurface,
+            iconColor = MilfColors.TextPrimary,
+            borderColor = MilfColors.BorderStrong,
             contentDescription = "Mic listening"
         )
     } else {
         MicButtonVisuals(
-            containerColor = MilfColors.MicOffGreyDim,
-            iconColor = MilfColors.MicOffGrey,
+            containerColor = MilfColors.CardSurface,
+            iconColor = MilfColors.TextPrimary,
+            borderColor = MilfColors.BorderStrong,
             contentDescription = "Mic off"
         )
     }

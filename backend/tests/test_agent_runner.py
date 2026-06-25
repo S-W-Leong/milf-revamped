@@ -1,7 +1,7 @@
 import logging
 from types import SimpleNamespace
 
-from milf.agent_runner import run_intent, run_task
+from milf.agent_runner import build_mobile_config, run_intent, run_task
 from milf.intent_router import IntentRoute
 from milf.session import MILFSession
 from milf.stt import MockSTT
@@ -36,8 +36,8 @@ class FakeConn:
     async def send_task_complete(self, summary, lang, contact_id=None):
         self.completions.append((summary, lang, contact_id))
 
-    async def send_task_failure(self, message, lang, recovery_contact_id=None):
-        self.failures.append((message, lang, recovery_contact_id))
+    async def send_task_failure(self, message, lang):
+        self.failures.append((message, lang))
 
     async def request_confirmation(self, summary, lang, contact_id=None):
         self.confirmation_requests.append((summary, lang, contact_id))
@@ -48,7 +48,6 @@ async def wei_router(intent, lang):
     return IntentRoute(
         kind="execute",
         normalized_intent="I want to see my grandson",
-        contact_id="wei-grandson",
         requires_confirmation=True,
     )
 
@@ -72,11 +71,49 @@ async def test_run_task_acks_then_builds_and_runs():
     )
 
     assert result.success is True
-    assert "Wei" in captured["goal"]
+    assert "Contact id:" not in captured["goal"]
+    assert "Intended contact:" not in captured["goal"]
     assert "confirm_action" in captured["tools"]
-    assert conn.narrations and "Wei" in conn.narrations[0][0]
-    assert conn.completions == [("You're connected to Wei.", "en", "wei-grandson")]
+    assert conn.narrations == [("Okay, let me help you with that.", "en")]
+    assert conn.completions == [("Done.", "en", None)]
     assert conn.failures == []
+
+
+def test_mobile_config_enables_manager_and_executor_vision():
+    config = build_mobile_config()
+
+    assert config.agent.manager.vision is True
+    assert config.agent.executor.vision is True
+
+
+async def test_run_task_includes_agent_memory_in_goal_and_router():
+    captured = {}
+
+    async def fake_router(intent, lang, session=None, memory=""):
+        captured["router_memory"] = memory
+        return IntentRoute(
+            kind="execute",
+            normalized_intent="Start a WhatsApp video call with Wei.",
+            requires_confirmation=True,
+        )
+
+    def fake_factory(goal, driver, custom_tools):
+        captured["goal"] = goal
+        return SimpleNamespace(run=lambda: FakeHandler())
+
+    await run_task(
+        connection=FakeConn(),
+        audio=b"x",
+        lang="en",
+        stt=MockSTT("I want to see my grandson"),
+        agent_factory=fake_factory,
+        intent_router=fake_router,
+        memory="Wei is my grandson. Use WhatsApp video.",
+    )
+
+    assert captured["router_memory"] == "Wei is my grandson. Use WhatsApp video."
+    assert "Agent memory:" in captured["goal"]
+    assert "Wei is my grandson. Use WhatsApp video." in captured["goal"]
 
 
 async def test_run_intent_uses_text_without_stt():
@@ -94,7 +131,7 @@ async def test_run_intent_uses_text_without_stt():
     )
 
     assert conn.narrations
-    assert conn.completions == [("You're connected to Wei.", "en", "wei-grandson")]
+    assert conn.completions == [("Done.", "en", None)]
 
 
 async def test_run_intent_short_circuits_greeting_before_agent():
@@ -171,7 +208,6 @@ async def test_run_intent_uses_normalized_intent_from_router():
         return IntentRoute(
             kind="execute",
             normalized_intent="I want to see my grandson",
-            contact_id="wei-grandson",
         )
 
     def fake_factory(goal, driver, custom_tools):
@@ -189,10 +225,10 @@ async def test_run_intent_uses_normalized_intent_from_router():
     )
 
     assert "Spoken intent: 'I want to see my grandson'." in captured["goal"]
-    assert conn.completions == [("You're connected to Wei.", "en", "wei-grandson")]
+    assert conn.completions == [("Done.", "en", None)]
 
 
-async def test_run_intent_uses_contact_id_from_router():
+async def test_run_intent_does_not_inject_contact_context_from_router():
     captured = {}
 
     async def fake_router(intent, lang):
@@ -218,9 +254,10 @@ async def test_run_intent_uses_contact_id_from_router():
         intent_router=fake_router,
     )
 
-    assert "Contact id: wei-grandson." in captured["goal"]
+    assert "Contact id:" not in captured["goal"]
+    assert "Intended contact:" not in captured["goal"]
     assert captured["tools"]["confirm_action"]["function"]
-    assert conn.completions == [("You're connected to Wei.", "en", "wei-grandson")]
+    assert conn.completions == [("Done.", "en", None)]
 
 
 async def test_run_intent_uses_router_contact_for_acknowledgment():
@@ -245,7 +282,7 @@ async def test_run_intent_uses_router_contact_for_acknowledgment():
         intent_router=fake_router,
     )
 
-    assert conn.narrations == [("Okay, let me help you reach Wei.", "en")]
+    assert conn.narrations == [("Okay, let me help you with that.", "en")]
 
 
 async def test_run_intent_records_clarification_in_session():
@@ -313,7 +350,7 @@ async def test_run_intent_uses_pending_session_context_for_follow_up():
 
     assert "Spoken intent: 'Send hello to Wei on WhatsApp.'." in captured["goal"]
     assert session.pending_clarification is None
-    assert session.last_contact_id == "wei-grandson"
+    assert session.last_contact_id is None
     assert session.last_normalized_intent == "Send hello to Wei on WhatsApp."
     assert session.last_mobile_run is not None
     assert session.last_mobile_run.status == "completed"
@@ -433,7 +470,7 @@ async def test_run_task_still_transcribes_audio():
     )
 
     assert conn.narrations
-    assert conn.completions == [("You're connected to Wei.", "en", "wei-grandson")]
+    assert conn.completions == [("Done.", "en", None)]
 
 
 def _find_log(records, message):
@@ -512,7 +549,6 @@ async def test_run_task_sends_safe_failure_on_agent_error():
         (
             "I'm having a little trouble with that. Please try again.",
             "en",
-            "buyer-daughter",
         )
     ]
 
@@ -522,7 +558,6 @@ async def test_run_task_surfaces_mobile_run_clarification_and_stops():
         return IntentRoute(
             kind="execute",
             normalized_intent="Send hello to Wei on WhatsApp.",
-            contact_id="wei-grandson",
             requires_confirmation=True,
         )
 
@@ -545,7 +580,7 @@ async def test_run_task_surfaces_mobile_run_clarification_and_stops():
     assert result.success is False
     assert result.reason == "clarify"
     assert conn.narrations == [
-        ("Okay, let me help you reach Wei.", "en"),
+        ("Okay, let me help you with that.", "en"),
         ("Which listed Wei is your grandson?", "en"),
     ]
     assert conn.completions == [("Which listed Wei is your grandson?", "en", None)]
@@ -579,7 +614,6 @@ async def test_run_task_sends_safe_failure_when_agent_reports_failure():
         (
             "I'm having a little trouble with that. Please try again.",
             "en",
-            "buyer-daughter",
         )
     ]
 
@@ -601,12 +635,11 @@ async def test_run_task_sends_safe_failure_when_confirmation_declined():
 
     assert result.success is False
     assert result.reason == "confirmation_declined"
-    assert conn.confirmation_requests == [("Call Wei now?", "en", "wei-grandson")]
+    assert conn.confirmation_requests == [("Call Wei now?", "en", None)]
     assert conn.completions == []
     assert conn.failures == [
         (
             "I'm having a little trouble with that. Please try again.",
             "en",
-            "buyer-daughter",
         )
     ]

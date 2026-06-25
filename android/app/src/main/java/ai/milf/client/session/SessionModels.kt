@@ -1,7 +1,5 @@
 package ai.milf.client.session
 
-import ai.milf.client.relationship.RelationshipContact
-
 enum class SeniorUxScreen {
     Idle,
     Listening,
@@ -43,20 +41,17 @@ data class ActionTarget(
 data class PendingConfirmation(
     val id: String,
     val summary: String,
-    val lang: String,
-    val contact: RelationshipContact?
+    val lang: String
 )
 
 data class SuccessState(
     val summary: String,
-    val lang: String,
-    val contact: RelationshipContact?
+    val lang: String
 )
 
 data class FailureState(
     val message: String,
-    val lang: String,
-    val recoveryContact: RelationshipContact?
+    val lang: String
 )
 
 data class SetupStatus(
@@ -90,6 +85,7 @@ data class SeniorUiState(
     val overlayEnabled: Boolean = false,
     val isCollapsed: Boolean = false,
     val speechInputMode: SpeechInputMode = SpeechInputMode.Native,
+    val agentMemory: String = "",
     val appScreen: AppScreen = AppScreen.Main,
     val selectedConfigTab: ConfigTab = ConfigTab.Permissions
 )

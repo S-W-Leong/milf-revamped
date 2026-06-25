@@ -2,7 +2,6 @@ package ai.milf.client.session
 
 import ai.milf.client.protocol.ConfirmResponse
 import ai.milf.client.protocol.MilfMessage
-import ai.milf.client.relationship.RelationshipGraph
 import ai.milf.client.ws.MilfWebSocketClient
 import ai.milf.client.AudioRecorderLike
 import ai.milf.client.NarratorLike
@@ -29,7 +28,7 @@ class MilfSessionControllerTest {
     }
 
     @Test
-    fun confirmationRequestShowsContactAwareGate() = runTest {
+    fun confirmationRequestShowsPlainGate() = runTest {
         val client = FakeClient()
         val controller = fakeController(client = client)
 
@@ -44,7 +43,7 @@ class MilfSessionControllerTest {
 
         val state = controller.uiState.value
         assertEquals(SeniorUxScreen.Confirming, state.screen)
-        assertEquals("Wei", state.confirmation?.contact?.displayName)
+        assertEquals("Calling Wei, your grandson?", state.confirmation?.summary)
     }
 
     @Test
@@ -55,7 +54,7 @@ class MilfSessionControllerTest {
 
         controller.beginListening()
         controller.finishListeningAndRun()
-        controller.showConfirmationForTest("c1", "Calling Wei?", "en", "wei-grandson")
+        controller.showConfirmationForTest("c1", "Calling Wei?", "en")
         controller.approveConfirmation()
 
         assertEquals(listOf(ConfirmResponse("c1", true)), sent)
@@ -71,7 +70,7 @@ class MilfSessionControllerTest {
 
         controller.beginListening()
         controller.finishListeningAndRun()
-        controller.showConfirmationForTest("c1", "Calling Wei?", "en", "wei-grandson")
+        controller.showConfirmationForTest("c1", "Calling Wei?", "en")
         controller.denyConfirmation()
         client.callbacks?.onTaskComplete("Old success.", "en", "wei-grandson")
 
@@ -84,7 +83,7 @@ class MilfSessionControllerTest {
     }
 
     @Test
-    fun taskFailureShowsRecoveryContact() = runTest {
+    fun taskFailureShowsMessageOnly() = runTest {
         val client = FakeClient()
         val controller = fakeController(client = client)
 
@@ -92,13 +91,12 @@ class MilfSessionControllerTest {
         controller.finishListeningAndRun()
         client.callbacks?.onTaskFailure(
             message = "I'm having a little trouble with that. Please try again.",
-            lang = "en",
-            recoveryContactId = "buyer-daughter"
+            lang = "en"
         )
 
         val state = controller.uiState.value
         assertEquals(SeniorUxScreen.Failure, state.screen)
-        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+        assertEquals(SAFE_FAILURE_COPY, state.failure?.message)
     }
 
     @Test
@@ -109,7 +107,7 @@ class MilfSessionControllerTest {
         controller.beginListening()
         controller.finishListeningAndRun()
         client.callbacks?.onTaskComplete("Connected to Wei.", "en", "wei-grandson")
-        client.callbacks?.onTaskFailure("Old failure.", "en", "buyer-daughter")
+        client.callbacks?.onTaskFailure("Old failure.", "en")
 
         val state = controller.uiState.value
         assertEquals(true, client.closed)
@@ -117,6 +115,33 @@ class MilfSessionControllerTest {
         assertEquals(READY_PROMPT, state.captions)
         assertEquals(null, state.success)
         assertEquals(null, state.failure)
+    }
+
+    @Test
+    fun taskCompleteSpeaksSummary() = runTest {
+        val client = FakeClient()
+        val narrator = FakeNarrator()
+        val controller = fakeController(client = client, narrator = narrator)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        client.callbacks?.onTaskComplete("Sent hello to Quick notes.", "en", null)
+
+        assertEquals(listOf("Sent hello to Quick notes."), narrator.spoken.map { it.first })
+    }
+
+    @Test
+    fun taskCompleteDoesNotRepeatExistingNarration() = runTest {
+        val client = FakeClient()
+        val narrator = FakeNarrator()
+        val controller = fakeController(client = client, narrator = narrator)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        client.callbacks?.onNarration("Which app should I use?", "en")
+        client.callbacks?.onTaskComplete("Which app should I use?", "en", null)
+
+        assertEquals(listOf("Which app should I use?"), narrator.spoken.map { it.first })
     }
 
     @Test
@@ -149,7 +174,7 @@ class MilfSessionControllerTest {
         val state = controller.uiState.value
         assertEquals(true, client.closed)
         assertEquals(SeniorUxScreen.Failure, state.screen)
-        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+        assertEquals(SAFE_FAILURE_COPY, state.failure?.message)
         assertEquals(null, state.success)
     }
 
@@ -166,7 +191,7 @@ class MilfSessionControllerTest {
         val state = controller.uiState.value
         assertEquals(true, client.closed)
         assertEquals(SeniorUxScreen.Failure, state.screen)
-        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+        assertEquals(SAFE_FAILURE_COPY, state.failure?.message)
         assertEquals(null, state.success)
     }
 
@@ -204,7 +229,7 @@ class MilfSessionControllerTest {
         narrator.onSpeak = { text, _ ->
             if (text == "Still working.") {
                 runBlocking {
-                    client.callbacks?.onTaskFailure("Need help.", "en", "buyer-daughter")
+                    client.callbacks?.onTaskFailure("Need help.", "en")
                 }
             }
         }
@@ -247,7 +272,7 @@ class MilfSessionControllerTest {
         controller.beginListening()
         controller.finishListeningAndRun()
         clientA.callbacks?.onTaskComplete("Old success.", "en", "wei-grandson")
-        clientA.callbacks?.onTaskFailure("Old failure.", "en", "buyer-daughter")
+        clientA.callbacks?.onTaskFailure("Old failure.", "en")
 
         val state = controller.uiState.value
         assertEquals(true, clientA.closed)
@@ -279,7 +304,7 @@ class MilfSessionControllerTest {
         assertEquals(SeniorUxScreen.Failure, state.screen)
         assertEquals(false, state.isRecording)
         assertEquals(false, state.isRunning)
-        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+        assertEquals(SAFE_FAILURE_COPY, state.failure?.message)
     }
 
     @Test
@@ -294,7 +319,7 @@ class MilfSessionControllerTest {
         assertEquals(SeniorUxScreen.Failure, state.screen)
         assertEquals(false, state.isRecording)
         assertEquals(false, state.isRunning)
-        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+        assertEquals(SAFE_FAILURE_COPY, state.failure?.message)
     }
 
     @Test
@@ -327,7 +352,7 @@ class MilfSessionControllerTest {
         assertEquals(SeniorUxScreen.Failure, state.screen)
         assertEquals(false, state.isRecording)
         assertEquals(false, state.isRunning)
-        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+        assertEquals(SAFE_FAILURE_COPY, state.failure?.message)
     }
 
     @Test
@@ -342,7 +367,7 @@ class MilfSessionControllerTest {
         val state = controller.uiState.value
         assertEquals(SeniorUxScreen.Failure, state.screen)
         assertEquals(false, state.isRunning)
-        assertEquals("Daughter", state.failure?.recoveryContact?.displayName)
+        assertEquals(SAFE_FAILURE_COPY, state.failure?.message)
     }
 
     @Test
@@ -358,7 +383,7 @@ class MilfSessionControllerTest {
 
         controller.beginListening()
         controller.finishListeningAndRun()
-        controller.showConfirmationForTest("c1", "Calling Wei?", "en", "wei-grandson")
+        controller.showConfirmationForTest("c1", "Calling Wei?", "en")
         val stopCallsBeforeCancel = narrator.stopCalls
         controller.cancelActiveSession()
         client.callbacks?.onTaskComplete("Old success.", "en", "wei-grandson")
@@ -464,6 +489,7 @@ class MilfSessionControllerTest {
 
         assertEquals(SpeechInputMode.Native, controller.uiState.value.speechInputMode)
         controller.setSpeechInputMode(SpeechInputMode.BackendAudio)
+        controller.setAgentMemory("Wei is my grandson.")
         controller.beginListening()
         controller.finishListeningAndRun()
 
@@ -471,6 +497,7 @@ class MilfSessionControllerTest {
         assertEquals(null, recognizer.startedLang)
         assertEquals(1, recorder.stopCalls)
         assertEquals(true, client.startedAudio)
+        assertEquals("Wei is my grandson.", client.startedMemory)
         assertEquals(null, client.startedText)
     }
 
@@ -481,14 +508,32 @@ class MilfSessionControllerTest {
             dependencies = testDependencies(
                 clients = listOf(FakeClient()),
                 saveSpeechInputMode = { saved += it }
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
 
         controller.setSpeechInputMode(SpeechInputMode.BackendAudio)
 
         assertEquals(listOf(SpeechInputMode.BackendAudio), saved)
         assertEquals(SpeechInputMode.BackendAudio, controller.uiState.value.speechInputMode)
+    }
+
+    @Test
+    fun setAgentMemoryPersistsChoice() = runTest {
+        val saved = mutableListOf<String>()
+        val controller = MilfSessionController(
+            dependencies = testDependencies(
+                clients = listOf(FakeClient()),
+                initialAgentMemory = "Existing memory",
+                saveAgentMemory = { saved += it }
+            )
+        )
+
+        assertEquals("Existing memory", controller.uiState.value.agentMemory)
+
+        controller.setAgentMemory("Wei is my grandson.")
+
+        assertEquals(listOf("Wei is my grandson."), saved)
+        assertEquals("Wei is my grandson.", controller.uiState.value.agentMemory)
     }
 
     @Test
@@ -532,10 +577,12 @@ class MilfSessionControllerTest {
         val client = FakeClient()
         val controller = fakeController(client = client)
 
+        controller.setAgentMemory("Wei is my grandson.")
         controller.setCommandText("  I want to see my grandson  ")
         controller.submitTextCommand()
 
         assertEquals("I want to see my grandson", client.startedText)
+        assertEquals("Wei is my grandson.", client.startedMemory)
         assertEquals(SeniorUxScreen.Thinking, controller.uiState.value.screen)
         assertEquals("", controller.uiState.value.commandText)
     }
@@ -590,7 +637,7 @@ class MilfSessionControllerTest {
                 args = mapOf("x" to 100, "y" to 200)
             )
         )
-        client.callbacks?.onTaskFailure("Need help.", "en", "buyer-daughter")
+        client.callbacks?.onTaskFailure("Need help.", "en")
 
         assertEquals(null, controller.uiState.value.actionTarget)
     }
@@ -601,8 +648,7 @@ class MilfSessionControllerTest {
             dependencies = testDependencies(
                 clients = listOf(FakeClient()),
                 initialBackendUrl = "ws://192.168.1.20:8765"
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
 
         assertEquals("ws://192.168.1.20:8765", controller.uiState.value.backendUrl)
@@ -615,8 +661,7 @@ class MilfSessionControllerTest {
             dependencies = testDependencies(
                 clients = listOf(FakeClient()),
                 saveBackendUrl = { saved += it }
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
 
         controller.setBackendUrl("  ws://192.168.1.20:8765  ")
@@ -639,8 +684,7 @@ class MilfSessionControllerTest {
                         assistantSelected = true
                     )
                 }
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
 
         controller.refreshSetupStatus()
@@ -667,8 +711,7 @@ class MilfSessionControllerTest {
                         assistantSelected = true
                     )
                 }
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
 
         assertEquals(false, blockedController.refreshSetupStatus().canStartHelper)
@@ -685,8 +728,7 @@ class MilfSessionControllerTest {
                         assistantSelected = true
                     )
                 }
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
 
         readyController.setBackendConnectionStatus(BackendConnectionStatus.Connected)
@@ -709,8 +751,7 @@ class MilfSessionControllerTest {
                         assistantSelected = false
                     )
                 }
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
 
         controller.setBackendConnectionStatus(BackendConnectionStatus.Connected)
@@ -726,8 +767,7 @@ class MilfSessionControllerTest {
     @Test
     fun backendConnectionMustBeCheckedBeforeStartGateOpens() = runTest {
         val controller = MilfSessionController(
-            dependencies = testDependencies(clients = listOf(FakeClient())),
-            graph = RelationshipGraph.demo()
+            dependencies = testDependencies(clients = listOf(FakeClient()))
         )
 
         controller.refreshSetupStatus()
@@ -747,8 +787,7 @@ class MilfSessionControllerTest {
     @Test
     fun editingBackendUrlResetsBackendConnectionStatus() = runTest {
         val controller = MilfSessionController(
-            dependencies = testDependencies(clients = listOf(FakeClient())),
-            graph = RelationshipGraph.demo()
+            dependencies = testDependencies(clients = listOf(FakeClient()))
         )
         controller.setBackendConnectionStatus(BackendConnectionStatus.Connected)
 
@@ -764,8 +803,7 @@ class MilfSessionControllerTest {
             dependencies = testDependencies(
                 clients = listOf(FakeClient()),
                 checkBackendConnection = { _, result -> callback = result }
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
 
         controller.refreshBackendConnection()
@@ -784,8 +822,7 @@ class MilfSessionControllerTest {
             dependencies = testDependencies(
                 clients = listOf(FakeClient()),
                 checkBackendConnection = { _, result -> callback = result }
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
         controller.setBackendConnectionStatus(BackendConnectionStatus.Connected)
 
@@ -804,8 +841,7 @@ class MilfSessionControllerTest {
             dependencies = testDependencies(
                 clients = listOf(FakeClient()),
                 checkBackendConnection = { _, _ -> checks += 1 }
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
         controller.disconnectBackend()
 
@@ -836,13 +872,14 @@ class MilfSessionControllerTest {
                 narrator,
                 speechRecognizer = speechRecognizer,
                 speechInputMode = speechInputMode
-            ),
-            graph = RelationshipGraph.demo()
+            )
         )
 
     private fun fakeController(recorder: FakeRecorder): MilfSessionController =
         fakeController(clients = listOf(FakeClient()), recorder = recorder)
 }
+
+private const val SAFE_FAILURE_COPY = "I'm having a little trouble with that. Please try again."
 
 private class FakeNarrator : NarratorLike {
     var onSpeak: (String, String) -> Unit = { _, _ -> }
@@ -869,16 +906,19 @@ private class FakeClient(
     var startedText: String? = null
     var startedAudio = false
     var backendSessionId: String? = null
+    var startedMemory: String? = null
 
     override fun start(
         goalAudio: ByteArray,
         lang: String,
         callbacks: MilfWebSocketClient.Callbacks,
-        backendSessionId: String?
+        backendSessionId: String?,
+        memory: String
     ) {
         check(!failStart) { "client start failed" }
         startedAudio = true
         this.backendSessionId = backendSessionId
+        startedMemory = memory
         this.callbacks = callbacks
     }
 
@@ -886,11 +926,13 @@ private class FakeClient(
         goalText: String,
         lang: String,
         callbacks: MilfWebSocketClient.Callbacks,
-        backendSessionId: String?
+        backendSessionId: String?,
+        memory: String
     ) {
         check(!failStart) { "client start failed" }
         startedText = goalText
         this.backendSessionId = backendSessionId
+        startedMemory = memory
         this.callbacks = callbacks
     }
 
@@ -980,8 +1022,10 @@ private fun testDependencies(
     recorder: FakeRecorder = FakeRecorder(),
     narrator: FakeNarrator = FakeNarrator(),
     initialBackendUrl: String = "ws://10.0.2.2:8765",
+    initialAgentMemory: String = "",
     saveBackendUrl: (String) -> Unit = {},
     saveSpeechInputMode: (SpeechInputMode) -> Unit = {},
+    saveAgentMemory: (String) -> Unit = {},
     checkBackendConnection: (String, (BackendConnectionStatus) -> Unit) -> Unit = { _, callback ->
         callback(BackendConnectionStatus.Connected)
     },
@@ -1007,8 +1051,10 @@ private fun testDependencies(
             clients.getOrElse(nextClient++) { clients.last() }
         },
         initialBackendUrl = initialBackendUrl,
+        initialAgentMemory = initialAgentMemory,
         saveBackendUrl = saveBackendUrl,
         saveSpeechInputMode = saveSpeechInputMode,
+        saveAgentMemory = saveAgentMemory,
         checkBackendConnection = checkBackendConnection,
         setupStatus = setupStatus,
         dispatch = { action -> ActionResult(action.id, true) }
