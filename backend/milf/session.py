@@ -12,6 +12,7 @@ MobileRunStatus = Literal[
     "completed",
     "failed",
     "blocked",
+    "clarification_requested",
     "confirmation_declined",
     "agent_error",
 ]
@@ -105,4 +106,21 @@ class MILFSession(BaseModel):
             normalized_intent=route.normalized_intent,
             contact_id=route.contact_id,
             reason=reason,
+        )
+
+    def record_mobile_run_clarification(
+        self,
+        route: IntentRoute,
+        question: str,
+        original_intent: str,
+    ) -> None:
+        self.pending_clarification = PendingClarification(
+            question=question,
+            original_intent=original_intent,
+        )
+        self.last_mobile_run = MobileRunResult(
+            status="clarification_requested",
+            normalized_intent=route.normalized_intent,
+            contact_id=route.contact_id,
+            reason="clarify",
         )

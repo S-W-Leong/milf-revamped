@@ -189,7 +189,6 @@ class MilfSessionController(
             moveLocalSessionToFailure()
             return
         }
-        dependencies.narrator.speak(LISTENING_PROMPT, _uiState.value.lang)
     }
 
     fun finishListeningAndRun() {
@@ -466,7 +465,7 @@ class MilfSessionController(
                         screen = SeniorUxScreen.Idle,
                         isRecording = false,
                         isRunning = false,
-                        captions = READY_PROMPT,
+                        captions = terminalCaption(summary),
                         confirmation = null,
                         success = null,
                         failure = null,
@@ -758,6 +757,11 @@ private fun ActionTarget.Companion.from(action: Action): ActionTarget? = when (a
     }
 
     else -> null
+}
+
+private fun terminalCaption(summary: String): String {
+    val trimmed = summary.trim()
+    return if (trimmed.endsWith("?") || trimmed.endsWith("？")) trimmed else READY_PROMPT
 }
 
 private fun Any.numberToInt(): Int? = when (this) {

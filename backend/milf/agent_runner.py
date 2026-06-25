@@ -7,6 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable
 
+from milf.clarification import ClarificationRequested, build_clarification_tool
 from milf.confirmation import ConfirmationDeclined, build_confirmation_tool
 from milf.connection import AppConnection
 from milf.context import (
@@ -129,6 +130,7 @@ async def run_intent(
         lang,
         contact_id=route.contact_id or (contact.id if contact is not None else None),
     )
+    custom_tools.update(build_clarification_tool(connection, lang))
     logger.info(
         "MILF starting MobileRun.",
         extra={
@@ -143,6 +145,20 @@ async def run_intent(
 
     try:
         result = await narrate_events(handler, connection, lang)
+    except ClarificationRequested as error:
+        logger.info("Clarification requested during agent run.", exc_info=True)
+        session.record_mobile_run_clarification(route, error.question, routed_intent)
+        logger.info(
+            "MILF MobileRun finished.",
+            extra={
+                "session_id": session.session_id,
+                "mobile_run_status": "clarification_requested",
+                "reason": "clarify",
+                "contact_id": contact.id if contact is not None else route.contact_id,
+                "lang": lang,
+            },
+        )
+        return SimpleNamespace(success=False, reason="clarify")
     except ConfirmationDeclined:
         logger.info("Confirmation declined during agent run.", exc_info=True)
         session.record_mobile_run_result(

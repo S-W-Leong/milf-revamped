@@ -37,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Mic
@@ -61,7 +62,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -154,6 +154,14 @@ private fun ExpandedOverlayShell(
             .fillMaxSize()
             .background(Color.Transparent)
     ) {
+        FloatingOverlayPanel(
+            state = state,
+            onApprove = onApprove,
+            onDeny = onDeny,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = MilfDimens.RailHeight + 12.dp)
+        )
         ControlRail(
             state = state,
             onMicTap = onMicTap,
@@ -162,8 +170,6 @@ private fun ExpandedOverlayShell(
             onRunStop = onRunStop,
             onExitAgent = onExitAgent,
             onCollapseOverlay = onCollapseOverlay,
-            onApprove = onApprove,
-            onDeny = onDeny,
             onTransientMessageShown = onTransientMessageShown,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -185,8 +191,6 @@ private fun ControlRail(
     onRunStop: () -> Unit,
     onExitAgent: () -> Unit,
     onCollapseOverlay: () -> Unit,
-    onApprove: () -> Unit,
-    onDeny: () -> Unit,
     onTransientMessageShown: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -198,7 +202,9 @@ private fun ControlRail(
     }
 
     Surface(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(MilfDimens.RailHeight),
         shape = RoundedCornerShape(MilfDimens.RailCorner),
         color = MilfColors.DarkSurface,
         border = BorderStroke(1.dp, MilfColors.Border),
@@ -209,56 +215,46 @@ private fun ControlRail(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(9.dp)
         ) {
-            if (state.screen == SeniorUxScreen.Confirming) {
-                CompactConfirmationContent(state, Modifier.weight(1f))
-                CompactConfirmationButton("No", onDeny, MilfColors.NoRed, Color.White)
-                CompactConfirmationButton("Yes", onApprove, MilfColors.SageDim, MilfColors.Sage)
-                CollapseOverlayButton(onCollapseOverlay)
-            } else {
-                RailCenterContent(
-                    state = state,
-                    onCommandTextChange = onCommandTextChange,
-                    modifier = Modifier.weight(1f)
-                )
+            RailCenterContent(
+                state = state,
+                onCommandTextChange = onCommandTextChange,
+                modifier = Modifier.weight(1f)
+            )
+            if (state.screen != SeniorUxScreen.Confirming) {
                 RailPrimaryAction(
                     state = state,
                     onMicTap = onMicTap,
                     onSubmitText = onSubmitText,
                     onRunStop = onRunStop
                 )
-                CollapseOverlayButton(onCollapseOverlay)
-                ExitAgentButton(onExitAgent)
             }
+            CollapseOverlayButton(onCollapseOverlay)
+            ExitAgentButton(onExitAgent)
         }
     }
 }
 
 @Composable
-private fun CompactConfirmationContent(
+private fun FloatingOverlayPanel(
     state: SeniorUiState,
+    onApprove: () -> Unit,
+    onDeny: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier.fillMaxHeight(),
-        shape = RoundedCornerShape(14.dp),
-        color = MilfColors.CardSurface,
-        border = BorderStroke(1.dp, MilfColors.Border)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 14.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                state.confirmation?.summary ?: "Confirm action?",
-                color = MilfColors.TextPrimary,
-                fontSize = 13.sp,
-                lineHeight = 16.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+    when (state.screen) {
+        SeniorUxScreen.Confirming -> ConfirmationCard(
+            state = state,
+            onApprove = onApprove,
+            onDeny = onDeny,
+            modifier = modifier
+        )
+
+        SeniorUxScreen.Failure -> NarrationReplyPill(
+            text = state.failure?.message ?: state.captions,
+            modifier = modifier
+        )
+
+        else -> Unit
     }
 }
 
@@ -311,12 +307,7 @@ private fun RailCenterContent(
                 SeniorUxScreen.Thinking -> Text(THINKING_PROMPT, color = MilfColors.TextPrimary, fontSize = 14.sp)
                 SeniorUxScreen.Acting -> Text(ACTING_PROMPT, color = MilfColors.TextPrimary, fontSize = 14.sp)
                 SeniorUxScreen.Confirming -> Text("Waiting for confirmation", color = MilfColors.TextPrimary, fontSize = 14.sp)
-                SeniorUxScreen.Failure -> Text(
-                    state.failure?.message ?: state.captions,
-                    color = MilfColors.TextPrimary,
-                    fontSize = 13.sp,
-                    lineHeight = 17.sp
-                )
+                SeniorUxScreen.Failure -> Text(READY_PROMPT, color = MilfColors.TextSecondary, fontSize = 14.sp)
             }
         }
     }
@@ -399,29 +390,6 @@ private fun RunStopButton(onRunStop: () -> Unit) {
                 .size(14.dp)
                 .background(Color.Black, RoundedCornerShape(2.dp))
         )
-    }
-}
-
-@Composable
-private fun CompactConfirmationButton(
-    label: String,
-    onClick: () -> Unit,
-    containerColor: Color,
-    contentColor: Color
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .width(54.dp)
-            .height(42.dp),
-        shape = RoundedCornerShape(13.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        ),
-        contentPadding = ButtonDefaults.ContentPadding
-    ) {
-        Text(label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
 }
 
@@ -517,6 +485,8 @@ private fun ConfirmationCard(
                 textAlign = TextAlign.Center
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                val deny = confirmationButtonVisuals(ConfirmationChoice.Deny)
+                val approve = confirmationButtonVisuals(ConfirmationChoice.Approve)
                 Button(
                     onClick = onDeny,
                     modifier = Modifier
@@ -525,7 +495,11 @@ private fun ConfirmationCard(
                     shape = RoundedCornerShape(13.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MilfColors.NoRed)
                 ) {
-                    Text("No", fontWeight = FontWeight.SemiBold)
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = deny.contentDescription,
+                        tint = Color.White
+                    )
                 }
                 Button(
                     onClick = onApprove,
@@ -538,12 +512,47 @@ private fun ConfirmationCard(
                         contentColor = MilfColors.Sage
                     )
                 ) {
-                    Text("Yes", fontWeight = FontWeight.SemiBold)
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = approve.contentDescription,
+                        tint = MilfColors.Sage
+                    )
                 }
             }
         }
     }
 }
+
+internal enum class ConfirmationChoice {
+    Deny,
+    Approve
+}
+
+internal enum class ConfirmationIcon {
+    Cross,
+    Tick
+}
+
+internal data class ConfirmationButtonVisuals(
+    val icon: ConfirmationIcon,
+    val contentDescription: String,
+    val textLabel: String?
+)
+
+internal fun confirmationButtonVisuals(choice: ConfirmationChoice): ConfirmationButtonVisuals =
+    when (choice) {
+        ConfirmationChoice.Deny -> ConfirmationButtonVisuals(
+            icon = ConfirmationIcon.Cross,
+            contentDescription = "Deny",
+            textLabel = null
+        )
+
+        ConfirmationChoice.Approve -> ConfirmationButtonVisuals(
+            icon = ConfirmationIcon.Tick,
+            contentDescription = "Approve",
+            textLabel = null
+        )
+    }
 
 @Composable
 private fun ActionTargetBox(target: ActionTarget) {

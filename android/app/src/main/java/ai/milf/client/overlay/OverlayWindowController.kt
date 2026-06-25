@@ -1,6 +1,7 @@
 package ai.milf.client.overlay
 
 import ai.milf.client.session.SeniorUiState
+import ai.milf.client.session.SeniorUxScreen
 import ai.milf.client.ui.SeniorOverlayUi
 import android.content.Context
 import android.graphics.PixelFormat
@@ -21,7 +22,8 @@ internal object OverlayWindowSizing {
     fun expandedWidthPx(screenWidthPx: Int, density: Float): Int =
         railWidthPx(screenWidthPx, density)
 
-    fun expandedHeightPx(density: Float): Int = (62 * density).toInt()
+    fun expandedHeightPx(state: SeniorUiState, density: Float): Int =
+        (expandedHeightDp(state) * density).toInt()
 
     fun expandedBottomOffsetPx(density: Float): Int = (22 * density).toInt()
 
@@ -35,6 +37,14 @@ internal object OverlayWindowSizing {
         val maxWidthPx = (560 * density).toInt()
         return minOf(screenWidthPx - marginPx * 2, maxWidthPx)
     }
+
+    private fun expandedHeightDp(state: SeniorUiState): Int =
+        when (state.screen) {
+            SeniorUxScreen.Confirming,
+            SeniorUxScreen.Failure -> 206
+
+            else -> 62
+        }
 }
 
 class OverlayWindowController(
@@ -183,7 +193,7 @@ class OverlayWindowController(
                 dp(OverlayWindowSizing.collapsedSizeDp())
             },
             if (expanded) {
-                OverlayWindowSizing.expandedHeightPx(density)
+                OverlayWindowSizing.expandedHeightPx(state, density)
             } else {
                 dp(OverlayWindowSizing.collapsedSizeDp())
             },

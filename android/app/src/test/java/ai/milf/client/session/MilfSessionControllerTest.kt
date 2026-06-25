@@ -17,13 +17,15 @@ import java.io.IOException
 class MilfSessionControllerTest {
     @Test
     fun beginListeningMovesToListeningState() = runTest {
-        val controller = fakeController()
+        val narrator = FakeNarrator()
+        val controller = fakeController(narrator = narrator)
 
         controller.beginListening()
 
         assertEquals(SeniorUxScreen.Listening, controller.uiState.value.screen)
         assertEquals(true, controller.uiState.value.isRecording)
         assertEquals(LISTENING_PROMPT, controller.uiState.value.captions)
+        assertEquals(emptyList<String>(), narrator.spoken.map { it.first })
     }
 
     @Test
@@ -113,6 +115,23 @@ class MilfSessionControllerTest {
         assertEquals(true, client.closed)
         assertEquals(SeniorUxScreen.Idle, state.screen)
         assertEquals(READY_PROMPT, state.captions)
+        assertEquals(null, state.success)
+        assertEquals(null, state.failure)
+    }
+
+    @Test
+    fun taskCompleteQuestionReturnsToIdleAndKeepsQuestionVisible() = runTest {
+        val client = FakeClient()
+        val controller = fakeController(client = client)
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        client.callbacks?.onTaskComplete("Which listed Wei is your grandson?", "en", null)
+
+        val state = controller.uiState.value
+        assertEquals(true, client.closed)
+        assertEquals(SeniorUxScreen.Idle, state.screen)
+        assertEquals("Which listed Wei is your grandson?", state.captions)
         assertEquals(null, state.success)
         assertEquals(null, state.failure)
     }
@@ -428,7 +447,7 @@ class MilfSessionControllerTest {
         assertEquals(null, state.failure)
         assertEquals(null, client.startedText)
         assertEquals(false, client.startedAudio)
-        assertEquals(listOf(LISTENING_PROMPT), narrator.spoken.map { it.first })
+        assertEquals(emptyList<String>(), narrator.spoken.map { it.first })
     }
 
     @Test

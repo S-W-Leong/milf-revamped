@@ -472,6 +472,26 @@ class ConfirmingHandler:
         return _r().__await__()
 
 
+class ClarifyingHandler:
+    def __init__(self, custom_tools):
+        self.custom_tools = custom_tools
+
+    async def stream_events(self):
+        fn = self.custom_tools["request_clarification"]["function"]
+        await fn(
+            question="Which listed Wei is your grandson?",
+            ctx=None,
+        )
+        if False:
+            yield None
+
+    def __await__(self):
+        async def _r():
+            return SimpleNamespace(success=True, reason="ok")
+
+        return _r().__await__()
+
+
 async def test_run_task_sends_safe_failure_on_agent_error():
     def fake_factory(goal, driver, custom_tools):
         return SimpleNamespace(run=lambda: FailingHandler())
@@ -495,6 +515,46 @@ async def test_run_task_sends_safe_failure_on_agent_error():
             "buyer-daughter",
         )
     ]
+
+
+async def test_run_task_surfaces_mobile_run_clarification_and_stops():
+    async def message_router(intent, lang, session=None):
+        return IntentRoute(
+            kind="execute",
+            normalized_intent="Send hello to Wei on WhatsApp.",
+            contact_id="wei-grandson",
+            requires_confirmation=True,
+        )
+
+    def fake_factory(goal, driver, custom_tools):
+        return SimpleNamespace(run=lambda: ClarifyingHandler(custom_tools))
+
+    conn = FakeConn()
+    session = MILFSession()
+
+    result = await run_task(
+        connection=conn,
+        audio=b"x",
+        lang="en",
+        stt=MockSTT("send hello to my grandson"),
+        agent_factory=fake_factory,
+        intent_router=message_router,
+        session=session,
+    )
+
+    assert result.success is False
+    assert result.reason == "clarify"
+    assert conn.narrations == [
+        ("Okay, let me help you reach Wei.", "en"),
+        ("Which listed Wei is your grandson?", "en"),
+    ]
+    assert conn.completions == [("Which listed Wei is your grandson?", "en", None)]
+    assert conn.failures == []
+    assert session.pending_clarification is not None
+    assert session.pending_clarification.question == "Which listed Wei is your grandson?"
+    assert session.pending_clarification.original_intent == "Send hello to Wei on WhatsApp."
+    assert session.last_mobile_run is not None
+    assert session.last_mobile_run.status == "clarification_requested"
 
 
 async def test_run_task_sends_safe_failure_when_agent_reports_failure():

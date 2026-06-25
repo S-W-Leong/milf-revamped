@@ -11,8 +11,32 @@ class OverlayWindowSizingTest {
     fun expandedWindowUsesRailBoundsSoOutsideTapsReachApps() {
         assertEquals(312, OverlayWindowSizing.expandedWidthPx(screenWidthPx = 360, density = 1f))
         assertEquals(560, OverlayWindowSizing.expandedWidthPx(screenWidthPx = 900, density = 1f))
-        assertEquals(62, OverlayWindowSizing.expandedHeightPx(density = 1f))
+        assertEquals(
+            62,
+            OverlayWindowSizing.expandedHeightPx(
+                SeniorUiState(screen = SeniorUxScreen.Idle, isCollapsed = false),
+                density = 1f
+            )
+        )
         assertEquals(22, OverlayWindowSizing.expandedBottomOffsetPx(density = 1f))
+    }
+
+    @Test
+    fun confirmationAndFailureWindowsLeaveRoomAboveRail() {
+        assertEquals(
+            206,
+            OverlayWindowSizing.expandedHeightPx(
+                SeniorUiState(screen = SeniorUxScreen.Confirming, isCollapsed = false),
+                density = 1f
+            )
+        )
+        assertEquals(
+            206,
+            OverlayWindowSizing.expandedHeightPx(
+                SeniorUiState(screen = SeniorUxScreen.Failure, isCollapsed = false),
+                density = 1f
+            )
+        )
     }
 
     @Test

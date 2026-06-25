@@ -14,6 +14,22 @@ SAFETY_CONFIRMATION = (
     "with a short summary and only proceed if confirmed."
 )
 
+CLARIFICATION_RULE = (
+    "CLARIFICATION: if the visible app state has multiple possible matches, missing "
+    "details, or any ambiguity that would require guessing, MUST call "
+    "request_clarification with one short question and stop. Do not wait in a loop "
+    "and do not choose between ambiguous contacts. If clarification is needed, "
+    "make request_clarification the first and only plan item; do not put phone "
+    "actions before the clarification request."
+)
+
+POST_SEND_COMPLETION_RULE = (
+    "POST-SEND COMPLETION: After confirm_action returns approval, tap Send exactly "
+    "once for the approved message/payment/call action. Then verify with at most one "
+    "screen check if needed and finish the task. Do not emit repeated wait actions "
+    "after the irreversible action has been triggered."
+)
+
 AGENT_OVERLAY_INTERACTION = """
 MILF overlay interaction rule:
 - The phone may show MILF as an expanded bottom rail while you are acting.
@@ -80,7 +96,9 @@ def build_goal(intent: str, contact: Contact | None = None) -> str:
         )
 
     parts.append(AGENT_OVERLAY_INTERACTION.strip())
+    parts.append(CLARIFICATION_RULE)
     parts.append(SAFETY_CONFIRMATION)
+    parts.append(POST_SEND_COMPLETION_RULE)
 
     return "\n\n".join(parts)
 

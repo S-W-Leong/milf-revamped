@@ -41,6 +41,21 @@ def test_build_goal_includes_contact_context_and_confirmation():
     assert "Start the video call with the video-call icon" not in goal
 
 
+def test_build_goal_tells_agent_not_to_wait_loop_after_send():
+    goal = build_goal("Send hello to Quick notes on WhatsApp.")
+
+    assert "After confirm_action returns approval" in goal
+    assert "tap Send exactly once" in goal
+    assert "Do not emit repeated wait actions" in goal
+
+
+def test_build_goal_tells_agent_clarification_must_be_first_plan_item():
+    goal = build_goal("Send hello to Quick notes on WhatsApp.")
+
+    assert "make request_clarification the first and only plan item" in goal
+    assert "do not put phone actions before the clarification request" in goal
+
+
 def test_build_goal_omits_whatsapp_card_for_unknown_intent():
     goal = build_goal("What's up")
 
