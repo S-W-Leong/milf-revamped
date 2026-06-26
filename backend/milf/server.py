@@ -66,7 +66,7 @@ async def _handler(ws):
 
     try:
         first = decode(await ws.recv())
-    except websockets.ConnectionClosedOK:
+    except websockets.ConnectionClosed:
         logger.debug("Websocket closed before first goal frame.")
         return
     if not isinstance(first, Audio | TextGoal):
