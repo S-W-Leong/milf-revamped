@@ -12,19 +12,21 @@ logger = logging.getLogger(__name__)
 
 
 class IntentRoute(BaseModel):
-    kind: Literal["execute", "reply", "clarify"]
+    kind: Literal["execute", "reply", "clarify", "perceive"]
     message: str | None = None
     normalized_intent: str | None = None
     contact_id: str | None = None
     requires_confirmation: bool = False
+    fast_path: bool = False
 
 
 class IntentAgentDecision(BaseModel):
-    route: Literal["chat", "clarify", "execute", "refuse"]
+    route: Literal["chat", "clarify", "execute", "refuse", "perceive"]
     reply: str | None = None
     normalized_intent: str | None = None
     contact_id: str | None = None
     requires_confirmation: bool = False
+    fast_path: bool = False
     confidence: float = 0.0
 
 
@@ -44,10 +46,20 @@ Classify the user's utterance into one route:
 - chat: casual talk or greeting that needs no phone action.
 - clarify: a phone action may be intended, but key details are missing.
 - execute: a concrete phone task is ready for the phone automation agent.
+- perceive: the user wants to know or hear what is currently visible on the screen.
+  Examples: describe the screen, read this aloud, what does this say, did it send.
+  Read-only; the gate never actuates and never claims to have seen the screen.
 - refuse: unsafe or unsupported request.
 
 Rules:
 - For execute, write normalized_intent as a clear, concrete phone task.
+- For perceive, write normalized_intent as a clear read-only screen question. If
+  the user's wording is already clear, preserve it closely.
+- Set fast_path true ONLY for narrow single-action execute intents that need no
+  planning: opening a named app, pressing Home, pressing Back, or home/back navigation.
+- Keep fast_path false for anything that composes, sends, calls, pays, shares,
+  selects among visible items, reads screen content, depends on current screen
+  state, or takes multiple steps.
 - Use the optional Agent memory below for user-provided names, preferences, and
   context. Resolve relationship references, nicknames, and preferred apps from
   Agent memory before deciding whether the request is missing information. Do
@@ -94,7 +106,9 @@ def build_default_intent_agent() -> IntentAgent:
         raise RuntimeError(
             "OPENAI_API_KEY is required because every input is routed through the intent model."
         )
-    model = os.environ.get("MILF_INTENT_MODEL") or os.environ.get("OPENAI_MODEL", "gpt-4o")
+    model = os.environ.get("MILF_INTENT_MODEL") or os.environ.get(
+        "OPENAI_MODEL", "gpt-4o-mini"
+    )
     return OpenAIIntentAgent(model)
 
 
@@ -122,6 +136,7 @@ async def route_intent_with_agent(
             "intent_route": decision.route,
             "contact_id": decision.contact_id,
             "requires_confirmation": decision.requires_confirmation,
+            "fast_path": decision.fast_path,
             "confidence": decision.confidence,
             "normalized_intent_present": decision.normalized_intent is not None,
         },
@@ -136,6 +151,12 @@ def _route_from_decision(decision: IntentAgentDecision) -> IntentRoute:
             normalized_intent=decision.normalized_intent,
             contact_id=decision.contact_id,
             requires_confirmation=decision.requires_confirmation,
+            fast_path=decision.fast_path,
+        )
+    if decision.route == "perceive":
+        return IntentRoute(
+            kind="perceive",
+            normalized_intent=decision.normalized_intent,
         )
     if decision.route == "clarify":
         return IntentRoute(

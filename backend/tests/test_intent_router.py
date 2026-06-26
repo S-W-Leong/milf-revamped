@@ -92,6 +92,50 @@ async def test_intent_model_can_normalize_executable_intent():
     )
 
 
+async def test_intent_model_maps_perceive_route():
+    agent = FakeIntentAgent(
+        IntentAgentDecision(
+            route="perceive",
+            normalized_intent="Read aloud what is visible on the current screen.",
+            confidence=0.88,
+        )
+    )
+
+    route = await route_intent_with_agent("what's on my screen?", "en", agent)
+
+    assert route == IntentRoute(
+        kind="perceive",
+        message=None,
+        normalized_intent="Read aloud what is visible on the current screen.",
+        contact_id=None,
+        requires_confirmation=False,
+        fast_path=False,
+    )
+
+
+async def test_intent_model_maps_fast_path_execute_route():
+    agent = FakeIntentAgent(
+        IntentAgentDecision(
+            route="execute",
+            normalized_intent="Open WhatsApp.",
+            requires_confirmation=False,
+            fast_path=True,
+            confidence=0.91,
+        )
+    )
+
+    route = await route_intent_with_agent("open WhatsApp", "en", agent)
+
+    assert route == IntentRoute(
+        kind="execute",
+        message=None,
+        normalized_intent="Open WhatsApp.",
+        contact_id=None,
+        requires_confirmation=False,
+        fast_path=True,
+    )
+
+
 async def test_known_contact_request_still_goes_to_intent_model():
     agent = FakeIntentAgent(
         IntentAgentDecision(
@@ -220,6 +264,24 @@ def test_default_intent_agent_uses_openai_when_api_key_present(monkeypatch):
     assert agent.model == "test-model"
 
 
+def test_intent_prompt_defines_perceive_and_fast_path_rules():
+    assert "- perceive:" in INTENT_AGENT_PROMPT
+    assert "screen" in INTENT_AGENT_PROMPT.casefold()
+    assert "fast_path" in INTENT_AGENT_PROMPT
+    assert "home/back navigation" in INTENT_AGENT_PROMPT
+    assert "compose" in INTENT_AGENT_PROMPT.casefold()
+
+
+def test_default_intent_agent_uses_fast_default_model(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.delenv("MILF_INTENT_MODEL", raising=False)
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+
+    agent = build_default_intent_agent()
+
+    assert agent.model == "gpt-4o-mini"
+
+
 def test_default_intent_agent_uses_smarter_default_model(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.delenv("MILF_INTENT_MODEL", raising=False)
@@ -227,7 +289,7 @@ def test_default_intent_agent_uses_smarter_default_model(monkeypatch):
 
     agent = build_default_intent_agent()
 
-    assert agent.model == "gpt-4o"
+    assert agent.model == "gpt-4o-mini"
 
 
 def _find_log(records, message):
