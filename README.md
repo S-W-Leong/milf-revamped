@@ -218,6 +218,14 @@ Required secret:
 OPENAI_API_KEY
 ```
 
+Optional backend model settings:
+
+```text
+OPENAI_MODEL          # default MobileRun and perceive fallback model; defaults to gpt-4o
+MILF_INTENT_MODEL     # intent-router model; defaults to gpt-4o-mini
+MILF_PERCEIVE_MODEL   # read-only screen-description model; defaults to OPENAI_MODEL, then gpt-4o
+```
+
 Current deployed websocket:
 
 ```text
@@ -229,6 +237,8 @@ Backend environment variables:
 ```text
 OPENAI_API_KEY
 OPENAI_MODEL
+MILF_INTENT_MODEL
+MILF_PERCEIVE_MODEL
 MILF_STT_BACKEND
 MILF_MOCK_TRANSCRIPT
 MILF_WS_HOST

@@ -40,4 +40,4 @@ Pull requests should include a brief summary, linked issue or plan section when 
 
 ## Security & Configuration Tips
 
-Never commit secrets. Expected backend environment names include `OPENAI_API_KEY`, `ILMU_API_KEY`, `ILMU_API_URL`, `MERALION_API_KEY`, `MERALION_API_URL`, `MILF_STT_BACKEND`, `MILF_WS_HOST`, and `MILF_WS_PORT`.
+Never commit secrets. Expected backend environment names include `OPENAI_API_KEY`, `OPENAI_MODEL`, `MILF_INTENT_MODEL`, `MILF_PERCEIVE_MODEL`, `ILMU_API_KEY`, `ILMU_API_URL`, `MERALION_API_KEY`, `MERALION_API_URL`, `MILF_STT_BACKEND`, `MILF_WS_HOST`, and `MILF_WS_PORT`. The intent router defaults to `gpt-4o-mini`; perceive defaults to `MILF_PERCEIVE_MODEL`, then `OPENAI_MODEL`, then `gpt-4o`.
