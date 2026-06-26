@@ -34,7 +34,7 @@ APP_CARDS_DIR = Path(__file__).resolve().parents[2] / "config" / "app_cards"
 logger = logging.getLogger(__name__)
 
 
-def build_mobile_config() -> Any:
+def build_mobile_config(reasoning: bool = True) -> Any:
     from mobilerun import (
         AgentConfig,
         AppCardConfig,
@@ -46,7 +46,7 @@ def build_mobile_config() -> Any:
     return MobileConfig(
         agent=AgentConfig(
             max_steps=30,
-            reasoning=True,
+            reasoning=reasoning,
             streaming=True,
             manager=ManagerConfig(vision=True),
             executor=ExecutorConfig(vision=True),
@@ -59,12 +59,17 @@ def build_mobile_config() -> Any:
     )
 
 
-def build_agent(goal: str, driver: WebSocketDriver, custom_tools: dict[str, Any]) -> Any:
+def build_agent(
+    goal: str,
+    driver: WebSocketDriver,
+    custom_tools: dict[str, Any],
+    reasoning: bool = True,
+) -> Any:
     from llama_index.llms.openai import OpenAI
     from mobilerun import MobileAgent
 
     model = os.environ.get("OPENAI_MODEL", "gpt-4o")
-    config = build_mobile_config()
+    config = build_mobile_config(reasoning=reasoning)
 
     return MobileAgent(
         goal=goal,
@@ -93,7 +98,9 @@ async def run_intent(
     connection: AppConnection,
     intent: str,
     lang: str,
-    agent_factory: Callable[[str, WebSocketDriver, dict[str, Any]], Any] = build_agent,
+    agent_factory: Callable[
+        [str, WebSocketDriver, dict[str, Any], bool], Any
+    ] = build_agent,
     intent_router: Callable[[str, str], Any] | None = None,
     session: MILFSession | None = None,
     memory: str = "",
@@ -159,16 +166,19 @@ async def run_intent(
     clarification_state = ClarificationState()
     custom_tools = build_confirmation_tool(connection, lang)
     custom_tools.update(build_clarification_tool(connection, lang, clarification_state))
+    reasoning = not (route.fast_path and not route.requires_confirmation)
     logger.info(
         "MILF starting MobileRun.",
         extra={
             "session_id": session.session_id,
             "contact_id": route.contact_id,
             "requires_confirmation": route.requires_confirmation,
+            "fast_path": route.fast_path,
+            "reasoning": reasoning,
             "lang": lang,
         },
     )
-    agent = agent_factory(goal, driver, custom_tools)
+    agent = agent_factory(goal, driver, custom_tools, reasoning)
     handler = agent.run()
 
     try:
@@ -288,7 +298,9 @@ async def run_task(
     audio: bytes,
     lang: str,
     stt: STTAdapter,
-    agent_factory: Callable[[str, WebSocketDriver, dict[str, Any]], Any] = build_agent,
+    agent_factory: Callable[
+        [str, WebSocketDriver, dict[str, Any], bool], Any
+    ] = build_agent,
     intent_router: Callable[[str, str], Any] | None = None,
     session: MILFSession | None = None,
     memory: str = "",

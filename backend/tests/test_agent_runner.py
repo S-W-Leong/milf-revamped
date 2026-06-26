@@ -57,7 +57,7 @@ async def wei_router(intent, lang):
 async def test_run_task_acks_then_builds_and_runs():
     captured = {}
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         captured["goal"] = goal
         captured["tools"] = custom_tools
         return SimpleNamespace(run=lambda: FakeHandler())
@@ -91,6 +91,94 @@ def test_mobile_config_enables_manager_and_executor_vision():
     assert config.agent.executor.vision is True
 
 
+def test_mobile_config_accepts_reasoning_mode():
+    fast_config = build_mobile_config(reasoning=False)
+    planned_config = build_mobile_config(reasoning=True)
+
+    assert fast_config.agent.reasoning is False
+    assert planned_config.agent.reasoning is True
+    assert planned_config.agent.manager.vision is True
+    assert planned_config.agent.executor.vision is True
+
+
+async def test_run_intent_fast_path_without_confirmation_uses_fast_agent():
+    captured = {}
+
+    async def fake_router(intent, lang, session=None, memory=""):
+        return IntentRoute(
+            kind="execute",
+            normalized_intent="Open WhatsApp.",
+            requires_confirmation=False,
+            fast_path=True,
+        )
+
+    def fake_factory(goal, driver, custom_tools, reasoning):
+        captured["reasoning"] = reasoning
+        return SimpleNamespace(run=lambda: FakeHandler())
+
+    await run_intent(
+        FakeConn(),
+        intent="open WhatsApp",
+        lang="en",
+        agent_factory=fake_factory,
+        intent_router=fake_router,
+    )
+
+    assert captured["reasoning"] is False
+
+
+async def test_run_intent_fast_path_with_confirmation_uses_planning_guardrail():
+    captured = {}
+
+    async def fake_router(intent, lang, session=None, memory=""):
+        return IntentRoute(
+            kind="execute",
+            normalized_intent="Call Wei on WhatsApp.",
+            requires_confirmation=True,
+            fast_path=True,
+        )
+
+    def fake_factory(goal, driver, custom_tools, reasoning):
+        captured["reasoning"] = reasoning
+        return SimpleNamespace(run=lambda: FakeHandler())
+
+    await run_intent(
+        FakeConn(),
+        intent="call Wei",
+        lang="en",
+        agent_factory=fake_factory,
+        intent_router=fake_router,
+    )
+
+    assert captured["reasoning"] is True
+
+
+async def test_run_intent_non_fast_path_uses_planning():
+    captured = {}
+
+    async def fake_router(intent, lang, session=None, memory=""):
+        return IntentRoute(
+            kind="execute",
+            normalized_intent="Send hello to Wei on WhatsApp.",
+            requires_confirmation=True,
+            fast_path=False,
+        )
+
+    def fake_factory(goal, driver, custom_tools, reasoning):
+        captured["reasoning"] = reasoning
+        return SimpleNamespace(run=lambda: FakeHandler())
+
+    await run_intent(
+        FakeConn(),
+        intent="send hello to Wei",
+        lang="en",
+        agent_factory=fake_factory,
+        intent_router=fake_router,
+    )
+
+    assert captured["reasoning"] is True
+
+
 async def test_run_task_includes_agent_memory_in_goal_and_router():
     captured = {}
 
@@ -102,7 +190,7 @@ async def test_run_task_includes_agent_memory_in_goal_and_router():
             requires_confirmation=True,
         )
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         captured["goal"] = goal
         return SimpleNamespace(run=lambda: FakeHandler())
 
@@ -122,7 +210,7 @@ async def test_run_task_includes_agent_memory_in_goal_and_router():
 
 
 async def test_run_intent_uses_text_without_stt():
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         return SimpleNamespace(run=lambda: FakeHandler())
 
     conn = FakeConn()
@@ -283,7 +371,7 @@ async def test_run_intent_uses_normalized_intent_from_router():
             normalized_intent="I want to see my grandson",
         )
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         captured["goal"] = goal
         return SimpleNamespace(run=lambda: FakeHandler())
 
@@ -312,7 +400,7 @@ async def test_run_intent_does_not_inject_contact_context_from_router():
             requires_confirmation=True,
         )
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         captured["goal"] = goal
         captured["tools"] = custom_tools
         return SimpleNamespace(run=lambda: FakeHandler())
@@ -342,7 +430,7 @@ async def test_run_intent_uses_router_contact_for_acknowledgment():
             requires_confirmation=True,
         )
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         return SimpleNamespace(run=lambda: FakeHandler())
 
     conn = FakeConn()
@@ -398,7 +486,7 @@ async def test_run_intent_uses_pending_session_context_for_follow_up():
             requires_confirmation=True,
         )
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         captured["goal"] = goal
         return SimpleNamespace(run=lambda: FakeHandler())
 
@@ -439,7 +527,7 @@ async def test_run_intent_records_blocked_mobile_run_result_in_session():
             contact_id="wei-grandson",
         )
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         result = SimpleNamespace(success=False, reason="blocked_on_login")
         return SimpleNamespace(run=lambda: FakeHandler(result))
 
@@ -472,7 +560,7 @@ async def test_run_intent_logs_route_handoff_and_result(caplog):
             requires_confirmation=True,
         )
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         return SimpleNamespace(run=lambda: FakeHandler())
 
     conn = FakeConn()
@@ -530,7 +618,7 @@ async def test_run_intent_logs_short_circuit_route(caplog):
 
 
 async def test_run_task_still_transcribes_audio():
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         return SimpleNamespace(run=lambda: FakeHandler())
 
     conn = FakeConn()
@@ -655,7 +743,7 @@ class ClarifyingHandler:
 
 
 async def test_run_task_sends_safe_failure_on_agent_error():
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         return SimpleNamespace(run=lambda: FailingHandler())
 
     conn = FakeConn()
@@ -681,7 +769,7 @@ async def test_run_task_sends_safe_failure_on_agent_error():
 async def test_run_task_treats_clean_client_close_as_closed_session(caplog):
     caplog.set_level(logging.INFO, logger="milf.agent_runner")
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         return SimpleNamespace(run=lambda: CleanClientCloseHandler())
 
     conn = FakeConn()
@@ -709,7 +797,7 @@ async def test_run_task_surfaces_mobile_run_clarification_and_stops():
             requires_confirmation=True,
         )
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         return SimpleNamespace(run=lambda: ClarifyingHandler(custom_tools))
 
     conn = FakeConn()
@@ -742,7 +830,7 @@ async def test_run_task_surfaces_mobile_run_clarification_and_stops():
 
 
 async def test_run_task_sends_safe_failure_when_agent_reports_failure():
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         result = SimpleNamespace(success=False, reason="agent_failed")
         return SimpleNamespace(run=lambda: FakeHandler(result))
 
@@ -768,7 +856,7 @@ async def test_run_task_sends_safe_failure_when_agent_reports_failure():
 
 
 async def test_run_task_sends_safe_failure_when_confirmation_declined():
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         return SimpleNamespace(run=lambda: ConfirmingHandler(custom_tools))
 
     conn = FakeConn(confirmation_approved=False)
