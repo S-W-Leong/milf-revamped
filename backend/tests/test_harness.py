@@ -26,7 +26,7 @@ class ScriptedHandler:
 
 @pytest.mark.asyncio
 async def test_run_n_reports_full_success():
-    def factory(goal, driver, custom_tools):
+    def factory(goal, driver, custom_tools, reasoning=True):
         return SimpleNamespace(run=lambda: ScriptedHandler(driver._connection, True))
 
     async def router(intent, lang):
