@@ -141,7 +141,19 @@ async def route_intent_with_agent(
             "normalized_intent_present": decision.normalized_intent is not None,
         },
     )
-    return _route_from_decision(decision)
+    route = _route_from_decision(decision)
+    logger.info(
+        "MILF intent router response.",
+        extra={
+            "route_kind": route.kind,
+            "response_message": route.message,
+            "normalized_intent": route.normalized_intent,
+            "contact_id": route.contact_id,
+            "requires_confirmation": route.requires_confirmation,
+            "fast_path": route.fast_path,
+        },
+    )
+    return route
 
 
 def _route_from_decision(decision: IntentAgentDecision) -> IntentRoute:

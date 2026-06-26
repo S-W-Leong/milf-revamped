@@ -4,6 +4,7 @@ import logging
 import re
 from dataclasses import dataclass
 from typing import Any, Literal
+from xml.etree import ElementTree
 
 from milf.clarification import ClarificationRequested
 
@@ -37,20 +38,40 @@ class NarrationPolicy:
         "opening": "opening",
         "find": "finding",
         "finding": "finding",
+        "locate": "finding",
+        "locating": "finding",
         "check": "checking",
         "checking": "checking",
         "look": "looking",
         "looking": "looking",
         "search": "searching",
         "searching": "searching",
+        "navigate": "opening",
+        "navigating": "opening",
         "send": "sending",
         "sending": "sending",
         "call": "calling",
         "calling": "calling",
         "select": "selecting",
         "selecting": "selecting",
+        "choose": "selecting",
+        "choosing": "selecting",
         "wait": "waiting",
         "waiting": "waiting",
+    }
+    _RESULT_REWRITES = {
+        "found": "found",
+        "opened": "opened",
+        "selected": "selected",
+        "sent": "sent",
+        "called": "called",
+    }
+    _APP_LABELS = {
+        "whatsapp": "WhatsApp",
+        "youtube": "YouTube",
+        "music": "YouTube Music",
+        "spotify": "Spotify",
+        "grab": "Grab",
     }
 
     def __init__(self) -> None:
@@ -60,10 +81,29 @@ class NarrationPolicy:
         event_type = event.__class__.__name__
 
         if event_type == "ManagerPlanDetailsEvent":
-            return self._suppress(event_type, "manager_plan")
+            if _normalize_space(str(getattr(event, "answer", ""))):
+                return self._suppress(event_type, "manager_answer")
+            return self._progress_line(getattr(event, "subgoal", None), event_type)
+
+        if event_type == "ManagerPlanEvent":
+            if _normalize_space(str(getattr(event, "answer", ""))):
+                return self._suppress(event_type, "manager_answer")
+            return self._progress_line(
+                getattr(event, "current_subgoal", None),
+                event_type,
+            )
 
         if event_type == "ExecutorActionEvent":
             return self._progress_line(getattr(event, "description", None), event_type)
+
+        if event_type == "ExecutorActionResultEvent":
+            return self._result_line(event, event_type)
+
+        if event_type == "FastAgentToolCallEvent":
+            return self._fast_tool_call_line(
+                getattr(event, "tool_calls_repr", None),
+                event_type,
+            )
 
         if event_type == "FastAgentResponseEvent":
             return self._progress_line(getattr(event, "description", None), event_type)
@@ -85,6 +125,46 @@ class NarrationPolicy:
             return self._suppress(event_type, "internal_or_gesture")
 
         text = _friendly_progress_text(description)
+        if text is None:
+            return self._suppress(event_type, "not_user_worthy")
+        if text == self._last_text:
+            return self._suppress(event_type, "duplicate")
+
+        self._last_text = text
+        return NarrationLine(text=text, kind="progress")
+
+    def _result_line(self, event: object, event_type: str) -> NarrationLine | None:
+        if getattr(event, "success", False) is not True:
+            return self._suppress(event_type, "unsuccessful_result")
+
+        summary = getattr(event, "summary", None)
+        if not isinstance(summary, str):
+            return self._suppress(event_type, "missing_summary")
+
+        summary = _normalize_space(summary)
+        if not summary:
+            return self._suppress(event_type, "empty_summary")
+        if self._is_internal_or_gesture(summary):
+            return self._suppress(event_type, "internal_or_gesture")
+
+        text = _friendly_result_text(summary)
+        if text is None:
+            return self._suppress(event_type, "not_user_worthy")
+        if text == self._last_text:
+            return self._suppress(event_type, "duplicate")
+
+        self._last_text = text
+        return NarrationLine(text=text, kind="progress", priority="low")
+
+    def _fast_tool_call_line(
+        self,
+        tool_calls_repr: object,
+        event_type: str,
+    ) -> NarrationLine | None:
+        if not isinstance(tool_calls_repr, str):
+            return self._suppress(event_type, "missing_tool_calls")
+
+        text = _friendly_fast_tool_text(tool_calls_repr)
         if text is None:
             return self._suppress(event_type, "not_user_worthy")
         if text == self._last_text:
@@ -171,6 +251,74 @@ def _friendly_progress_text(description: str) -> str | None:
     if rest:
         phrase = f"{phrase} {rest}"
     return _ensure_period(phrase)
+
+
+def _friendly_result_text(summary: str) -> str | None:
+    match = re.match(r"^(?P<verb>[A-Za-z]+)\b(?P<rest>.*)$", summary)
+    if match is None:
+        return None
+
+    verb = match.group("verb").casefold()
+    past = NarrationPolicy._RESULT_REWRITES.get(verb)
+    if past is None:
+        return None
+
+    rest = match.group("rest").strip()
+    phrase = f"I {past}"
+    if rest:
+        phrase = f"{phrase} {rest}"
+    return _ensure_period(phrase)
+
+
+def _friendly_fast_tool_text(tool_calls_repr: str) -> str | None:
+    call = _first_tool_call(tool_calls_repr)
+    if call is None:
+        return None
+
+    name, params = call
+    if name == "start_app":
+        app = _app_label_for(params.get("package", ""))
+        return _ensure_period(f"I'm opening {app}")
+    if name == "press_button":
+        button = params.get("button", "").casefold()
+        if button == "home":
+            return "I'm going home."
+        if button == "back":
+            return "I'm going back."
+    if name == "input_text":
+        return "I'm entering the text."
+
+    return None
+
+
+def _first_tool_call(tool_calls_repr: str) -> tuple[str, dict[str, str]] | None:
+    try:
+        root = ElementTree.fromstring(tool_calls_repr)
+    except ElementTree.ParseError:
+        return None
+
+    invoke = root.find(".//invoke")
+    if invoke is None:
+        return None
+
+    name = (invoke.attrib.get("name") or "").strip()
+    if not name:
+        return None
+
+    params: dict[str, str] = {}
+    for parameter in invoke.findall("parameter"):
+        param_name = parameter.attrib.get("name")
+        if param_name:
+            params[param_name] = _normalize_space(parameter.text or "")
+    return name, params
+
+
+def _app_label_for(package: str) -> str:
+    package = package.casefold()
+    for needle, label in NarrationPolicy._APP_LABELS.items():
+        if needle in package:
+            return label
+    return "the app"
 
 
 def _normalize_space(text: str) -> str:

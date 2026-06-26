@@ -19,20 +19,43 @@ def test_unknown_event_is_silent():
     assert narration_for(_named("RandomEvent")) is None
 
 
-def test_manager_plan_details_event_is_silent():
+def test_manager_plan_details_event_narrates_user_level_subgoal():
     ev = _named("ManagerPlanDetailsEvent", subgoal="Open Wei's chat")
+    assert narration_for(ev) == "I'm opening Wei's chat."
+
+
+def test_fast_agent_response_event_does_not_narrate_internal_thought():
+    ev = _named("FastAgentResponseEvent", thought="I should open WhatsApp", code=None)
     assert narration_for(ev) is None
 
 
-def test_fast_agent_response_event_narrates_description_not_thought():
-    with_description = _named(
-        "FastAgentResponseEvent",
-        description="Checking the screen",
-        thought="fallback",
+def test_fast_agent_tool_call_event_narrates_fast_path_action():
+    ev = _named(
+        "FastAgentToolCallEvent",
+        tool_calls_repr=(
+            "<function_calls>"
+            '<invoke name="start_app">'
+            '<parameter name="package">com.whatsapp</parameter>'
+            "</invoke>"
+            "</function_calls>"
+        ),
     )
-    with_thought = _named("FastAgentResponseEvent", description="", thought="Thinking")
-    assert narration_for(with_description) == "I'm checking the screen."
-    assert narration_for(with_thought) is None
+    assert narration_for(ev) == "I'm opening WhatsApp."
+
+
+def test_executor_action_result_event_narrates_meaningful_success_summary():
+    ev = _named(
+        "ExecutorActionResultEvent",
+        success=True,
+        summary="Found Wei's chat",
+        error="",
+    )
+    assert narration_for(ev) == "I found Wei's chat."
+
+
+def test_perception_events_are_silent():
+    assert narration_for(_named("ScreenshotEvent", screenshot=b"png")) is None
+    assert narration_for(_named("RecordUIStateEvent", ui_state=[])) is None
 
 
 def test_raw_ui_gesture_is_silent():
@@ -111,7 +134,7 @@ async def test_narrate_events_suppresses_noise_and_duplicates():
     )
     result = await narrate_events(handler, Conn(), "en")
 
-    assert sent == [("I'm opening WhatsApp.", "en")]
+    assert sent == [("I'm opening Wei's chat.", "en"), ("I'm opening WhatsApp.", "en")]
     assert result.success is True
 
 

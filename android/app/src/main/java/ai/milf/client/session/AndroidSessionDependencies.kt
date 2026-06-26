@@ -18,6 +18,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 fun androidSessionDependencies(application: Application): MilfSessionController.Dependencies =
@@ -103,7 +104,9 @@ private fun Context.isMilfAssistantSelected(): Boolean {
 }
 
 private object WebSocketBackendChecker {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(75, TimeUnit.SECONDS)
+        .build()
 
     fun check(url: String, callback: (BackendConnectionStatus) -> Unit) {
         val called = AtomicBoolean(false)

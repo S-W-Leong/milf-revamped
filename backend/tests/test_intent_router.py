@@ -245,6 +245,28 @@ async def test_intent_router_logs_model_decision(caplog):
     assert record.confidence == 0.91
 
 
+async def test_intent_router_logs_final_response(caplog):
+    caplog.set_level(logging.INFO, logger="milf.intent_router")
+    agent = FakeIntentAgent(
+        IntentAgentDecision(
+            route="clarify",
+            reply="Who should I send that to?",
+            confidence=0.89,
+        )
+    )
+
+    route = await route_intent_with_agent("send hello", "en", agent)
+
+    assert route == IntentRoute(kind="clarify", message="Who should I send that to?")
+    record = _find_log(caplog.records, "MILF intent router response.")
+    assert record.route_kind == "clarify"
+    assert record.response_message == "Who should I send that to?"
+    assert record.normalized_intent is None
+    assert record.contact_id is None
+    assert record.requires_confirmation is False
+    assert record.fast_path is False
+
+
 def test_default_intent_agent_disabled_without_api_key(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
