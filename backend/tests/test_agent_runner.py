@@ -97,6 +97,8 @@ def test_mobile_config_accepts_reasoning_mode():
 
     assert fast_config.agent.reasoning is False
     assert planned_config.agent.reasoning is True
+    assert fast_config.agent.manager.vision is True
+    assert fast_config.agent.executor.vision is True
     assert planned_config.agent.manager.vision is True
     assert planned_config.agent.executor.vision is True
 
@@ -230,7 +232,7 @@ async def test_run_intent_uses_text_without_stt():
 async def test_run_intent_short_circuits_greeting_before_agent():
     called = False
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         nonlocal called
         called = True
         return SimpleNamespace(run=lambda: FakeHandler())
@@ -265,7 +267,7 @@ async def test_run_intent_short_circuits_greeting_before_agent():
 async def test_run_intent_short_circuits_incomplete_command_before_agent():
     called = False
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         nonlocal called
         called = True
         return SimpleNamespace(run=lambda: FakeHandler())
@@ -310,7 +312,7 @@ async def test_run_intent_dispatches_perceive_without_mobile_agent(monkeypatch):
         await connection.send_task_complete("The screen shows WhatsApp.", lang)
         return SimpleNamespace(success=True, reason="perceive")
 
-    def fake_factory(goal, driver, custom_tools):
+    def fake_factory(goal, driver, custom_tools, reasoning=True):
         nonlocal called_factory
         called_factory = True
         return SimpleNamespace(run=lambda: FakeHandler())
@@ -354,7 +356,7 @@ async def test_run_intent_perceive_falls_back_to_raw_utterance(monkeypatch):
         FakeConn(),
         intent="read this",
         lang="en",
-        agent_factory=lambda goal, driver, custom_tools: None,
+        agent_factory=lambda goal, driver, custom_tools, reasoning=True: None,
         intent_router=fake_router,
     )
 
@@ -457,7 +459,7 @@ async def test_run_intent_records_clarification_in_session():
         conn,
         intent="send hello",
         lang="en",
-        agent_factory=lambda goal, driver, custom_tools: None,
+        agent_factory=lambda goal, driver, custom_tools, reasoning=True: None,
         intent_router=fake_router,
         session=session,
     )
@@ -603,7 +605,7 @@ async def test_run_intent_logs_short_circuit_route(caplog):
         conn,
         intent="what's up",
         lang="en",
-        agent_factory=lambda goal, driver, custom_tools: None,
+        agent_factory=lambda goal, driver, custom_tools, reasoning=True: None,
         intent_router=fake_router,
         session=session,
     )
@@ -660,7 +662,7 @@ async def test_run_task_sends_early_filler_before_transcribing():
         audio=b"audio",
         lang="en",
         stt=OrderingSTT(),
-        agent_factory=lambda goal, driver, custom_tools: None,
+        agent_factory=lambda goal, driver, custom_tools, reasoning=True: None,
         intent_router=fake_router,
     )
 
