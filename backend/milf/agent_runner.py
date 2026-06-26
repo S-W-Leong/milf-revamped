@@ -7,8 +7,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable
 
-from websockets.exceptions import ConnectionClosedOK
-
 from milf.clarification import (
     ClarificationRequested,
     ClarificationState,
@@ -26,13 +24,11 @@ from milf.intent_router import (
     route_intent_with_agent,
 )
 from milf.narration import narrate_events
+from milf.runtime_failures import SAFE_FAILURE_COPY, caused_by_clean_client_close
 from milf.session import MILFSession
 from milf.stt import STTAdapter
 from milf.ws_driver import WebSocketDriver
 
-SAFE_FAILURE_COPY = (
-    "I'm having a little trouble with that. Please try again."
-)
 APP_CARDS_DIR = Path(__file__).resolve().parents[2] / "config" / "app_cards"
 logger = logging.getLogger(__name__)
 
@@ -190,7 +186,7 @@ async def run_intent(
         await connection.send_task_failure(SAFE_FAILURE_COPY, lang)
         return SimpleNamespace(success=False, reason="confirmation_declined")
     except Exception as error:
-        if _caused_by_clean_client_close(error):
+        if caused_by_clean_client_close(error):
             logger.info(
                 "Mobile client closed during agent run.",
                 extra={
@@ -322,14 +318,3 @@ async def _call_intent_router(
     if accepts_session_positionally:
         return await intent_router(intent, lang, session)
     return await intent_router(intent, lang)
-
-
-def _caused_by_clean_client_close(error: BaseException) -> bool:
-    seen: set[int] = set()
-    current: BaseException | None = error
-    while current is not None and id(current) not in seen:
-        if isinstance(current, ConnectionClosedOK):
-            return True
-        seen.add(id(current))
-        current = current.__cause__ or current.__context__
-    return False
