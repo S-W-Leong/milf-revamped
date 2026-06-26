@@ -24,6 +24,7 @@ from milf.intent_router import (
     route_intent_with_agent,
 )
 from milf.narration import narrate_events
+from milf.perceive import run_perceive
 from milf.runtime_failures import SAFE_FAILURE_COPY, caused_by_clean_client_close
 from milf.session import MILFSession
 from milf.stt import STTAdapter
@@ -126,6 +127,17 @@ async def run_intent(
         await connection.send_narration(message, lang)
         await connection.send_task_complete(message, lang)
         return SimpleNamespace(success=route.kind == "reply", reason=route.kind)
+
+    if route.kind == "perceive":
+        logger.info(
+            "MILF dispatching read-only perceive route.",
+            extra={
+                "session_id": session.session_id,
+                "lang": lang,
+            },
+        )
+        perceive_query = route.normalized_intent or intent
+        return await run_perceive(connection, perceive_query, lang)
 
     routed_intent = route.normalized_intent or intent
     await connection.send_narration(acknowledgment(routed_intent), lang)
