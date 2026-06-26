@@ -16,8 +16,22 @@ interface DeviceActions {
     suspend fun getDate(): String = LocalDate.now().toString()
 }
 
+interface OverlayGuard {
+    suspend fun <T> hideWhile(block: suspend () -> T): T
+}
+
+object OverlayGuardRegistry {
+    @Volatile
+    var guard: OverlayGuard? = null
+}
+
+private object NoOpOverlayGuard : OverlayGuard {
+    override suspend fun <T> hideWhile(block: suspend () -> T): T = block()
+}
+
 class ActionDispatcher(
-    private val device: DeviceActions?
+    private val device: DeviceActions?,
+    private val overlayGuard: OverlayGuard = OverlayGuardRegistry.guard ?: NoOpOverlayGuard
 ) {
     suspend fun dispatch(action: Action): ActionResult {
         val activeDevice = device
@@ -67,7 +81,14 @@ class ActionDispatcher(
                     includeSystem = action.boolArg("include_system", true)
                 )
 
-                "screenshot" -> activeDevice.screenshot(action.boolArg("hide_overlay", true))
+                "screenshot" -> {
+                    val hideOverlay = action.boolArg("hide_overlay", true)
+                    if (hideOverlay) {
+                        overlayGuard.hideWhile { activeDevice.screenshot(hideOverlay = true) }
+                    } else {
+                        activeDevice.screenshot(hideOverlay = false)
+                    }
+                }
 
                 "get_ui_tree" -> activeDevice.getUiTree()
 

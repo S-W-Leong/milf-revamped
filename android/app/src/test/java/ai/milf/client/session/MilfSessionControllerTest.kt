@@ -656,6 +656,36 @@ class MilfSessionControllerTest {
     }
 
     @Test
+    fun tapActionCollapsesOverlayBeforeDispatch() = runTest {
+        val client = FakeClient()
+        lateinit var controller: MilfSessionController
+        var stateDuringDispatch: SeniorUiState? = null
+        controller = MilfSessionController(
+            dependencies = testDependencies(
+                clients = listOf(client),
+                dispatch = { action ->
+                    stateDuringDispatch = controller.uiState.value
+                    ActionResult(action.id, true)
+                }
+            )
+        )
+
+        controller.beginListening()
+        controller.finishListeningAndRun()
+        client.callbacks?.onAction(
+            Action(
+                id = "a1",
+                name = "tap",
+                args = mapOf("x" to 100, "y" to 200)
+            )
+        )
+
+        assertEquals(SeniorUxScreen.Acting, stateDuringDispatch?.screen)
+        assertEquals(true, stateDuringDispatch?.isCollapsed)
+        assertEquals(ActionTarget(x = 52, y = 168, width = 96, height = 64), stateDuringDispatch?.actionTarget)
+    }
+
+    @Test
     fun submitTextCommandStartsTextSessionAndMovesToThinking() = runTest {
         val client = FakeClient()
         val controller = fakeController(client = client)
@@ -1157,6 +1187,7 @@ private fun testDependencies(
     },
     speechRecognizer: FakeNativeSpeechRecognizer = FakeNativeSpeechRecognizer(),
     speechInputMode: SpeechInputMode = SpeechInputMode.BackendAudio,
+    dispatch: suspend (Action) -> ActionResult = { action -> ActionResult(action.id, true) },
     setupStatus: () -> SetupStatus = {
         SetupStatus(
             microphoneGranted = true,
@@ -1185,6 +1216,6 @@ private fun testDependencies(
         saveAgentMemory = saveAgentMemory,
         checkBackendConnection = checkBackendConnection,
         setupStatus = setupStatus,
-        dispatch = { action -> ActionResult(action.id, true) }
+        dispatch = dispatch
     )
 }

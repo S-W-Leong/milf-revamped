@@ -53,6 +53,20 @@ class ActionDispatcherTest {
     }
 
     @Test
+    fun screenshotWithHideOverlayRunsCaptureInsideOverlayGuard() = runTest {
+        val fake = FakeDeviceActions()
+        val overlay = FakeOverlayGuard()
+        val dispatcher = ActionDispatcher(fake, overlay)
+
+        val result = dispatcher.dispatch(Action("s1", "screenshot", mapOf("hide_overlay" to true)))
+
+        assertEquals(true, result.ok)
+        assertEquals("png", result.result)
+        assertEquals(listOf("hide:start", "hide:end"), overlay.calls)
+        assertEquals(listOf("screenshot:true"), fake.calls)
+    }
+
+    @Test
     fun getDateReturnsDeviceDate() = runTest {
         val dispatcher = ActionDispatcher(FakeDeviceActions())
 
@@ -121,7 +135,10 @@ private class FakeDeviceActions(
 
     override suspend fun startApp(packageName: String, activity: String?): String = packageName
 
-    override suspend fun screenshot(hideOverlay: Boolean): String = "png"
+    override suspend fun screenshot(hideOverlay: Boolean): String {
+        calls += "screenshot:$hideOverlay"
+        return "png"
+    }
 
     override suspend fun getUiTree(): Map<String, Any?> = emptyMap()
 
@@ -129,4 +146,17 @@ private class FakeDeviceActions(
 
     override suspend fun getApps(includeSystem: Boolean): List<Map<String, String>> =
         listOf(mapOf("package" to "com.whatsapp", "label" to "WhatsApp"))
+}
+
+private class FakeOverlayGuard : OverlayGuard {
+    val calls = mutableListOf<String>()
+
+    override suspend fun <T> hideWhile(block: suspend () -> T): T {
+        calls += "hide:start"
+        return try {
+            block()
+        } finally {
+            calls += "hide:end"
+        }
+    }
 }

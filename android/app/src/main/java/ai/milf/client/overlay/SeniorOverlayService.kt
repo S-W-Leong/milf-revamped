@@ -3,6 +3,8 @@ package ai.milf.client.overlay
 import ai.milf.client.MainActivity
 import ai.milf.client.MilfApplication
 import ai.milf.client.R
+import ai.milf.client.accessibility.OverlayGuard
+import ai.milf.client.accessibility.OverlayGuardRegistry
 import ai.milf.client.session.MilfSessionController
 import ai.milf.client.session.canStartAssistEntry
 import ai.milf.client.session.canStartHelper
@@ -65,9 +67,17 @@ class SeniorOverlayService : Service() {
         scope.launch(Dispatchers.Main.immediate) {
             controller.uiState.collect { state ->
                 if (Settings.canDrawOverlays(this@SeniorOverlayService)) {
-                    window?.show(state)
+                    if (state.overlayTemporarilyHidden) {
+                        window?.remove()
+                    } else {
+                        window?.show(state)
+                    }
                 }
             }
+        }
+        OverlayGuardRegistry.guard = object : OverlayGuard {
+            override suspend fun <T> hideWhile(block: suspend () -> T): T =
+                controller.runWithOverlayHidden(block)
         }
         controller.setOverlayEnabled(true)
     }
@@ -116,6 +126,9 @@ class SeniorOverlayService : Service() {
         val controller = (application as MilfApplication).sessionController
         controller.cancelActiveSession()
         controller.setOverlayEnabled(false)
+        if (OverlayGuardRegistry.guard != null) {
+            OverlayGuardRegistry.guard = null
+        }
         window?.remove()
         window = null
         stopForegroundIfNeeded()

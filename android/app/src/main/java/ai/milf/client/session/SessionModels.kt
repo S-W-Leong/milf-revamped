@@ -99,6 +99,7 @@ data class SeniorUiState(
     val accessibilityEnabled: Boolean = false,
     val assistantSelected: Boolean = false,
     val overlayEnabled: Boolean = false,
+    val overlayTemporarilyHidden: Boolean = false,
     val isCollapsed: Boolean = false,
     val speechInputMode: SpeechInputMode = SpeechInputMode.Native,
     val agentMemory: String = "",

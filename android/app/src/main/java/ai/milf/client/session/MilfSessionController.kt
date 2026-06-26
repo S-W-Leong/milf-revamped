@@ -7,6 +7,7 @@ import ai.milf.client.protocol.Action
 import ai.milf.client.protocol.ActionResult
 import ai.milf.client.protocol.ConfirmResponse
 import ai.milf.client.ws.MilfWebSocketClient
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -406,6 +407,18 @@ class MilfSessionController(
         _uiState.update { it.copy(isCollapsed = false) }
     }
 
+    suspend fun <T> runWithOverlayHidden(block: suspend () -> T): T {
+        val wasHidden = _uiState.value.overlayTemporarilyHidden
+        _uiState.update { it.copy(overlayTemporarilyHidden = true) }
+        delay(OVERLAY_HIDE_SETTLE_MS)
+        return try {
+            block()
+        } finally {
+            _uiState.update { it.copy(overlayTemporarilyHidden = wasHidden) }
+            delay(OVERLAY_RESTORE_SETTLE_MS)
+        }
+    }
+
     fun cancelActiveSession() {
         nextSessionId()
         dependencies.recorder.cancel()
@@ -457,6 +470,7 @@ class MilfSessionController(
                 if (!isCurrentSession(callbackSessionId)) {
                     return ActionResult(action.id, ok = false, error = "stale session")
                 }
+                val actionTarget = ActionTarget.from(action)
                 _uiState.update {
                     if (!isCurrentSession(callbackSessionId)) {
                         it
@@ -464,10 +478,21 @@ class MilfSessionController(
                         it.copy(
                             screen = SeniorUxScreen.Acting,
                             captions = ACTING_PROMPT,
-                            actionTarget = ActionTarget.from(action),
+                            actionTarget = actionTarget,
                             isCollapsed = false
                         )
                     }
+                }
+                if (action.shouldCollapseOverlayBeforeDispatch()) {
+                    delay(ACTION_TARGET_PREVIEW_MS)
+                    _uiState.update {
+                        if (isCurrentSession(callbackSessionId)) {
+                            it.copy(isCollapsed = true)
+                        } else {
+                            it
+                        }
+                    }
+                    delay(OVERLAY_COLLAPSE_SETTLE_MS)
                 }
                 return dependencies.dispatch(action)
             }
@@ -808,6 +833,10 @@ class MilfSessionController(
     private companion object {
         const val SAFE_FAILURE = "I'm having a little trouble with that. Please try again."
         const val NO_SPEECH_PROMPT = "I didn't hear anything. Please try again."
+        const val ACTION_TARGET_PREVIEW_MS = 120L
+        const val OVERLAY_COLLAPSE_SETTLE_MS = 80L
+        const val OVERLAY_HIDE_SETTLE_MS = 80L
+        const val OVERLAY_RESTORE_SETTLE_MS = 40L
     }
 }
 
@@ -846,6 +875,9 @@ private fun terminalCaption(summary: String): String {
     val trimmed = summary.trim()
     return if (trimmed.endsWith("?") || trimmed.endsWith("？")) trimmed else READY_PROMPT
 }
+
+private fun Action.shouldCollapseOverlayBeforeDispatch(): Boolean =
+    name == "tap" || name == "swipe"
 
 private fun Any.numberToInt(): Int? = when (this) {
     is Int -> this
