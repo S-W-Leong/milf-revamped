@@ -134,7 +134,11 @@ async def run_intent(
     routed_intent = route.normalized_intent or intent
     await connection.send_narration(acknowledgment(routed_intent), lang)
 
-    goal = build_goal(routed_intent, memory=memory)
+    goal = build_goal(
+        routed_intent,
+        memory=memory,
+        session_context=session.context_for_intent_router(),
+    )
     driver = WebSocketDriver(connection)
     clarification_state = ClarificationState()
     custom_tools = build_confirmation_tool(connection, lang)

@@ -351,8 +351,10 @@ async def test_run_intent_uses_pending_session_context_for_follow_up():
     )
 
     assert "Spoken intent: 'Send hello to Wei on WhatsApp.'." in captured["goal"]
+    assert "MILF session context:" in captured["goal"]
+    assert "Recent user inputs: send hello, Wei" in captured["goal"]
     assert session.pending_clarification is None
-    assert session.last_contact_id is None
+    assert session.last_contact_id == "wei-grandson"
     assert session.last_normalized_intent == "Send hello to Wei on WhatsApp."
     assert session.last_mobile_run is not None
     assert session.last_mobile_run.status == "completed"
