@@ -53,6 +53,29 @@ def test_build_goal_tells_agent_overlay_taps_pass_through_outside_rail():
     assert "Taps outside the rail go to the underlying app" in goal
     assert "first tap outside the bar only collapses MILF" not in goal
 
+
+def test_build_goal_includes_session_context_when_provided():
+    goal = build_goal(
+        "Send hello to Wei on WhatsApp.",
+        session_context=(
+            "Recent user inputs: send hello\n"
+            "Pending clarification: Who should I send that to?"
+        ),
+    )
+
+    assert "MILF session context:" in goal
+    assert "Recent user inputs: send hello" in goal
+    assert "Pending clarification: Who should I send that to?" in goal
+    assert "Spoken intent: 'Send hello to Wei on WhatsApp.'." in goal
+
+
+def test_build_goal_omits_session_context_block_when_empty():
+    goal = build_goal("Open WhatsApp.", session_context="")
+
+    assert "MILF session context:" not in goal
+    assert "Spoken intent: 'Open WhatsApp.'." in goal
+
+
 def test_acknowledgment_is_generic():
     line = acknowledgment("open the weather")
     assert line and "Wei" not in line

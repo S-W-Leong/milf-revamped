@@ -43,8 +43,12 @@ def format_agent_memory(memory: str) -> str:
     return f"Agent memory:\n{AGENT_MEMORY_RULE}\n{memory}"
 
 
-def build_goal(intent: str, memory: str = "") -> str:
+def build_goal(intent: str, memory: str = "", session_context: str = "") -> str:
     parts = [f"Spoken intent: {intent!r}."]
+
+    session_context = session_context.strip()
+    if session_context:
+        parts.append(f"MILF session context:\n{session_context}")
 
     memory_section = format_agent_memory(memory)
     if memory_section:

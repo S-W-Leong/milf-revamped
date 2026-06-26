@@ -100,6 +100,9 @@ class MILFSession(BaseModel):
             else:
                 status = "failed"
 
+        if route.contact_id is not None:
+            self.last_contact_id = route.contact_id
+
         self.last_mobile_run = MobileRunResult(
             status=status,
             normalized_intent=route.normalized_intent,
