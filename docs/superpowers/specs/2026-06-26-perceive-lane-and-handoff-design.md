@@ -32,10 +32,16 @@ In scope:
 - A new read-only `perceive` lane for screen-description / read-aloud queries.
 - Enriching the MobileRun handoff with session context.
 - Defaulting the intent model to `gpt-4o-mini`.
+- An immediate spoken acknowledgment covering the pre-route silence
+  (STT + classify).
+- Conservative per-task reasoning-mode selection: fast mode (no planning pass)
+  for a narrow single-action allowlist, planning mode for everything else.
 
 Explicitly out of scope:
 
-- Immediate-acknowledgment-before-spin-up changes.
+- A non-verbal earcon/tone for the acknowledgment (would need a new protocol
+  message type and device-side handling); the acknowledgment ships as a spoken
+  filler reusing existing narration. Earcon is a possible future refinement.
 - Threading the original utterance, `contact_id`, or cached screen state into
   the handoff (session context only).
 - Caching screen state across calls.
@@ -122,6 +128,63 @@ async def run_perceive(connection, query, lang, agent=...) -> result:
 - Document `MILF_PERCEIVE_MODEL` and the `gpt-4o-mini` intent default in the
   `AGENTS.md` environment list and README.
 
+### 6. Immediate acknowledgment (`agent_runner.py` → `run_task`)
+
+The pre-route window — audio received → `stt.transcribe` → intent classify —
+emits nothing today, so the senior hears dead air from the moment they stop
+speaking. On the audio path STT is often the larger share of that silence.
+
+- Emit a short, language-aware filler narration at the **top of `run_task`**,
+  before `stt.transcribe`, via the existing `send_narration` (e.g. "Okay, one
+  moment."). It fires for every route and commits to no action.
+- Keep the existing execute-time `acknowledgment()` at `run_intent` (current
+  line ~135) unchanged.
+
+The two acknowledgments bracket two distinct silence gaps rather than repeating
+each other:
+
+| Gap | From → to | Covered by |
+| --- | --- | --- |
+| STT + classify | stopped speaking → route resolves | NEW early filler in `run_task` |
+| Manager planning | route resolves → MobileRun's first step narration | existing `acknowledgment()` |
+
+For `chat`/`clarify`/`perceive`, only the early filler precedes the actual
+reply. The early filler lives in `run_task` (audio path) only; the text-only
+`run_intent` entry point keeps its existing behavior, since that path has no STT
+silence and is primarily for tests and development.
+
+### 7. Reasoning-mode selection (`intent_router.py` + `agent_runner.py`)
+
+MobileRun's `MobileAgent` supports two modes via `config.agent.reasoning`:
+`False` runs `FastAgent` directly with no planning round-trip; `True` runs
+`ManagerAgent` (planning) + `ExecutorAgent`. MILF currently hardcodes
+`reasoning=True` in `build_mobile_config`, so every execute task pays for a
+Manager planning pass — a full extra vision LLM round-trip on the critical path,
+and the largest single latency cost in the execute flow.
+
+Add conservative per-task selection with defense in depth:
+
+- The gate emits `fast_path: bool` (default `False`) on `IntentAgentDecision`
+  and `IntentRoute`. The prompt sets it `True` ONLY for narrow single-action
+  intents that need no planning — opening a named app, or home/back navigation —
+  with explicit counter-examples (anything that composes, sends, selects among
+  items, or takes multiple steps stays `False`).
+- `agent_runner` applies a hard code-side guardrail: fast mode is used only when
+  `route.fast_path` is `True` **and** `route.requires_confirmation` is `False`.
+  Any consequential action (call/send/payment/share) always runs planning mode +
+  confirmation, even if the gate misclassified it:
+  `reasoning = not (route.fast_path and not route.requires_confirmation)`.
+- `build_mobile_config(reasoning)` and
+  `build_agent(goal, driver, custom_tools, reasoning)` become parametric;
+  `run_intent` computes `reasoning` and threads it through `agent_factory`
+  (whose signature gains a `reasoning` argument).
+- `custom_tools` (clarification, confirmation) stay wired in both modes;
+  confirmation is moot on the fast path because `requires_confirmation` gates it
+  out.
+
+The gate is conservative and the code refuses to fast-path anything
+irreversible. When in doubt, plan.
+
 ## Components and Boundaries
 
 | Unit | Purpose | Depends on |
@@ -130,7 +193,9 @@ async def run_perceive(connection, query, lang, agent=...) -> result:
 | `perceive.run_perceive` | Read-only single-shot screen description | `WebSocketDriver`, `PerceiveAgent` |
 | `OpenAIPerceiveAgent` | One vision call: query + screenshot + UI tree → answer | OpenAI vision model |
 | `context.build_goal` | Assemble MobileRun goal incl. session context | — |
-| `agent_runner.run_intent` | Route and dispatch to reply/clarify/perceive/execute | all of the above |
+| `agent_runner.run_intent` | Route, pick reasoning mode, dispatch to reply/clarify/perceive/execute | all of the above |
+| `agent_runner.build_mobile_config` / `build_agent` | Build MobileRun config/agent for the chosen `reasoning` mode | MobileRun |
+| `agent_runner.run_task` | Early filler ack, then STT → `run_intent` | `STTAdapter`, `run_intent` |
 
 `run_perceive` is independently testable: inject a fake `PerceiveAgent` and a
 fake `AppConnection`, assert one screenshot + one UI-tree call, the narrated
@@ -151,6 +216,13 @@ pytest + pytest-asyncio.
   provided and omits it when empty.
 - `test_session.py` (or existing session tests): `last_contact_id` is set after
   a run carrying a `contact_id`.
+- `test_agent_runner.py`: `run_task` emits the early filler narration before
+  `stt.transcribe` is called, on every route.
+- `test_intent_router.py`: `fast_path` classification and its mapping into
+  `IntentRoute`.
+- `test_agent_runner.py`: `fast_path` + no confirmation → `reasoning=False`
+  passed to the agent factory; `fast_path` + `requires_confirmation` →
+  `reasoning=True` (guardrail wins); non-`fast_path` → `reasoning=True`.
 
 ## Rationale
 
@@ -158,4 +230,8 @@ The two-agent split (non-actuating gate + actuating MobileRun) is retained — i
 is the safety boundary and keeps cheap paths off the heavy agent. The fixes
 target the real causes: a coarse "no-screen vs full-actuation" binary (closed by
 the read-only `perceive` lane), a lossy single-string handoff (enriched with
-session context), and an oversized routing model (downsized to `gpt-4o-mini`).
+session context), an oversized routing model (downsized to `gpt-4o-mini`), an
+unbroken pre-route silence (covered by an immediate spoken acknowledgment), and
+an always-on planning pass (replaced by conservative fast/planning-mode
+selection that still defaults to planning for anything non-trivial or
+irreversible).
