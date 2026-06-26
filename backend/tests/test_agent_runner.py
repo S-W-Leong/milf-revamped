@@ -76,7 +76,10 @@ async def test_run_task_acks_then_builds_and_runs():
     assert "Contact id:" not in captured["goal"]
     assert "Intended contact:" not in captured["goal"]
     assert "confirm_action" in captured["tools"]
-    assert conn.narrations == [("Okay, let me help you with that.", "en")]
+    assert conn.narrations == [
+        ("Okay, one moment.", "en"),
+        ("Okay, let me help you with that.", "en"),
+    ]
     assert conn.completions == [("Done.", "en", None)]
     assert conn.failures == []
 
@@ -545,6 +548,44 @@ async def test_run_task_still_transcribes_audio():
     assert conn.completions == [("Done.", "en", None)]
 
 
+async def test_run_task_sends_early_filler_before_transcribing():
+    events = []
+
+    class OrderingConn(FakeConn):
+        async def send_narration(self, text, lang):
+            events.append(("narration", text, lang))
+            await super().send_narration(text, lang)
+
+    class OrderingSTT:
+        async def transcribe(self, audio, lang):
+            events.append(("transcribe", audio, lang))
+            return "hello"
+
+    async def fake_router(intent, lang, session=None, memory=""):
+        events.append(("router", intent, lang))
+        return IntentRoute(kind="reply", message="Hi there.")
+
+    conn = OrderingConn()
+
+    result = await run_task(
+        connection=conn,
+        audio=b"audio",
+        lang="en",
+        stt=OrderingSTT(),
+        agent_factory=lambda goal, driver, custom_tools: None,
+        intent_router=fake_router,
+    )
+
+    assert result.success is True
+    assert events[0] == ("narration", "Okay, one moment.", "en")
+    assert events[1] == ("transcribe", b"audio", "en")
+    assert events[2] == ("router", "hello", "en")
+    assert conn.narrations == [
+        ("Okay, one moment.", "en"),
+        ("Hi there.", "en"),
+    ]
+
+
 def _find_log(records, message):
     for record in records:
         if record.getMessage() == message:
@@ -687,6 +728,7 @@ async def test_run_task_surfaces_mobile_run_clarification_and_stops():
     assert result.success is False
     assert result.reason == "clarify"
     assert conn.narrations == [
+        ("Okay, one moment.", "en"),
         ("Okay, let me help you with that.", "en"),
         ("Which listed Wei is your grandson?", "en"),
     ]

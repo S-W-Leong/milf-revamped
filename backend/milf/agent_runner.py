@@ -81,6 +81,14 @@ def build_agent(goal: str, driver: WebSocketDriver, custom_tools: dict[str, Any]
     )
 
 
+def early_acknowledgment(lang: str) -> str:
+    if lang == "zh":
+        return "好的，请等一下。"
+    if lang == "yue":
+        return "好，等一等。"
+    return "Okay, one moment."
+
+
 async def run_intent(
     connection: AppConnection,
     intent: str,
@@ -285,6 +293,7 @@ async def run_task(
     session: MILFSession | None = None,
     memory: str = "",
 ) -> Any:
+    await connection.send_narration(early_acknowledgment(lang), lang)
     intent = await stt.transcribe(audio, lang)
     return await run_intent(
         connection,
